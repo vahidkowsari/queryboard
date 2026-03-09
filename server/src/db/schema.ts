@@ -1,4 +1,10 @@
-import { pgTable, uuid, varchar, text, jsonb, integer, timestamp, index, numeric, unique } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, text, jsonb, integer, timestamp, index, numeric, unique, customType } from 'drizzle-orm/pg-core'
+
+const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
+  dataType() {
+    return 'bytea'
+  },
+})
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -25,6 +31,7 @@ export const dashboards = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     shareToken: varchar('share_token', { length: 64 }).unique(),
+    thumbnail: bytea('thumbnail'),
     refreshCron: varchar('refresh_cron', { length: 50 }),
     lastRefreshedAt: timestamp('last_refreshed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

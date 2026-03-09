@@ -138,5 +138,35 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
     }),
   )
 
+  router.post(
+    '/:id/thumbnail',
+    canEdit,
+    asyncHandler(async (req, res) => {
+      const { thumbnail } = req.body
+      if (!thumbnail || typeof thumbnail !== 'string') {
+        return void res.status(400).json({ error: 'Invalid thumbnail data' })
+      }
+      
+      // Validate MIME type
+      const mimeMatch = thumbnail.match(/^data:image\/(jpeg|jpg|png|webp);base64,/)
+      if (!mimeMatch) {
+        return void res.status(400).json({ error: 'Invalid image format. Only JPEG, PNG, and WebP are supported' })
+      }
+      
+      const base64Data = thumbnail.replace(/^data:image\/\w+;base64,/, '')
+      const buffer = Buffer.from(base64Data, 'base64')
+      
+      // Validate size (5MB limit)
+      const maxSize = 5 * 1024 * 1024
+      if (buffer.length > maxSize) {
+        return void res.status(413).json({ error: 'Thumbnail too large. Maximum size is 5MB' })
+      }
+      
+      const dashboard = await dashboardService.updateThumbnail(req.params.id, buffer)
+      if (!dashboard) return void res.status(404).json({ error: 'Dashboard not found' })
+      res.json({ success: true })
+    }),
+  )
+
   return router
 }

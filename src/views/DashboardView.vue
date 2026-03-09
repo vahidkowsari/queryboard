@@ -317,6 +317,7 @@ import {
 import { VueDraggable } from 'vue-draggable-plus'
 import { useDashboardStore } from '../stores/dashboard.store'
 import { dashboardApi } from '../services/dashboard.api'
+import { generateDashboardThumbnail } from '../utils/generateThumbnail'
 import ChartCard from '../components/ChartCard.vue'
 import RefreshSchedule from '../components/RefreshSchedule.vue'
 import InlineEdit from '../components/InlineEdit.vue'
@@ -549,6 +550,39 @@ async function handleApplyFilters(filterValues: Record<string, string>) {
   }
 }
 
+let thumbnailUpdateTimeout: ReturnType<typeof setTimeout> | null = null
+let isGeneratingThumbnail = false
+
+async function updateThumbnail(showNotification = false) {
+  if (!chartsContainer.value || !dashboard.value || dashboard.value.charts.length === 0) return
+  if (isGeneratingThumbnail) return
+  
+  isGeneratingThumbnail = true
+  try {
+    const thumbnailData = await generateDashboardThumbnail(chartsContainer.value)
+    await dashboardApi.uploadThumbnail(projectId, dashboard.value.id, thumbnailData)
+    if (showNotification) {
+      toast.success('Dashboard thumbnail updated')
+    }
+  } catch (error) {
+    console.error('Failed to generate thumbnail:', error)
+    if (showNotification) {
+      toast.error('Failed to update dashboard thumbnail')
+    }
+  } finally {
+    isGeneratingThumbnail = false
+  }
+}
+
+function scheduleThumbnailUpdate(delay = 1500) {
+  if (thumbnailUpdateTimeout) {
+    clearTimeout(thumbnailUpdateTimeout)
+  }
+  thumbnailUpdateTimeout = setTimeout(() => {
+    updateThumbnail()
+  }, delay)
+}
+
 onMounted(async () => {
   dashboardStore.setProjectId(projectId)
   const id = route.params.id as string
@@ -557,5 +591,18 @@ onMounted(async () => {
     dashboardName.value = dashboard.value.name
   }
   loading.value = false
+  
+  if (dashboard.value && dashboard.value.charts.length > 0) {
+    scheduleThumbnailUpdate(2000)
+  }
 })
+
+watch(
+  () => dashboard.value?.charts.length,
+  (newLength, oldLength) => {
+    if (newLength && newLength > 0 && newLength !== oldLength) {
+      scheduleThumbnailUpdate()
+    }
+  },
+)
 </script>

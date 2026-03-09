@@ -6,6 +6,7 @@ export interface DashboardRow {
   name: string
   description: string | null
   shareToken: string | null
+  thumbnail: ArrayBuffer | null
   createdAt: string
   updatedAt: string
   chartCount?: number
@@ -133,5 +134,9 @@ export const dashboardApi = {
   async refreshChartFiltered(projectId: string, dashboardId: string, chartId: string, filterValues: Record<string, string>): Promise<ChartRow> {
     const { data } = await api.post(`${basePath(projectId)}/${dashboardId}/charts/${chartId}/refresh`, { filterValues })
     return data
+  },
+
+  async uploadThumbnail(projectId: string, dashboardId: string, thumbnail: string): Promise<void> {
+    await api.post(`${basePath(projectId)}/${dashboardId}/thumbnail`, { thumbnail })
   },
 }

@@ -10,6 +10,7 @@ function rowToDashboard(row: DashboardRow): Dashboard {
     name: row.name,
     description: row.description || undefined,
     shareToken: row.shareToken,
+    thumbnail: row.thumbnail,
     charts: (row.charts || []).map(rowToChart),
     chartCount: row.chartCount,
     createdAt: new Date(row.createdAt),

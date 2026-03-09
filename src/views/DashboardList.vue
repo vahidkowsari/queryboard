@@ -88,9 +88,19 @@
         <Card
           v-for="dashboard in sortedDashboards"
           :key="dashboard.id"
-          class="hover:shadow-lg transition-shadow cursor-pointer"
+          class="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
           @click="navigateToProject(dashboard.id)"
         >
+          <div v-if="dashboard.thumbnail" class="w-full h-48 bg-muted relative overflow-hidden">
+            <img
+              :src="getThumbnailUrl(dashboard)"
+              :alt="dashboard.name"
+              class="w-full h-full object-cover"
+            />
+          </div>
+          <div v-else class="w-full h-48 bg-muted flex items-center justify-center">
+            <LayoutDashboard :size="48" class="text-muted-foreground/30" />
+          </div>
           <div class="p-6">
             <div class="flex items-start justify-between mb-4">
               <div class="flex-1">
@@ -346,5 +356,23 @@ onMounted(() => {
 
 function navigateToProject(id: string) {
   router.push(`/projects/${projectId}/dashboard/${id}`)
+}
+
+const thumbnailCache = new Map<string, string>()
+
+function getThumbnailUrl(dashboard: { id: string; thumbnail: ArrayBuffer | null }): string {
+  if (!dashboard.thumbnail) return ''
+  
+  if (thumbnailCache.has(dashboard.id)) {
+    return thumbnailCache.get(dashboard.id)!
+  }
+  
+  const bytes = new Uint8Array(dashboard.thumbnail)
+  const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), '')
+  const base64 = window.btoa(binary)
+  const dataUrl = `data:image/jpeg;base64,${base64}`
+  
+  thumbnailCache.set(dashboard.id, dataUrl)
+  return dataUrl
 }
 </script>
