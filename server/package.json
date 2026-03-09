@@ -7,6 +7,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "start:prod": "node dist/index.js",
+    "migrate": "drizzle-kit migrate",
     "test": "vitest run",
     "test:watch": "vitest"
   },

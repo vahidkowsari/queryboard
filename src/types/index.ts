@@ -32,7 +32,7 @@ export interface Dashboard {
   name: string
   description?: string
   shareToken?: string | null
-  thumbnail: ArrayBuffer | null
+  thumbnail: { type: 'Buffer'; data: number[] } | null
   charts: Chart[]
   chartCount?: number
   createdAt: Date

@@ -6,7 +6,7 @@ export interface DashboardRow {
   name: string
   description: string | null
   shareToken: string | null
-  thumbnail: ArrayBuffer | null
+  thumbnail: { type: 'Buffer'; data: number[] } | null
   createdAt: string
   updatedAt: string
   chartCount?: number

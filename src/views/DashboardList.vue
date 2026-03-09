@@ -360,14 +360,24 @@ function navigateToProject(id: string) {
 
 const thumbnailCache = new Map<string, string>()
 
-function getThumbnailUrl(dashboard: { id: string; thumbnail: ArrayBuffer | null }): string {
+function getThumbnailUrl(dashboard: { id: string; thumbnail: { type: 'Buffer'; data: number[] } | ArrayBuffer | null }): string {
   if (!dashboard.thumbnail) return ''
   
   if (thumbnailCache.has(dashboard.id)) {
     return thumbnailCache.get(dashboard.id)!
   }
   
-  const bytes = new Uint8Array(dashboard.thumbnail)
+  // Handle Buffer object from PostgreSQL (serialized as {type: 'Buffer', data: [...]})
+  let bytes: Uint8Array
+  if (typeof dashboard.thumbnail === 'object' && 'type' in dashboard.thumbnail && dashboard.thumbnail.type === 'Buffer') {
+    bytes = new Uint8Array(dashboard.thumbnail.data)
+  } else if (dashboard.thumbnail instanceof ArrayBuffer) {
+    bytes = new Uint8Array(dashboard.thumbnail)
+  } else {
+    console.error('Unknown thumbnail format:', dashboard.thumbnail)
+    return ''
+  }
+  
   const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), '')
   const base64 = window.btoa(binary)
   const dataUrl = `data:image/jpeg;base64,${base64}`
