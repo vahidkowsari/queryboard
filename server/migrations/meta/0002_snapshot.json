@@ -1,0 +1,14 @@
+{
+  "id": "0002_add_color_config",
+  "prevId": "0001_add_llm_chart_library",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {},
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

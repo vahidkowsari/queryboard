@@ -1,0 +1,5555 @@
+{
+  "database": "pcc_data",
+  "engine": "athena",
+  "detectedAt": "2026-03-07T19:08:41.436Z",
+  "tables": {
+    "dim_allergy_attribute": {
+      "columns": [
+        {
+          "name": "allergy_attribute_id",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_severity",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_status",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_type",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_allergy_category": {
+      "columns": [
+        {
+          "name": "allergy_category",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_category_id",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_subcategory",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_allergy_reaction": {
+      "columns": [
+        {
+          "name": "allergy_reaction",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_reaction_id",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_subreaction",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_assessment_outcome": {
+      "columns": [
+        {
+          "name": "assessment_outcome_id",
+          "type": "varchar"
+        },
+        {
+          "name": "outcome",
+          "type": "varchar"
+        },
+        {
+          "name": "outcome_category",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_care_profile_question": {
+      "columns": [
+        {
+          "name": "care_profile_question_id",
+          "type": "varchar"
+        },
+        {
+          "name": "category",
+          "type": "varchar"
+        },
+        {
+          "name": "question",
+          "type": "varchar"
+        },
+        {
+          "name": "response",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_census_action": {
+      "columns": [
+        {
+          "name": "census_action_id",
+          "type": "varchar"
+        },
+        {
+          "name": "census_action_type",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_census_from_to_type": {
+      "columns": [
+        {
+          "name": "census_from_to_type",
+          "type": "varchar"
+        },
+        {
+          "name": "census_from_to_type_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_census_status": {
+      "columns": [
+        {
+          "name": "census_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "census_status_type",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_client": {
+      "columns": [
+        {
+          "name": "admission_date",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_date",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "original_admission_date",
+          "type": "varchar"
+        },
+        {
+          "name": "outpatient",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_diagnosis": {
+      "columns": [
+        {
+          "name": "clinical_condition_category",
+          "type": "varchar"
+        },
+        {
+          "name": "clinical_condition_category_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "clinical_condition_level1",
+          "type": "varchar"
+        },
+        {
+          "name": "clinical_condition_level1_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "clinical_condition_level2",
+          "type": "varchar"
+        },
+        {
+          "name": "clinical_condition_level2_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "diagnosis_id",
+          "type": "varchar"
+        },
+        {
+          "name": "icd_code",
+          "type": "varchar"
+        },
+        {
+          "name": "icd_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "mds_diagnosis_group",
+          "type": "varchar"
+        },
+        {
+          "name": "mds_diagnosis_group_desc",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_diagnosis_classification": {
+      "columns": [
+        {
+          "name": "diagnosis_classification",
+          "type": "varchar"
+        },
+        {
+          "name": "diagnosis_classification_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_discharge_status": {
+      "columns": [
+        {
+          "name": "discharge_status",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "is_discharge_ind",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_drug": {
+      "columns": [
+        {
+          "name": "control_substance_code",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_base_name",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_class",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_form",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_group",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_id",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_name",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_strength",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_subclass",
+          "type": "varchar"
+        },
+        {
+          "name": "form",
+          "type": "varchar"
+        },
+        {
+          "name": "is_generic_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "generic_drug_id",
+          "type": "varchar"
+        },
+        {
+          "name": "generic_drug_name",
+          "type": "varchar"
+        },
+        {
+          "name": "generic_drug_strength",
+          "type": "varchar"
+        },
+        {
+          "name": "generic_product_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl1_drug_group",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl2_drug_class",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl3_drug_subclass",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl4_drug_base_name",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl5_drug_name",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl6_drug_form",
+          "type": "varchar"
+        },
+        {
+          "name": "lvl7_drug_strength",
+          "type": "varchar"
+        },
+        {
+          "name": "narcotic",
+          "type": "varchar"
+        },
+        {
+          "name": "rx_type",
+          "type": "varchar"
+        },
+        {
+          "name": "strength",
+          "type": "varchar"
+        },
+        {
+          "name": "strength_unit",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_facility": {
+      "columns": [
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_size",
+          "type": "varchar"
+        },
+        {
+          "name": "geo_location",
+          "type": "varchar"
+        },
+        {
+          "name": "health_type",
+          "type": "varchar"
+        },
+        {
+          "name": "is_inactive_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "state",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_immunization": {
+      "columns": [
+        {
+          "name": "immunization",
+          "type": "varchar"
+        },
+        {
+          "name": "immunization_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_incident_location": {
+      "columns": [
+        {
+          "name": "incident_location",
+          "type": "varchar"
+        },
+        {
+          "name": "incident_location_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_incident_type": {
+      "columns": [
+        {
+          "name": "incident_type",
+          "type": "varchar"
+        },
+        {
+          "name": "incident_type_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_lab_report_severity": {
+      "columns": [
+        {
+          "name": "lab_report_severity_id",
+          "type": "varchar"
+        },
+        {
+          "name": "severity_code",
+          "type": "varchar"
+        },
+        {
+          "name": "severity_description",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_lab_report_status": {
+      "columns": [
+        {
+          "name": "lab_report_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "status_code",
+          "type": "varchar"
+        },
+        {
+          "name": "status_description",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_lab_result_uom": {
+      "columns": [
+        {
+          "name": "lab_result_uom_id",
+          "type": "varchar"
+        },
+        {
+          "name": "result_uom",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_lab_test": {
+      "columns": [
+        {
+          "name": "category_code",
+          "type": "varchar"
+        },
+        {
+          "name": "category_description",
+          "type": "varchar"
+        },
+        {
+          "name": "is_category_active_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "is_test_active_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_test_id",
+          "type": "varchar"
+        },
+        {
+          "name": "loin_ccode",
+          "type": "varchar"
+        },
+        {
+          "name": "test_description",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_lab_test_abnormality": {
+      "columns": [
+        {
+          "name": "abnormality_code",
+          "type": "varchar"
+        },
+        {
+          "name": "abnormality_description",
+          "type": "varchar"
+        },
+        {
+          "name": "is_active_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_test_abnormality_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_lab_test_condition": {
+      "columns": [
+        {
+          "name": "condition_code",
+          "type": "varchar"
+        },
+        {
+          "name": "condition_description",
+          "type": "varchar"
+        },
+        {
+          "name": "is_active_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_test_condition_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_medication_uo_m": {
+      "columns": [
+        {
+          "name": "medication_uo_m",
+          "type": "varchar"
+        },
+        {
+          "name": "medication_uo_m_id",
+          "type": "varchar"
+        },
+        {
+          "name": "medication_uo_m_type",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_observation_method": {
+      "columns": [
+        {
+          "name": "observation_method_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_type",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_payer": {
+      "columns": [
+        {
+          "name": "payer_id",
+          "type": "varchar"
+        },
+        {
+          "name": "payer_type",
+          "type": "varchar"
+        },
+        {
+          "name": "payer_type_code",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_resident": {
+      "columns": [
+        {
+          "name": "age",
+          "type": "varchar"
+        },
+        {
+          "name": "birth_year",
+          "type": "varchar"
+        },
+        {
+          "name": "death_year",
+          "type": "varchar"
+        },
+        {
+          "name": "education",
+          "type": "varchar"
+        },
+        {
+          "name": "gender",
+          "type": "varchar"
+        },
+        {
+          "name": "is_expired_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "race",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "sexual_orientation",
+          "type": "varchar"
+        },
+        {
+          "name": "state",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_room": {
+      "columns": [
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "floor_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "room_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "room_id",
+          "type": "varchar"
+        },
+        {
+          "name": "room_rate_effective_date",
+          "type": "varchar"
+        },
+        {
+          "name": "room_rate_type",
+          "type": "varchar"
+        },
+        {
+          "name": "room_rate_type_category",
+          "type": "varchar"
+        },
+        {
+          "name": "room_type",
+          "type": "varchar"
+        },
+        {
+          "name": "square_footage",
+          "type": "varchar"
+        },
+        {
+          "name": "unit_desc",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_room_amenity": {
+      "columns": [
+        {
+          "name": "is_active_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "room_amenity_description",
+          "type": "varchar"
+        },
+        {
+          "name": "room_amenity_id",
+          "type": "varchar"
+        },
+        {
+          "name": "room_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_room_service": {
+      "columns": [
+        {
+          "name": "is_active_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "room_id",
+          "type": "varchar"
+        },
+        {
+          "name": "room_service_description",
+          "type": "varchar"
+        },
+        {
+          "name": "room_service_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_route_of_admin": {
+      "columns": [
+        {
+          "name": "abbreviation",
+          "type": "varchar"
+        },
+        {
+          "name": "medispan_route_of_admin",
+          "type": "varchar"
+        },
+        {
+          "name": "prefix",
+          "type": "varchar"
+        },
+        {
+          "name": "require_location",
+          "type": "varchar"
+        },
+        {
+          "name": "route_of_admin",
+          "type": "varchar"
+        },
+        {
+          "name": "route_of_admin_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_schedule_frequency": {
+      "columns": [
+        {
+          "name": "schedule_frequency",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_frequency_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_schedule_type": {
+      "columns": [
+        {
+          "name": "schedule_type",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_type_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_transfer_outcome": {
+      "columns": [
+        {
+          "name": "transfer_outcome",
+          "type": "varchar"
+        },
+        {
+          "name": "transfer_outcome_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_transfer_reason": {
+      "columns": [
+        {
+          "name": "transfer_reason",
+          "type": "varchar"
+        },
+        {
+          "name": "transfer_reason_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "dim_vaccine": {
+      "columns": [
+        {
+          "name": "vaccine",
+          "type": "varchar"
+        },
+        {
+          "name": "vaccine_code",
+          "type": "varchar"
+        },
+        {
+          "name": "vaccine_id",
+          "type": "varchar"
+        },
+        {
+          "name": "vaccine_short",
+          "type": "varchar"
+        },
+        {
+          "name": "vaccine_status",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_allergy": {
+      "columns": [
+        {
+          "name": "allergen_id",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_attribute_id",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_category_id",
+          "type": "varchar"
+        },
+        {
+          "name": "allergy_reaction_id",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "duration",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_allergy_id",
+          "type": "varchar"
+        },
+        {
+          "name": "onset_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "onset_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resolved_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resolved_date_time",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_assessment_outcome": {
+      "columns": [
+        {
+          "name": "assessment_date",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "assessment_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "assessment_outcome_id",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_assessment_outcome_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "value",
+          "type": "double"
+        }
+      ]
+    },
+    "fact_care_profile": {
+      "columns": [
+        {
+          "name": "care_profile_question_id",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_care_profile_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_census": {
+      "columns": [
+        {
+          "name": "census_action_id",
+          "type": "varchar"
+        },
+        {
+          "name": "census_effective_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "census_effective_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "census_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_census_id",
+          "type": "varchar"
+        },
+        {
+          "name": "from_to_type_id",
+          "type": "varchar"
+        },
+        {
+          "name": "hospital_stay_from_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "hospital_stay_from_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "hospital_stay_to_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "hospital_stay_to_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "is_census_complete_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "payer_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "transfer_outcome_id",
+          "type": "varchar"
+        },
+        {
+          "name": "transfer_reason_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_daily_outcome": {
+      "columns": [
+        {
+          "name": "adl",
+          "type": "double"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "cmi",
+          "type": "double"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_daily_outcome_id",
+          "type": "varchar"
+        },
+        {
+          "name": "outcome_date",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "outcome_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "rug",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_diagnosis": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "diagnosis_classification_id",
+          "type": "varchar"
+        },
+        {
+          "name": "diagnosis_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_diagnosis_id",
+          "type": "varchar"
+        },
+        {
+          "name": "is_admission_diagnosis_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "is_principal_diagnosis_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "onset_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "onset_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resolved_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resolved_date_time",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_immunization": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "consent",
+          "type": "varchar"
+        },
+        {
+          "name": "consent_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "consent_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_immunization_id",
+          "type": "varchar"
+        },
+        {
+          "name": "immunization_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "immunization_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "immunization_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "vaccine_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_incident": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_incident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "incident_date",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "incident_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "incident_location_id",
+          "type": "varchar"
+        },
+        {
+          "name": "incident_type_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_lab_test": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_lab_test_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_report_severity_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_report_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_result_uom_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_test_abnormality_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_test_condition_id",
+          "type": "varchar"
+        },
+        {
+          "name": "lab_test_id",
+          "type": "varchar"
+        },
+        {
+          "name": "ref_range",
+          "type": "varchar"
+        },
+        {
+          "name": "reported_date",
+          "type": "varchar"
+        },
+        {
+          "name": "reported_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "result_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "result_date_time_id",
+          "type": "varchar"
+        },
+        {
+          "name": "result_value",
+          "type": "varchar"
+        },
+        {
+          "name": "specimen_collection_date",
+          "type": "varchar"
+        },
+        {
+          "name": "specimen_collection_date_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_mds": {
+      "columns": [
+        {
+          "name": "a0050",
+          "type": "varchar"
+        },
+        {
+          "name": "a0200",
+          "type": "varchar"
+        },
+        {
+          "name": "a0300a",
+          "type": "varchar"
+        },
+        {
+          "name": "a0300b",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310a",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310b",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310c",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310d",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310e",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310f",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310g",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310g1",
+          "type": "varchar"
+        },
+        {
+          "name": "a0310h",
+          "type": "varchar"
+        },
+        {
+          "name": "a0410",
+          "type": "varchar"
+        },
+        {
+          "name": "a0800",
+          "type": "varchar"
+        },
+        {
+          "name": "a1100a",
+          "type": "varchar"
+        },
+        {
+          "name": "a1110a",
+          "type": "varchar"
+        },
+        {
+          "name": "a1110b",
+          "type": "varchar"
+        },
+        {
+          "name": "a1500",
+          "type": "varchar"
+        },
+        {
+          "name": "a1510a",
+          "type": "varchar"
+        },
+        {
+          "name": "a1510b",
+          "type": "varchar"
+        },
+        {
+          "name": "a1510c",
+          "type": "varchar"
+        },
+        {
+          "name": "a1550a",
+          "type": "varchar"
+        },
+        {
+          "name": "a1550b",
+          "type": "varchar"
+        },
+        {
+          "name": "a1550c",
+          "type": "varchar"
+        },
+        {
+          "name": "a1550d",
+          "type": "varchar"
+        },
+        {
+          "name": "a1550e",
+          "type": "varchar"
+        },
+        {
+          "name": "a1600",
+          "type": "varchar"
+        },
+        {
+          "name": "a1700",
+          "type": "varchar"
+        },
+        {
+          "name": "a1800",
+          "type": "varchar"
+        },
+        {
+          "name": "a1805",
+          "type": "varchar"
+        },
+        {
+          "name": "a1900",
+          "type": "varchar"
+        },
+        {
+          "name": "a2000",
+          "type": "varchar"
+        },
+        {
+          "name": "a2100",
+          "type": "varchar"
+        },
+        {
+          "name": "a2105",
+          "type": "varchar"
+        },
+        {
+          "name": "a2121",
+          "type": "varchar"
+        },
+        {
+          "name": "a2122a",
+          "type": "varchar"
+        },
+        {
+          "name": "a2122b",
+          "type": "varchar"
+        },
+        {
+          "name": "a2122c",
+          "type": "varchar"
+        },
+        {
+          "name": "a2122d",
+          "type": "varchar"
+        },
+        {
+          "name": "a2122e",
+          "type": "varchar"
+        },
+        {
+          "name": "a2123",
+          "type": "varchar"
+        },
+        {
+          "name": "a2124a",
+          "type": "varchar"
+        },
+        {
+          "name": "a2124b",
+          "type": "varchar"
+        },
+        {
+          "name": "a2124c",
+          "type": "varchar"
+        },
+        {
+          "name": "a2124d",
+          "type": "varchar"
+        },
+        {
+          "name": "a2124e",
+          "type": "varchar"
+        },
+        {
+          "name": "a2200",
+          "type": "varchar"
+        },
+        {
+          "name": "a2300",
+          "type": "varchar"
+        },
+        {
+          "name": "a2400a",
+          "type": "varchar"
+        },
+        {
+          "name": "a2400b",
+          "type": "varchar"
+        },
+        {
+          "name": "a2400c",
+          "type": "varchar"
+        },
+        {
+          "name": "ashorta",
+          "type": "varchar"
+        },
+        {
+          "name": "ashortb",
+          "type": "varchar"
+        },
+        {
+          "name": "ashortc",
+          "type": "varchar"
+        },
+        {
+          "name": "assessmentdate",
+          "type": "varchar"
+        },
+        {
+          "name": "assessmentdateid",
+          "type": "bigint"
+        },
+        {
+          "name": "b0100",
+          "type": "varchar"
+        },
+        {
+          "name": "b0200",
+          "type": "varchar"
+        },
+        {
+          "name": "b0300",
+          "type": "varchar"
+        },
+        {
+          "name": "b0600",
+          "type": "varchar"
+        },
+        {
+          "name": "b0700",
+          "type": "varchar"
+        },
+        {
+          "name": "b0800",
+          "type": "varchar"
+        },
+        {
+          "name": "b1000",
+          "type": "varchar"
+        },
+        {
+          "name": "b1200",
+          "type": "varchar"
+        },
+        {
+          "name": "b1300",
+          "type": "varchar"
+        },
+        {
+          "name": "c0100",
+          "type": "varchar"
+        },
+        {
+          "name": "c0200",
+          "type": "varchar"
+        },
+        {
+          "name": "c0300a",
+          "type": "varchar"
+        },
+        {
+          "name": "c0300b",
+          "type": "varchar"
+        },
+        {
+          "name": "c0300c",
+          "type": "varchar"
+        },
+        {
+          "name": "c0400a",
+          "type": "varchar"
+        },
+        {
+          "name": "c0400b",
+          "type": "varchar"
+        },
+        {
+          "name": "c0400c",
+          "type": "varchar"
+        },
+        {
+          "name": "c0500",
+          "type": "varchar"
+        },
+        {
+          "name": "c0600",
+          "type": "varchar"
+        },
+        {
+          "name": "c0700",
+          "type": "varchar"
+        },
+        {
+          "name": "c0800",
+          "type": "varchar"
+        },
+        {
+          "name": "c0900a",
+          "type": "varchar"
+        },
+        {
+          "name": "c0900b",
+          "type": "varchar"
+        },
+        {
+          "name": "c0900c",
+          "type": "varchar"
+        },
+        {
+          "name": "c0900d",
+          "type": "varchar"
+        },
+        {
+          "name": "c1000",
+          "type": "varchar"
+        },
+        {
+          "name": "c1300a",
+          "type": "varchar"
+        },
+        {
+          "name": "c1300b",
+          "type": "varchar"
+        },
+        {
+          "name": "c1300c",
+          "type": "varchar"
+        },
+        {
+          "name": "c1300d",
+          "type": "varchar"
+        },
+        {
+          "name": "c1310a",
+          "type": "varchar"
+        },
+        {
+          "name": "c1310b",
+          "type": "varchar"
+        },
+        {
+          "name": "c1310c",
+          "type": "varchar"
+        },
+        {
+          "name": "c1310d",
+          "type": "varchar"
+        },
+        {
+          "name": "c1600",
+          "type": "varchar"
+        },
+        {
+          "name": "clientid",
+          "type": "varchar"
+        },
+        {
+          "name": "d0100",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150a1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150a2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150b1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150b2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150c1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150c2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150d1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150d2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150e1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150e2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150f1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150f2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150g1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150g2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150h1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150h2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150i1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0150i2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0160",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200a1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200a2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200b1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200b2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200c1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200c2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200d1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200d2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200e1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200e2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200f1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200f2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200g1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200g2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200h1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200h2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200i1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0200i2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0300",
+          "type": "varchar"
+        },
+        {
+          "name": "d0350",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500a1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500a2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500b1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500b2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500c1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500c2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500d1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500d2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500e1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500e2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500f1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500f2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500g1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500g2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500h1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500h2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500i1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500i2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500j1",
+          "type": "varchar"
+        },
+        {
+          "name": "d0500j2",
+          "type": "varchar"
+        },
+        {
+          "name": "d0600",
+          "type": "varchar"
+        },
+        {
+          "name": "d0650",
+          "type": "varchar"
+        },
+        {
+          "name": "d0700",
+          "type": "varchar"
+        },
+        {
+          "name": "e0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "e0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "e0200a",
+          "type": "varchar"
+        },
+        {
+          "name": "e0200b",
+          "type": "varchar"
+        },
+        {
+          "name": "e0200c",
+          "type": "varchar"
+        },
+        {
+          "name": "e0500a",
+          "type": "varchar"
+        },
+        {
+          "name": "e0500b",
+          "type": "varchar"
+        },
+        {
+          "name": "e0500c",
+          "type": "varchar"
+        },
+        {
+          "name": "e0600a",
+          "type": "varchar"
+        },
+        {
+          "name": "e0600b",
+          "type": "varchar"
+        },
+        {
+          "name": "e0600c",
+          "type": "varchar"
+        },
+        {
+          "name": "e0800",
+          "type": "varchar"
+        },
+        {
+          "name": "e0900",
+          "type": "varchar"
+        },
+        {
+          "name": "e1000a",
+          "type": "varchar"
+        },
+        {
+          "name": "e1000b",
+          "type": "varchar"
+        },
+        {
+          "name": "e1100",
+          "type": "varchar"
+        },
+        {
+          "name": "f0300",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400a",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400b",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400c",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400d",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400e",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400f",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400g",
+          "type": "varchar"
+        },
+        {
+          "name": "f0400h",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500a",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500b",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500c",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500d",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500e",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500f",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500g",
+          "type": "varchar"
+        },
+        {
+          "name": "f0500h",
+          "type": "varchar"
+        },
+        {
+          "name": "f0600",
+          "type": "varchar"
+        },
+        {
+          "name": "f0700",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800a",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800b",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800c",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800d",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800e",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800f",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800g",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800h",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800i",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800j",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800k",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800l",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800m",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800n",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800o",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800p",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800q",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800r",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800s",
+          "type": "varchar"
+        },
+        {
+          "name": "f0800t",
+          "type": "varchar"
+        },
+        {
+          "name": "facilityid",
+          "type": "varchar"
+        },
+        {
+          "name": "factmdsid",
+          "type": "bigint"
+        },
+        {
+          "name": "g0110a1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110a2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110b1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110b2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110c1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110c2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110d1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110d2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110e1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110e2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110f1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110f2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110g1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110g2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110h1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110h2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110i1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110i2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110j1",
+          "type": "varchar"
+        },
+        {
+          "name": "g0110j2",
+          "type": "varchar"
+        },
+        {
+          "name": "g0120a",
+          "type": "varchar"
+        },
+        {
+          "name": "g0120b",
+          "type": "varchar"
+        },
+        {
+          "name": "g0300a",
+          "type": "varchar"
+        },
+        {
+          "name": "g0300b",
+          "type": "varchar"
+        },
+        {
+          "name": "g0300c",
+          "type": "varchar"
+        },
+        {
+          "name": "g0300d",
+          "type": "varchar"
+        },
+        {
+          "name": "g0300e",
+          "type": "varchar"
+        },
+        {
+          "name": "g0400a",
+          "type": "varchar"
+        },
+        {
+          "name": "g0400b",
+          "type": "varchar"
+        },
+        {
+          "name": "g0600a",
+          "type": "varchar"
+        },
+        {
+          "name": "g0600b",
+          "type": "varchar"
+        },
+        {
+          "name": "g0600c",
+          "type": "varchar"
+        },
+        {
+          "name": "g0600d",
+          "type": "varchar"
+        },
+        {
+          "name": "g0900a",
+          "type": "varchar"
+        },
+        {
+          "name": "g0900b",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0100d",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0110a",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0110b",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0110c",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0110d",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0110e",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0115a",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0115b",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0120a",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0120b",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0120c",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0120d",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0120z",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130a1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130a2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130a3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130a5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130b1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130b2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130b3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130b5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130c1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130c2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130c3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130c5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130e1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130e2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130e3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130e5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130f1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130f2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130f3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130f5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130g1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130g2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130g3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130g5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130h1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130h2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130h3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130h5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130i1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130i3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0130i5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170a1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170a2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170a3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170a5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170b1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170b2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170b3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170b5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170c1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170c2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170c3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170c5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170d1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170d2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170d3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170d5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170e1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170e2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170e3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170e5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170f1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170f2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170f3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170f5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170ff1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170ff5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170g1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170g2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170g3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170h1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170h3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170i1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170i2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170i3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170i5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170j1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170j2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170j3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170j5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170k1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170k2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170k3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170k5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170l1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170l2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170l3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170m1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170m2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170m3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170n1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170n2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170n3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170o1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170o2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170o3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170p1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170p2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170p3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170q1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170q3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170q5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170r1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170r2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170r3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170r5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170rr1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170rr3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170rr5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170s1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170s2",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170s3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170s5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170ss1",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170ss3",
+          "type": "varchar"
+        },
+        {
+          "name": "gg0170ss5",
+          "type": "varchar"
+        },
+        {
+          "name": "gg170ff3",
+          "type": "varchar"
+        },
+        {
+          "name": "h0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "h0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "h0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "h0100d",
+          "type": "varchar"
+        },
+        {
+          "name": "h0200a",
+          "type": "varchar"
+        },
+        {
+          "name": "h0200b",
+          "type": "varchar"
+        },
+        {
+          "name": "h0200c",
+          "type": "varchar"
+        },
+        {
+          "name": "h0300",
+          "type": "varchar"
+        },
+        {
+          "name": "h0400",
+          "type": "varchar"
+        },
+        {
+          "name": "h0500",
+          "type": "varchar"
+        },
+        {
+          "name": "h0600",
+          "type": "varchar"
+        },
+        {
+          "name": "i0020",
+          "type": "varchar"
+        },
+        {
+          "name": "i0020a",
+          "type": "varchar"
+        },
+        {
+          "name": "i0020b",
+          "type": "varchar"
+        },
+        {
+          "name": "i0100",
+          "type": "varchar"
+        },
+        {
+          "name": "i0200",
+          "type": "varchar"
+        },
+        {
+          "name": "i0300",
+          "type": "varchar"
+        },
+        {
+          "name": "i0400",
+          "type": "varchar"
+        },
+        {
+          "name": "i0500",
+          "type": "varchar"
+        },
+        {
+          "name": "i0600",
+          "type": "varchar"
+        },
+        {
+          "name": "i0700",
+          "type": "varchar"
+        },
+        {
+          "name": "i0800",
+          "type": "varchar"
+        },
+        {
+          "name": "i0900",
+          "type": "varchar"
+        },
+        {
+          "name": "i1100",
+          "type": "varchar"
+        },
+        {
+          "name": "i1200",
+          "type": "varchar"
+        },
+        {
+          "name": "i1300",
+          "type": "varchar"
+        },
+        {
+          "name": "i1400",
+          "type": "varchar"
+        },
+        {
+          "name": "i1500",
+          "type": "varchar"
+        },
+        {
+          "name": "i1550",
+          "type": "varchar"
+        },
+        {
+          "name": "i1650",
+          "type": "varchar"
+        },
+        {
+          "name": "i1700",
+          "type": "varchar"
+        },
+        {
+          "name": "i2000",
+          "type": "varchar"
+        },
+        {
+          "name": "i2100",
+          "type": "varchar"
+        },
+        {
+          "name": "i2200",
+          "type": "varchar"
+        },
+        {
+          "name": "i2300",
+          "type": "varchar"
+        },
+        {
+          "name": "i2400",
+          "type": "varchar"
+        },
+        {
+          "name": "i2500",
+          "type": "varchar"
+        },
+        {
+          "name": "i2900",
+          "type": "varchar"
+        },
+        {
+          "name": "i3100",
+          "type": "varchar"
+        },
+        {
+          "name": "i3200",
+          "type": "varchar"
+        },
+        {
+          "name": "i3300",
+          "type": "varchar"
+        },
+        {
+          "name": "i3400",
+          "type": "varchar"
+        },
+        {
+          "name": "i3700",
+          "type": "varchar"
+        },
+        {
+          "name": "i3800",
+          "type": "varchar"
+        },
+        {
+          "name": "i3900",
+          "type": "varchar"
+        },
+        {
+          "name": "i4000",
+          "type": "varchar"
+        },
+        {
+          "name": "i4200",
+          "type": "varchar"
+        },
+        {
+          "name": "i4300",
+          "type": "varchar"
+        },
+        {
+          "name": "i4400",
+          "type": "varchar"
+        },
+        {
+          "name": "i4500",
+          "type": "varchar"
+        },
+        {
+          "name": "i4800",
+          "type": "varchar"
+        },
+        {
+          "name": "i4900",
+          "type": "varchar"
+        },
+        {
+          "name": "i5000",
+          "type": "varchar"
+        },
+        {
+          "name": "i5100",
+          "type": "varchar"
+        },
+        {
+          "name": "i5200",
+          "type": "varchar"
+        },
+        {
+          "name": "i5250",
+          "type": "varchar"
+        },
+        {
+          "name": "i5300",
+          "type": "varchar"
+        },
+        {
+          "name": "i5350",
+          "type": "varchar"
+        },
+        {
+          "name": "i5400",
+          "type": "varchar"
+        },
+        {
+          "name": "i5500",
+          "type": "varchar"
+        },
+        {
+          "name": "i5600",
+          "type": "varchar"
+        },
+        {
+          "name": "i5700",
+          "type": "varchar"
+        },
+        {
+          "name": "i5800",
+          "type": "varchar"
+        },
+        {
+          "name": "i5900",
+          "type": "varchar"
+        },
+        {
+          "name": "i5950",
+          "type": "varchar"
+        },
+        {
+          "name": "i6000",
+          "type": "varchar"
+        },
+        {
+          "name": "i6100",
+          "type": "varchar"
+        },
+        {
+          "name": "i6200",
+          "type": "varchar"
+        },
+        {
+          "name": "i6300",
+          "type": "varchar"
+        },
+        {
+          "name": "i6500",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000a",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000b",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000c",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000d",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000e",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000f",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000g",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000h",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000i",
+          "type": "varchar"
+        },
+        {
+          "name": "i8000j",
+          "type": "varchar"
+        },
+        {
+          "name": "j0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "j0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "j0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "j0200",
+          "type": "varchar"
+        },
+        {
+          "name": "j0300",
+          "type": "varchar"
+        },
+        {
+          "name": "j0400",
+          "type": "varchar"
+        },
+        {
+          "name": "j0410",
+          "type": "varchar"
+        },
+        {
+          "name": "j0500a",
+          "type": "varchar"
+        },
+        {
+          "name": "j0500b",
+          "type": "varchar"
+        },
+        {
+          "name": "j0510",
+          "type": "varchar"
+        },
+        {
+          "name": "j0520",
+          "type": "varchar"
+        },
+        {
+          "name": "j0530",
+          "type": "varchar"
+        },
+        {
+          "name": "j0600a",
+          "type": "varchar"
+        },
+        {
+          "name": "j0600b",
+          "type": "varchar"
+        },
+        {
+          "name": "j0700",
+          "type": "varchar"
+        },
+        {
+          "name": "j0800a",
+          "type": "varchar"
+        },
+        {
+          "name": "j0800b",
+          "type": "varchar"
+        },
+        {
+          "name": "j0800c",
+          "type": "varchar"
+        },
+        {
+          "name": "j0800d",
+          "type": "varchar"
+        },
+        {
+          "name": "j0850",
+          "type": "varchar"
+        },
+        {
+          "name": "j1100a",
+          "type": "varchar"
+        },
+        {
+          "name": "j1100b",
+          "type": "varchar"
+        },
+        {
+          "name": "j1100c",
+          "type": "varchar"
+        },
+        {
+          "name": "j1300",
+          "type": "varchar"
+        },
+        {
+          "name": "j1400",
+          "type": "varchar"
+        },
+        {
+          "name": "j1550a",
+          "type": "varchar"
+        },
+        {
+          "name": "j1550b",
+          "type": "varchar"
+        },
+        {
+          "name": "j1550c",
+          "type": "varchar"
+        },
+        {
+          "name": "j1550d",
+          "type": "varchar"
+        },
+        {
+          "name": "j1700a",
+          "type": "varchar"
+        },
+        {
+          "name": "j1700b",
+          "type": "varchar"
+        },
+        {
+          "name": "j1700c",
+          "type": "varchar"
+        },
+        {
+          "name": "j1800",
+          "type": "varchar"
+        },
+        {
+          "name": "j1900a",
+          "type": "varchar"
+        },
+        {
+          "name": "j1900b",
+          "type": "varchar"
+        },
+        {
+          "name": "j1900c",
+          "type": "varchar"
+        },
+        {
+          "name": "j2000",
+          "type": "varchar"
+        },
+        {
+          "name": "j2100",
+          "type": "varchar"
+        },
+        {
+          "name": "j2300",
+          "type": "varchar"
+        },
+        {
+          "name": "j2310",
+          "type": "varchar"
+        },
+        {
+          "name": "j2320",
+          "type": "varchar"
+        },
+        {
+          "name": "j2330",
+          "type": "varchar"
+        },
+        {
+          "name": "j2400",
+          "type": "varchar"
+        },
+        {
+          "name": "j2410",
+          "type": "varchar"
+        },
+        {
+          "name": "j2420",
+          "type": "varchar"
+        },
+        {
+          "name": "j2499",
+          "type": "varchar"
+        },
+        {
+          "name": "j2500",
+          "type": "varchar"
+        },
+        {
+          "name": "j2510",
+          "type": "varchar"
+        },
+        {
+          "name": "j2520",
+          "type": "varchar"
+        },
+        {
+          "name": "j2530",
+          "type": "varchar"
+        },
+        {
+          "name": "j2599",
+          "type": "varchar"
+        },
+        {
+          "name": "j2600",
+          "type": "varchar"
+        },
+        {
+          "name": "j2610",
+          "type": "varchar"
+        },
+        {
+          "name": "j2620",
+          "type": "varchar"
+        },
+        {
+          "name": "j2699",
+          "type": "varchar"
+        },
+        {
+          "name": "j2700",
+          "type": "varchar"
+        },
+        {
+          "name": "j2710",
+          "type": "varchar"
+        },
+        {
+          "name": "j2799",
+          "type": "varchar"
+        },
+        {
+          "name": "j2800",
+          "type": "varchar"
+        },
+        {
+          "name": "j2810",
+          "type": "varchar"
+        },
+        {
+          "name": "j2899",
+          "type": "varchar"
+        },
+        {
+          "name": "j2900",
+          "type": "varchar"
+        },
+        {
+          "name": "j2910",
+          "type": "varchar"
+        },
+        {
+          "name": "j2920",
+          "type": "varchar"
+        },
+        {
+          "name": "j2930",
+          "type": "varchar"
+        },
+        {
+          "name": "j2940",
+          "type": "varchar"
+        },
+        {
+          "name": "j5000",
+          "type": "varchar"
+        },
+        {
+          "name": "k0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "k0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "k0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "k0100d",
+          "type": "varchar"
+        },
+        {
+          "name": "k0200a",
+          "type": "varchar"
+        },
+        {
+          "name": "k0200b",
+          "type": "varchar"
+        },
+        {
+          "name": "k0300",
+          "type": "varchar"
+        },
+        {
+          "name": "k0310",
+          "type": "varchar"
+        },
+        {
+          "name": "k0500a",
+          "type": "varchar"
+        },
+        {
+          "name": "k0500b",
+          "type": "varchar"
+        },
+        {
+          "name": "k0500c",
+          "type": "varchar"
+        },
+        {
+          "name": "k0500d",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510a1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510a2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510b1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510b2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510c1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510c2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510d1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0510d2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520a1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520a2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520a3",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520a4",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520b1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520b2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520b3",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520b4",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520c1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520c3",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520c4",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520d1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520d3",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520d4",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520z1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520z2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520z3",
+          "type": "varchar"
+        },
+        {
+          "name": "k0520z4",
+          "type": "varchar"
+        },
+        {
+          "name": "k0700a",
+          "type": "varchar"
+        },
+        {
+          "name": "k0700b",
+          "type": "varchar"
+        },
+        {
+          "name": "k0710a1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0710a2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0710a3",
+          "type": "varchar"
+        },
+        {
+          "name": "k0710b1",
+          "type": "varchar"
+        },
+        {
+          "name": "k0710b2",
+          "type": "varchar"
+        },
+        {
+          "name": "k0710b3",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200a",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200b",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200c",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200d",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200e",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200f",
+          "type": "varchar"
+        },
+        {
+          "name": "l0200g",
+          "type": "varchar"
+        },
+        {
+          "name": "m0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "m0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "m0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "m0150",
+          "type": "varchar"
+        },
+        {
+          "name": "m0210",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300a",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300b1",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300b2",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300b3",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300c1",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300c2",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300d1",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300d2",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300e1",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300e2",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300f1",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300f2",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300g1",
+          "type": "varchar"
+        },
+        {
+          "name": "m0300g2",
+          "type": "varchar"
+        },
+        {
+          "name": "m0610a",
+          "type": "varchar"
+        },
+        {
+          "name": "m0610b",
+          "type": "varchar"
+        },
+        {
+          "name": "m0610c",
+          "type": "varchar"
+        },
+        {
+          "name": "m0700",
+          "type": "varchar"
+        },
+        {
+          "name": "m0800a",
+          "type": "varchar"
+        },
+        {
+          "name": "m0800b",
+          "type": "varchar"
+        },
+        {
+          "name": "m0800c",
+          "type": "varchar"
+        },
+        {
+          "name": "m0900a",
+          "type": "varchar"
+        },
+        {
+          "name": "m0900b",
+          "type": "varchar"
+        },
+        {
+          "name": "m0900c",
+          "type": "varchar"
+        },
+        {
+          "name": "m0900d",
+          "type": "varchar"
+        },
+        {
+          "name": "m1030",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040a",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040b",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040c",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040d",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040e",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040f",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040g",
+          "type": "varchar"
+        },
+        {
+          "name": "m1040h",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200a",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200b",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200c",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200d",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200e",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200f",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200g",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200h",
+          "type": "varchar"
+        },
+        {
+          "name": "m1200i",
+          "type": "varchar"
+        },
+        {
+          "name": "n0300",
+          "type": "varchar"
+        },
+        {
+          "name": "n0350a",
+          "type": "varchar"
+        },
+        {
+          "name": "n0350b",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400a",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400b",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400c",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400d",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400e",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400f",
+          "type": "varchar"
+        },
+        {
+          "name": "n0400g",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410a",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410b",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410c",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410d",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410e",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410f",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410g",
+          "type": "varchar"
+        },
+        {
+          "name": "n0410h",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415a1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415a2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415b1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415b2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415c1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415c2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415d1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415d2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415e1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415e2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415f1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415f2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415g1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415g2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415h1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415h2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415i1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415i2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415j1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415j2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415k1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415k2",
+          "type": "varchar"
+        },
+        {
+          "name": "n0415z1",
+          "type": "varchar"
+        },
+        {
+          "name": "n0450a",
+          "type": "varchar"
+        },
+        {
+          "name": "n0450b",
+          "type": "varchar"
+        },
+        {
+          "name": "n0450c",
+          "type": "varchar"
+        },
+        {
+          "name": "n0450d",
+          "type": "varchar"
+        },
+        {
+          "name": "n0450e",
+          "type": "varchar"
+        },
+        {
+          "name": "n2001",
+          "type": "varchar"
+        },
+        {
+          "name": "n2003",
+          "type": "varchar"
+        },
+        {
+          "name": "n2005",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100a1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100a2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100b1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100b2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100c1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100c2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100d1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100d2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100e1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100e2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100f1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100f2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100g1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100g2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100h1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100h2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100i1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100i2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100j1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100j2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100k1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100k2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100l2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100m1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0100m2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a10a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a10c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110a3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110b1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110b1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110b1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c4a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110c4c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110d3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110e1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110e1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110e1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110f1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110f1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110f1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110g3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h10a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h10c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h4a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110h4c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110i1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110i1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110i1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110j3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110k1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110m1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o2a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o2c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o3c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o4a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110o4c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110z1a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110z1b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0110z1c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0250a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0250b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0250c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0300a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0300b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0350",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a3",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a4",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a5",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400a6",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b3",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b4",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b5",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400b6",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c3",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c3a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c4",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c5",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400c6",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400d1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400d2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400e1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400e2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400f1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0400f2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0420",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425a1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425a2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425a3",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425a4",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425a5",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425b1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425b2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425b3",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425b4",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425b5",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425c1",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425c2",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425c3",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425c4",
+          "type": "varchar"
+        },
+        {
+          "name": "o0425c5",
+          "type": "varchar"
+        },
+        {
+          "name": "o0430",
+          "type": "varchar"
+        },
+        {
+          "name": "o0450a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0450b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500a",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500b",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500c",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500d",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500e",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500f",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500g",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500h",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500i",
+          "type": "varchar"
+        },
+        {
+          "name": "o0500j",
+          "type": "varchar"
+        },
+        {
+          "name": "o0600",
+          "type": "varchar"
+        },
+        {
+          "name": "o0700",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100d",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100e",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100f",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100g",
+          "type": "varchar"
+        },
+        {
+          "name": "p0100h",
+          "type": "varchar"
+        },
+        {
+          "name": "p0200a",
+          "type": "varchar"
+        },
+        {
+          "name": "p0200b",
+          "type": "varchar"
+        },
+        {
+          "name": "p0200c",
+          "type": "varchar"
+        },
+        {
+          "name": "p0200d",
+          "type": "varchar"
+        },
+        {
+          "name": "p0200e",
+          "type": "varchar"
+        },
+        {
+          "name": "p0200f",
+          "type": "varchar"
+        },
+        {
+          "name": "q0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "q0110a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0110b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0110c",
+          "type": "varchar"
+        },
+        {
+          "name": "q0110d",
+          "type": "varchar"
+        },
+        {
+          "name": "q0110e",
+          "type": "varchar"
+        },
+        {
+          "name": "q0110z",
+          "type": "varchar"
+        },
+        {
+          "name": "q0300a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0300b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0310a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0310b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0400a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0400b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0490",
+          "type": "varchar"
+        },
+        {
+          "name": "q0500a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0500b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0500c",
+          "type": "varchar"
+        },
+        {
+          "name": "q0550a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0550b",
+          "type": "varchar"
+        },
+        {
+          "name": "q0550c",
+          "type": "varchar"
+        },
+        {
+          "name": "q0600",
+          "type": "varchar"
+        },
+        {
+          "name": "q0610a",
+          "type": "varchar"
+        },
+        {
+          "name": "q0620",
+          "type": "varchar"
+        },
+        {
+          "name": "residentid",
+          "type": "varchar"
+        },
+        {
+          "name": "v0100a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0100b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0100c",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a01a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a01b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a02a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a02b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a03a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a03b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a04a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a04b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a05a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a05b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a06a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a06b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a07a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a07b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a08a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a08b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a09a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a09b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a10a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a10b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a11a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a11b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a12a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a12b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a13a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a13b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a14a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a14b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a15a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a15b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a16a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a16b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a17a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a17b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a18a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a18b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a19a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a19b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a20a",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200a20b",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200b2",
+          "type": "varchar"
+        },
+        {
+          "name": "v0200c2",
+          "type": "varchar"
+        },
+        {
+          "name": "x0100",
+          "type": "varchar"
+        },
+        {
+          "name": "x0150",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_medication_admin": {
+      "columns": [
+        {
+          "name": "administered_dose",
+          "type": "double"
+        },
+        {
+          "name": "administration_status",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_id",
+          "type": "varchar"
+        },
+        {
+          "name": "effective_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "effective_date_time",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_medication_admin_id",
+          "type": "varchar"
+        },
+        {
+          "name": "medication_uom_id",
+          "type": "varchar"
+        },
+        {
+          "name": "perform_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "perform_date_time",
+          "type": "timestamp(3)"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "route_of_admin_id",
+          "type": "varchar"
+        },
+        {
+          "name": "scheduled_dose",
+          "type": "double"
+        },
+        {
+          "name": "schedule_end_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_end_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_frequency_id",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_start_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_start_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_type_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_medication_order": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "drug_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_medication_order_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_completed_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_completed_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "order_discontinued_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_discontinued_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "order_end_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_end_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "order_hold_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_hold_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "order_hold_end_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_hold_end_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "order_start_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "order_start_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "route_of_admin_id",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_end_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_end_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_start_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "schedule_start_date_time",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_blood_pressure": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "diastolic",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_blood_pressure_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "systolic",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_blood_sugar": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_blood_sugar_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_height": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_height_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_o2_sat": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_o2_sat_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_pain_level": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_pain_level_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_pulse": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_pulse_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_respiration": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_respiration_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_temperature": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_temperature_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_observed_weight": {
+      "columns": [
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_observed_weight_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "observation_method_id",
+          "type": "varchar"
+        },
+        {
+          "name": "observed_value",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_occupancy": {
+      "columns": [
+        {
+          "name": "bed_desc",
+          "type": "varchar"
+        },
+        {
+          "name": "census_action_id",
+          "type": "varchar"
+        },
+        {
+          "name": "census_effective_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "census_effective_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "census_status_id",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_occupancy_id",
+          "type": "varchar"
+        },
+        {
+          "name": "has_roommate",
+          "type": "varchar"
+        },
+        {
+          "name": "is_bed_medicaid_certified",
+          "type": "varchar"
+        },
+        {
+          "name": "is_bed_medicare_certified",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        },
+        {
+          "name": "room_id",
+          "type": "varchar"
+        }
+      ]
+    },
+    "fact_visit": {
+      "columns": [
+        {
+          "name": "admit_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "admit_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "admit_fact_census_id",
+          "type": "varchar"
+        },
+        {
+          "name": "admit_payer_id",
+          "type": "varchar"
+        },
+        {
+          "name": "client_id",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_date_id",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_date_time",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_fact_census_id",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_transfer_outcome_id",
+          "type": "varchar"
+        },
+        {
+          "name": "discharge_transfer_reason_id",
+          "type": "varchar"
+        },
+        {
+          "name": "facility_id",
+          "type": "varchar"
+        },
+        {
+          "name": "fact_visit_id",
+          "type": "varchar"
+        },
+        {
+          "name": "is_readmit_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "is_visit_completed_ind",
+          "type": "varchar"
+        },
+        {
+          "name": "latest_payer_id",
+          "type": "varchar"
+        },
+        {
+          "name": "length_of_stay",
+          "type": "varchar"
+        },
+        {
+          "name": "resident_id",
+          "type": "varchar"
+        }
+      ]
+    }
+  }
+}

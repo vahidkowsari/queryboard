@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: charting-db
+    environment:
+      POSTGRES_DB: charting
+      POSTGRES_USER: charting
+      POSTGRES_PASSWORD: charting_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:latest
+    container_name: supertokens-core
+    depends_on:
+      - postgres
+    environment:
+      POSTGRESQL_CONNECTION_URI: 'postgresql://charting:charting_dev@postgres:5432/charting'
+      ACCESS_TOKEN_VALIDITY: 900 # 15 minutes (seconds)
+      REFRESH_TOKEN_VALIDITY: 10080 # 7 days (minutes)
+    ports:
+      - '3567:3567'
+    restart: unless-stopped
+
+volumes:
+  pgdata:

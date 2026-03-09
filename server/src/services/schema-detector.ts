@@ -1,0 +1,94 @@
+import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+import type { Schema, SchemaProvider } from '../types.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const SCHEMA_PATH = join(__dirname, '..', '..', 'schema.json')
+
+let cachedSchema: Schema | null = null
+
+export async function detectSchema(provider: SchemaProvider, { force = false } = {}): Promise<Schema> {
+  if (cachedSchema && !force) return cachedSchema
+
+  if (!force && existsSync(SCHEMA_PATH)) {
+    try {
+      const raw = readFileSync(SCHEMA_PATH, 'utf-8')
+      cachedSchema = JSON.parse(raw)
+      console.log(`Schema: Loaded from ${SCHEMA_PATH} (detected ${cachedSchema!.detectedAt})`)
+      return cachedSchema!
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`Schema: Failed to read ${SCHEMA_PATH}: ${msg}`)
+    }
+  }
+
+  console.log(`Schema: Auto-detecting via ${provider.name} provider...`)
+  const schema = await provider.detectSchema()
+  cachedSchema = schema
+
+  try {
+    writeFileSync(SCHEMA_PATH, JSON.stringify(schema, null, 2))
+    console.log(`Schema: Saved to ${SCHEMA_PATH}`)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(`Schema: Failed to save ${SCHEMA_PATH}: ${msg}`)
+  }
+
+  return schema
+}
+
+export function getSchema(): Schema | null {
+  return cachedSchema
+}
+
+export function schemaToPrompt(schema: Schema | null, rules = ''): string {
+  if (!schema) return 'No schema available.'
+
+  let prompt = `Database: ${schema.database} (${schema.engine || 'unknown'})\n\nAvailable tables and columns:\n\n`
+  for (const [table, info] of Object.entries(schema.tables)) {
+    const tableDesc = info.description ? ` — ${info.description}` : ''
+    prompt += `${table}${tableDesc}\n`
+    for (const c of info.columns) {
+      const name = typeof c === 'string' ? c : c.name
+      const type = typeof c === 'string' ? '' : c.type
+      const desc = typeof c !== 'string' && c.description ? ` — ${c.description}` : ''
+      prompt += `  ${name} (${type})${desc}\n`
+    }
+    prompt += '\n'
+  }
+
+  prompt += `IMPORTANT RULES:
+- ONLY use the tables and columns listed above. Do NOT invent or guess column names.
+- If a column you need does not exist, use the closest available column or explain the limitation.
+- When joining, double-check that the column you reference actually belongs to the table alias you use. Verify against the column lists above.
+- Always use LIMIT to avoid scanning too much data.`
+
+  if (rules) prompt += '\n' + rules
+
+  return prompt
+}
+
+export function tableNamesWithDescriptions(schema: Schema): string {
+  return Object.entries(schema.tables)
+    .map(([name, info]) => (info.description ? `${name} — ${info.description}` : name))
+    .join('\n')
+}
+
+export function selectedTablesToPrompt(schema: Schema, tables: string[], rules = ''): string {
+  let prompt = `Database: ${schema.database} (${schema.engine})\n\nRelevant tables and columns:\n\n`
+  for (const table of tables) {
+    const info = schema.tables[table]
+    if (!info) continue
+    const tableDesc = info.description ? ` — ${info.description}` : ''
+    prompt += `${table}${tableDesc}\n`
+    for (const c of info.columns) {
+      const desc = c.description ? ` — ${c.description}` : ''
+      prompt += `  ${c.name} (${c.type})${desc}\n`
+    }
+    prompt += '\n'
+  }
+  prompt += `IMPORTANT RULES:\n- ONLY use the tables and columns listed above. Do NOT invent or guess column names.\n- When joining, double-check that the column you reference actually belongs to the table alias you use.\n- Always use LIMIT to avoid scanning too much data.`
+  if (rules) prompt += '\n' + rules
+  return prompt
+}

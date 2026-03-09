@@ -1,0 +1,20 @@
+# Required
+db_password = "your_secure_password"
+
+# Domain (requires Route53 hosted zone)
+domain_name     = "queryboard.yourcompany.com"
+route53_zone_id = "Z1234567890ABC"
+
+# Google OAuth (required for login)
+google_oauth_client_id     = "your_client_id"
+google_oauth_client_secret = "your_client_secret"
+# allowed_email_domain     = "yourcompany.com"
+
+# LLM API keys (set the ones you use)
+anthropic_api_key = ""
+# openai_api_key  = ""
+# google_ai_api_key = ""
+
+# Sizing (defaults are fine for small deployments)
+# backend_cpu    = 256
+# backend_memory = 512
