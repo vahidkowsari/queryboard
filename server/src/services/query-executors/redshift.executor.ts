@@ -23,7 +23,8 @@ export function createRedshiftExecutor(dbConfig: RedshiftDbConfig): QueryExecuto
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
-    ssl: { rejectUnauthorized: false },
+    ssl: dbConfig.ssl ? { rejectUnauthorized: dbConfig.rejectUnauthorized ?? false } : false,
+    connectionTimeoutMillis: 10000,
   })
 
   return {
@@ -35,6 +36,9 @@ export function createRedshiftExecutor(dbConfig: RedshiftDbConfig): QueryExecuto
       const rows = result.rows.map((row) => columns.map((col) => (row[col] != null ? String(row[col]) : '')))
       console.log(`Redshift: Got ${columns.length} columns, ${rows.length} rows`)
       return { columns, rows }
+    },
+    async cleanup() {
+      await pool.end()
     },
   }
 }

@@ -102,6 +102,8 @@ export interface PostgresDbConfig {
   database: string
   user: string
   password: string
+  ssl?: boolean
+  rejectUnauthorized?: boolean
 }
 
 export interface MySQLDbConfig {
@@ -110,6 +112,8 @@ export interface MySQLDbConfig {
   database: string
   user: string
   password: string
+  ssl?: boolean
+  rejectUnauthorized?: boolean
 }
 
 export interface BigQueryDbConfig {
@@ -124,6 +128,8 @@ export interface RedshiftDbConfig {
   database: string
   user: string
   password: string
+  ssl?: boolean
+  rejectUnauthorized?: boolean
 }
 
 export type DbConfig = AthenaDbConfig | PostgresDbConfig | MySQLDbConfig | BigQueryDbConfig | RedshiftDbConfig

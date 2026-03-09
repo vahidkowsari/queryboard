@@ -8,6 +8,7 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
+    ssl: dbConfig.ssl ? { rejectUnauthorized: dbConfig.rejectUnauthorized ?? true } : undefined,
     waitForConnections: true,
     connectionLimit: 5,
   })

@@ -8,6 +8,7 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
+    ssl: dbConfig.ssl ? { rejectUnauthorized: dbConfig.rejectUnauthorized ?? true } : false,
   })
 
   return {
