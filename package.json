@@ -31,7 +31,7 @@
     "marked": "^17.0.4",
     "pinia": "^2.1.7",
     "radix-vue": "^1.9.0",
-    "shadcn-vue": "^0.10.5",
+    "shadcn-vue": "^2.4.3",
     "supertokens-web-js": "^0.16.0",
     "tailwind-merge": "^2.2.0",
     "vega": "^5.28.0",
