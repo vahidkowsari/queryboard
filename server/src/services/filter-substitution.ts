@@ -1,0 +1,70 @@
+import type { ChartFilter } from '../types.js'
+
+/**
+ * Substitutes {{placeholder}} tokens in a SQL template with actual values.
+ * Values are validated and escaped based on filter type.
+ */
+export function substituteFilters(
+  sqlTemplate: string,
+  filters: ChartFilter[],
+  filterValues: Record<string, string>,
+): string {
+  let sql = sqlTemplate
+
+  for (const filter of filters) {
+    const value = filterValues[filter.placeholder] ?? filter.defaultValue
+    if (value === undefined || value === null) continue
+
+    const token = `{{${filter.placeholder}}}`
+    if (!sql.includes(token)) continue
+
+    const substituted = formatFilterValue(filter.type, value)
+    sql = sql.replaceAll(token, substituted)
+  }
+
+  return sql
+}
+
+function formatFilterValue(type: ChartFilter['type'], value: string): string {
+  switch (type) {
+    case 'date':
+      if (!/^\d{4}-\d{2}-\d{2}/.test(value)) throw new Error(`Invalid date value: ${value}`)
+      return escapeString(value)
+
+    case 'select':
+      return escapeString(value)
+
+    case 'multi-select': {
+      const items = value.split(',').map((v) => v.trim()).filter(Boolean)
+      if (items.length === 0) throw new Error('Multi-select filter requires at least one value')
+      return items.map(escapeString).join(',')
+    }
+
+    case 'text':
+      return escapeString(value)
+
+    case 'number': {
+      const num = Number(value)
+      if (isNaN(num)) throw new Error(`Invalid number value: ${value}`)
+      return String(num)
+    }
+
+    case 'boolean':
+      return value === 'true' || value === '1' ? 'true' : 'false'
+
+    default:
+      return escapeString(value)
+  }
+}
+
+function escapeString(value: string): string {
+  const escaped = value.replace(/'/g, "''")
+  return `'${escaped}'`
+}
+
+/**
+ * Checks if a SQL template contains any {{placeholder}} tokens.
+ */
+export function hasFilterPlaceholders(sql: string): boolean {
+  return /\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}/.test(sql)
+}

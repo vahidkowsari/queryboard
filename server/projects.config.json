@@ -1,0 +1,13 @@
+[
+  {
+    "name": "Sample Data Lake",
+    "description": "Example data warehouse project",
+    "dbEngine": "athena",
+    "dbConfig": {
+      "database": "default",
+      "workgroup": "primary",
+      "region": "us-east-1",
+      "profile": "default"
+    }
+  }
+]
