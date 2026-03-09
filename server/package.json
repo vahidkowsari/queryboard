@@ -16,6 +16,7 @@
     "@ai-sdk/openai": "^3.0.41",
     "@anthropic-ai/sdk": "^0.32.1",
     "@aws-sdk/client-athena": "^3.478.0",
+    "@aws-sdk/client-secrets-manager": "^3.478.0",
     "@aws-sdk/credential-provider-ini": "^3.478.0",
     "@aws-sdk/credential-provider-sso": "^3.478.0",
     "@google-cloud/bigquery": "^8.1.1",

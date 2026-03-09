@@ -13,6 +13,8 @@ export interface RdbmsFormData {
   database: string
   user: string
   password: string
+  ssl?: boolean
+  rejectUnauthorized?: boolean
 }
 
 export interface BigQueryFormData {
@@ -30,10 +32,35 @@ export function buildDbConfig(
     case 'athena':
       return { ...athena }
     case 'postgres':
+      return { 
+        host: rdbms.host,
+        port: parseInt(rdbms.port, 10) || 5432,
+        database: rdbms.database,
+        user: rdbms.user,
+        password: rdbms.password,
+        ssl: rdbms.ssl,
+        rejectUnauthorized: rdbms.rejectUnauthorized,
+      }
     case 'mysql':
-      return { ...rdbms, port: parseInt(rdbms.port) || 5432 }
+      return { 
+        host: rdbms.host,
+        port: parseInt(rdbms.port, 10) || 3306,
+        database: rdbms.database,
+        user: rdbms.user,
+        password: rdbms.password,
+        ssl: rdbms.ssl,
+        rejectUnauthorized: rdbms.rejectUnauthorized,
+      }
     case 'redshift':
-      return { ...rdbms, port: parseInt(rdbms.port) || 5439 }
+      return { 
+        host: rdbms.host,
+        port: parseInt(rdbms.port, 10) || 5439,
+        database: rdbms.database,
+        user: rdbms.user,
+        password: rdbms.password,
+        ssl: rdbms.ssl,
+        rejectUnauthorized: rdbms.rejectUnauthorized,
+      }
     case 'bigquery':
       return { ...bigquery }
   }

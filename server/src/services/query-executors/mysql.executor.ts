@@ -20,8 +20,10 @@ export function createMySQLExecutor(dbConfig: MySQLDbConfig): QueryExecutor {
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
+    ssl: dbConfig.ssl ? { rejectUnauthorized: dbConfig.rejectUnauthorized ?? true } : undefined,
     waitForConnections: true,
     connectionLimit: 5,
+    connectTimeout: 10000,
   })
 
   return {
@@ -35,6 +37,9 @@ export function createMySQLExecutor(dbConfig: MySQLDbConfig): QueryExecutor {
       )
       console.log(`MySQL: Got ${columns.length} columns, ${dataRows.length} rows`)
       return { columns, rows: dataRows }
+    },
+    async cleanup() {
+      await poolPromise.end()
     },
   }
 }

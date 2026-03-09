@@ -8,7 +8,7 @@ export function createRedshiftSchemaProvider(dbConfig: RedshiftDbConfig): Schema
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
-    ssl: { rejectUnauthorized: false },
+    ssl: dbConfig.ssl ? { rejectUnauthorized: dbConfig.rejectUnauthorized ?? false } : false,
   })
 
   return {

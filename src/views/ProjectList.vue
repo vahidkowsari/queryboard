@@ -105,22 +105,43 @@
       </div>
     </div>
 
-    <Modal :show="showCreateModal" max-width="lg" scrollable @close="showCreateModal = false">
+    <Modal :show="showCreateModal" max-width="xl" @close="closeModal">
       <h2 class="text-xl font-semibold mb-4">Create New Project</h2>
 
-      <div class="space-y-4">
+      <!-- Tab Navigation -->
+      <div class="flex border-b mb-4">
+        <button
+          v-for="(tab, index) in tabs"
+          :key="index"
+          @click="currentStep = index"
+          :class="[
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            currentStep === index
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          ]"
+        >
+          {{ tab }}
+        </button>
+      </div>
+
+      <!-- Step 1: Project Info -->
+      <div v-show="currentStep === 0" class="space-y-3">
         <div>
-          <label class="block text-sm font-medium mb-2">Name</label>
-          <Input v-model="form.name" placeholder="My Data Project" @keyup.enter="createProject" />
+          <label class="block text-sm font-medium mb-1.5">Name</label>
+          <Input v-model="form.name" placeholder="My Data Project" />
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-2">Description (optional)</label>
-          <Textarea v-model="form.description" placeholder="Project description..." :rows="2" />
+          <label class="block text-sm font-medium mb-1.5">Description (optional)</label>
+          <Textarea v-model="form.description" placeholder="Project description..." :rows="3" />
         </div>
+      </div>
 
+      <!-- Step 2: Database Configuration -->
+      <div v-show="currentStep === 1" class="space-y-3">
         <div>
-          <label class="block text-sm font-medium mb-2">Database Engine</label>
+          <label class="block text-sm font-medium mb-1.5">Database Engine</label>
           <select v-model="form.dbEngine" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
             <option value="athena">AWS Athena</option>
             <option value="postgres">PostgreSQL</option>
@@ -135,44 +156,72 @@
           :athena="form.athena"
           :rdbms="form.rdbms"
           :bigquery="form.bigquery"
+          layout="grid"
           @update:athena="form.athena = $event"
           @update:rdbms="form.rdbms = $event"
           @update:bigquery="form.bigquery = $event"
         />
+      </div>
 
-        <div class="border-t pt-4">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-2">AI Model</label>
-              <select
-                v-model="form.llmVendor"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="anthropic">Anthropic (Claude)</option>
-                <option value="openai">OpenAI (GPT)</option>
-                <option value="google">Google (Gemini)</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-2">Chart Library</label>
-              <select
-                v-model="form.chartLibrary"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="vega-lite">Vega-Lite</option>
-                <option value="chartjs">Chart.js</option>
-                <option value="echarts">ECharts</option>
-                <option value="plotly">Plotly</option>
-              </select>
-            </div>
+      <!-- Step 3: AI & Visualization Settings -->
+      <div v-show="currentStep === 2" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1.5">AI Model</label>
+            <select
+              v-model="form.llmVendor"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="openai">OpenAI (GPT)</option>
+              <option value="google">Google (Gemini)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Chart Library</label>
+            <select
+              v-model="form.chartLibrary"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="vega-lite">Vega-Lite</option>
+              <option value="chartjs">Chart.js</option>
+              <option value="echarts">ECharts</option>
+              <option value="plotly">Plotly</option>
+            </select>
           </div>
         </div>
       </div>
 
-      <div class="flex gap-3 mt-6">
-        <Button @click="createProject" :disabled="!form.name.trim()" class="flex-1">Create</Button>
-        <Button variant="outline" @click="showCreateModal = false">Cancel</Button>
-      </div>
+      <template #footer>
+        <div class="flex justify-between gap-3">
+          <Button 
+            v-if="currentStep > 0" 
+            variant="outline" 
+            @click="currentStep--"
+          >
+            Previous
+          </Button>
+          <div v-else></div>
+          
+          <div class="flex gap-3">
+            <Button variant="outline" @click="closeModal">Cancel</Button>
+            <Button 
+              v-if="currentStep < tabs.length - 1" 
+              @click="currentStep++"
+              :disabled="currentStep === 0 && !form.name.trim()"
+            >
+              Next
+            </Button>
+            <Button 
+              v-else
+              @click="createProject" 
+              :disabled="!form.name.trim()"
+            >
+              Create Project
+            </Button>
+          </div>
+        </div>
+      </template>
     </Modal>
   </div>
 </template>
@@ -201,6 +250,8 @@ const { confirm } = useConfirm()
 
 const showCreateModal = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
+const currentStep = ref(0)
+const tabs = ['Project Info', 'Database Config', 'Settings']
 const form = ref({
   name: '',
   description: '',
@@ -211,6 +262,11 @@ const form = ref({
   llmVendor: 'anthropic' as LLMVendor,
   chartLibrary: 'vega-lite' as ChartLibrary,
 })
+
+function closeModal() {
+  showCreateModal.value = false
+  currentStep.value = 0
+}
 
 async function createProject() {
   if (!form.value.name.trim()) return
@@ -223,7 +279,7 @@ async function createProject() {
       llmConfig: { vendor: form.value.llmVendor },
       chartLibrary: form.value.chartLibrary,
     })
-    showCreateModal.value = false
+    closeModal()
     form.value.name = ''
     form.value.description = ''
     toast.success('Project created')

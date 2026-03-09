@@ -20,6 +20,8 @@ export function createPostgresExecutor(dbConfig: PostgresDbConfig): QueryExecuto
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
+    ssl: dbConfig.ssl ? { rejectUnauthorized: dbConfig.rejectUnauthorized ?? true } : false,
+    connectionTimeoutMillis: 10000,
   })
 
   return {
@@ -31,6 +33,9 @@ export function createPostgresExecutor(dbConfig: PostgresDbConfig): QueryExecuto
       const rows = result.rows.map((row) => columns.map((col) => (row[col] != null ? String(row[col]) : '')))
       console.log(`PostgreSQL: Got ${columns.length} columns, ${rows.length} rows`)
       return { columns, rows }
+    },
+    async cleanup() {
+      await pool.end()
     },
   }
 }

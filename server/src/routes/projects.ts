@@ -6,7 +6,7 @@ import { asyncHandler } from '../middleware/error.js'
 import { requireRole } from '../middleware/roles.js'
 import { ROLES } from '../auth.js'
 import type { Db } from '../db/index.js'
-import type { DbEngine, DbConfig } from '../types.js'
+import type { DbEngine, DbConfig, QueryExecutor } from '../types.js'
 
 export function createProjectRoutes(db: Db): Router {
   const router = Router()
@@ -27,6 +27,36 @@ export function createProjectRoutes(db: Db): Router {
       const project = await projectService.getById(req.params.id)
       if (!project) return void res.status(404).json({ error: 'Project not found' })
       res.json(project)
+    }),
+  )
+
+  router.post(
+    '/test-connection',
+    requireRole(ROLES.ADMIN, ROLES.EDITOR, ROLES.VIEWER),
+    asyncHandler(async (req, res) => {
+      const { dbEngine, dbConfig } = req.body
+      
+      const validEngines: DbEngine[] = ['athena', 'postgres', 'mysql', 'bigquery', 'redshift']
+      if (!dbEngine || !validEngines.includes(dbEngine)) {
+        return void res.status(400).json({ error: 'Invalid or missing dbEngine' })
+      }
+      if (!dbConfig || typeof dbConfig !== 'object') {
+        return void res.status(400).json({ error: 'Invalid or missing dbConfig' })
+      }
+      
+      let executor: QueryExecutor | null = null
+      try {
+        executor = createQueryExecutor(dbEngine, dbConfig as DbConfig)
+        await executor.execute('SELECT 1')
+        res.json({ success: true, message: 'Connection successful!' })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Connection failed'
+        res.status(400).json({ success: false, error: message })
+      } finally {
+        if (executor?.cleanup) {
+          await executor.cleanup()
+        }
+      }
     }),
   )
 
@@ -60,22 +90,6 @@ export function createProjectRoutes(db: Db): Router {
       const deleted = await projectService.remove(req.params.id)
       if (!deleted) return void res.status(404).json({ error: 'Project not found' })
       res.json({ deleted: true })
-    }),
-  )
-
-  router.post(
-    '/:id/test-connection',
-    asyncHandler(async (req, res) => {
-      const project = await projectService.getById(req.params.id)
-      if (!project) return void res.status(404).json({ error: 'Project not found' })
-      try {
-        const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
-        await executor.execute('SELECT 1')
-        res.json({ success: true })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Connection failed'
-        res.status(400).json({ success: false, error: message })
-      }
     }),
   )
 
