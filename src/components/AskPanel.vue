@@ -265,27 +265,32 @@ function formatTime(dateStr: string): string {
               <div v-else-if="conversations.length === 0" class="px-3 py-6 text-xs text-muted-foreground text-center">
                 No conversations yet
               </div>
-              <button
+              <div
                 v-for="conv in conversations"
                 :key="conv.id"
-                @click="selectConversation(conv)"
                 :class="[
-                  'w-full text-left px-3 py-2.5 text-xs group hover:bg-muted/60 transition-colors flex items-start gap-1 rounded-lg mx-auto',
+                  'w-full text-left px-3 py-2.5 text-xs group hover:bg-muted/60 transition-colors flex items-start gap-1 rounded-lg mx-auto relative',
                   activeConversationId === conv.id ? 'bg-muted' : '',
                 ]"
               >
-                <div class="flex-1 min-w-0">
+                <button
+                  @click="selectConversation(conv)"
+                  class="absolute inset-0 w-full h-full"
+                  :aria-label="`Select conversation: ${conv.title}`"
+                />
+                <div class="flex-1 min-w-0 pointer-events-none">
                   <div class="truncate font-medium">{{ conv.title }}</div>
                   <div class="text-muted-foreground mt-0.5">{{ formatTime(conv.updatedAt) }}</div>
                 </div>
                 <button
                   @click="deleteConversation(conv, $event)"
-                  class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 mt-0.5 transition-opacity"
+                  class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 mt-0.5 transition-opacity relative z-10"
                   title="Delete"
+                  :aria-label="`Delete conversation: ${conv.title}`"
                 >
                   <Trash2 :size="12" />
                 </button>
-              </button>
+              </div>
             </div>
           </div>
 

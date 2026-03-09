@@ -5,10 +5,23 @@ db_password = "your_secure_password"
 domain_name     = "queryboard.yourcompany.com"
 route53_zone_id = "Z1234567890ABC"
 
-# Google OAuth (required for login)
+# OAuth Providers (configure at least one)
 google_oauth_client_id     = "your_client_id"
 google_oauth_client_secret = "your_client_secret"
-# allowed_email_domain     = "yourcompany.com"
+# github_oauth_client_id     = ""
+# github_oauth_client_secret = ""
+# microsoft_oauth_client_id     = ""
+# microsoft_oauth_client_secret = ""
+# okta_client_id     = ""
+# okta_client_secret = ""
+# okta_domain        = "yourcompany.okta.com"
+
+# Email/Password Authentication (optional)
+# admin_email    = "admin@yourcompany.com"
+# admin_password = "your_secure_password"
+
+# Email Domain Restriction (optional)
+# allowed_email_domain = "yourcompany.com"
 
 # LLM API keys (set the ones you use)
 anthropic_api_key = ""

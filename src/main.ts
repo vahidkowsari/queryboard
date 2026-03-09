@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import SuperTokens from 'supertokens-web-js'
 import Session from 'supertokens-web-js/recipe/session'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
+import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import './style.css'
 import App from './App.vue'
 import router from './router'
@@ -14,7 +15,7 @@ SuperTokens.init({
     apiBasePath: '/auth',
     appName: config.appName,
   },
-  recipeList: [Session.init(), ThirdParty.init()],
+  recipeList: [Session.init(), EmailPassword.init(), ThirdParty.init()],
 })
 
 const app = createApp(App)

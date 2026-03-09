@@ -5,7 +5,7 @@ import { middleware as stMiddleware, errorHandler as stErrorHandler, type Sessio
 import { verifySession } from 'supertokens-node/recipe/session/framework/express/index.js'
 import pg from 'pg'
 import { config } from './config.js'
-import { initSuperTokens, seedRoles, ROLES } from './auth.js'
+import { initSuperTokens, seedRoles, createInitialAdmin, ROLES } from './auth.js'
 import { requireRole } from './middleware/roles.js'
 import { createAdminRoutes } from './routes/admin.js'
 import { errorHandler, asyncHandler } from './middleware/error.js'
@@ -55,6 +55,7 @@ pool
   .then(() => seedProjectsFromConfig(db))
   .then(() => seedRoles())
   .then(() => console.log('Roles seeded'))
+  .then(() => createInitialAdmin())
   .then(() => refreshScheduler.loadAllSchedules())
   .catch((err: Error) => console.error('Startup failed:', err.message))
 

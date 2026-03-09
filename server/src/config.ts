@@ -40,7 +40,12 @@ export const config = {
     githubClientSecret: optional('GITHUB_OAUTH_CLIENT_SECRET', ''),
     microsoftClientId: optional('MICROSOFT_OAUTH_CLIENT_ID', ''),
     microsoftClientSecret: optional('MICROSOFT_OAUTH_CLIENT_SECRET', ''),
+    oktaClientId: optional('OKTA_CLIENT_ID', ''),
+    oktaClientSecret: optional('OKTA_CLIENT_SECRET', ''),
+    oktaDomain: optional('OKTA_DOMAIN', ''),
     allowedEmailDomain: optional('ALLOWED_EMAIL_DOMAIN', ''),
+    adminEmail: optional('ADMIN_EMAIL', ''),
+    adminPassword: optional('ADMIN_PASSWORD', ''),
   },
 
   llm: {

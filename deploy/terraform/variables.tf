@@ -155,6 +155,38 @@ variable "allowed_email_domain" {
   default     = ""
 }
 
+variable "admin_email" {
+  description = "Initial admin email for email/password login"
+  type        = string
+  default     = ""
+}
+
+variable "admin_password" {
+  description = "Initial admin password"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "okta_client_id" {
+  description = "Okta OAuth client ID"
+  type        = string
+  default     = ""
+}
+
+variable "okta_client_secret" {
+  description = "Okta OAuth client secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "okta_domain" {
+  description = "Okta domain (e.g., yourcompany.okta.com)"
+  type        = string
+  default     = ""
+}
+
 # ── LLM API Keys ───────────────────────────────────────
 
 variable "anthropic_api_key" {
