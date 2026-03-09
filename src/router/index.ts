@@ -14,6 +14,7 @@ import ProjectStats from '../views/ProjectStats.vue'
 import AuthView from '../views/AuthView.vue'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 import AdminUsers from '../views/AdminUsers.vue'
+import DocsView from '../views/DocsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -34,6 +35,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: ProjectList,
+    },
+    {
+      path: '/docs',
+      name: 'docs',
+      component: DocsView,
     },
     {
       path: '/projects/:projectId',
