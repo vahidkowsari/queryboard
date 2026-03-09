@@ -51,7 +51,7 @@ const VEGA_LITE: ChartLibraryConfig = {
   - SQL should also output a human-readable state name column for tooltips.
   - Do NOT use "data.values" at the top level — data goes INSIDE the lookup transform's "from" block.`,
   specDescription:
-    'Complete Vega-Lite v5 specification. For standard charts: include "data": {"values": [...]} with ALL result rows. For geo/map charts: use a layered spec with TopoJSON URL and lookup transform as described in the rules.',
+    'Complete Vega-Lite v6 specification. For standard charts: include "data": {"values": [...]} with ALL result rows. For geo/map charts: use a layered spec with TopoJSON URL and lookup transform as described in the rules.',
 }
 
 const CHARTJS: ChartLibraryConfig = {
