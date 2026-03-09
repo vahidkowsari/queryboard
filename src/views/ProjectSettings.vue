@@ -16,23 +16,26 @@
       </div>
 
       <template v-else-if="project">
-        <div class="space-y-6">
-          <Card>
-            <div class="p-6 space-y-4">
-              <h2 class="text-lg font-semibold">General</h2>
-              <div>
-                <label class="block text-sm font-medium mb-2">Name</label>
-                <Input v-model="form.name" />
+        <Tabs v-model="activeTab" :tabs="tabOptions">
+          <div v-if="activeTab === 'general'" class="space-y-6">
+            <Card>
+              <div class="p-6 space-y-4">
+                <h2 class="text-lg font-semibold">General</h2>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Name</label>
+                  <Input v-model="form.name" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Description</label>
+                  <Textarea v-model="form.description" :rows="2" />
+                </div>
+                <Button @click="saveGeneral" :disabled="!form.name.trim()">Save</Button>
               </div>
-              <div>
-                <label class="block text-sm font-medium mb-2">Description</label>
-                <Textarea v-model="form.description" :rows="2" />
-              </div>
-              <Button @click="saveGeneral" :disabled="!form.name.trim()">Save</Button>
-            </div>
-          </Card>
+            </Card>
+          </div>
 
-          <Card>
+          <div v-if="activeTab === 'database'" class="space-y-6">
+            <Card>
             <div class="p-6 space-y-4">
               <h2 class="text-lg font-semibold">Database Connection</h2>
               <div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -76,20 +79,32 @@
                     </p>
                     <p v-else class="text-xs text-amber-600">Schema not yet detected</p>
                   </div>
-                  <Button
-                    @click="detectSchema"
-                    :disabled="detectingSchema || !schemaEnabled"
-                    :title="schemaEnabled ? '' : 'Test the connection first'"
-                  >
-                    <RefreshCw :size="16" :class="{ 'animate-spin': detectingSchema }" />
-                    {{ detectingSchema ? 'Detecting...' : 'Detect Schema' }}
-                  </Button>
+                  <div class="flex gap-2">
+                    <Button
+                      v-if="project.schemaDetectedAt"
+                      variant="outline"
+                      @click="$router.push(`/projects/${projectId}/schema`)"
+                    >
+                      <Database :size="16" />
+                      View Schema
+                    </Button>
+                    <Button
+                      @click="detectSchema"
+                      :disabled="detectingSchema || !schemaEnabled"
+                      :title="schemaEnabled ? '' : 'Test the connection first'"
+                    >
+                      <RefreshCw :size="16" :class="{ 'animate-spin': detectingSchema }" />
+                      {{ detectingSchema ? 'Detecting...' : 'Detect Schema' }}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </Card>
+          </div>
 
-          <Card>
+          <div v-if="activeTab === 'ai'" class="space-y-6">
+            <Card>
             <div class="p-6 space-y-4">
               <h2 class="text-lg font-semibold">AI Model</h2>
               <div class="grid grid-cols-2 gap-3">
@@ -140,8 +155,10 @@
               <Button @click="saveChartLibrary">Save Chart Library</Button>
             </div>
           </Card>
+          </div>
 
-          <Card>
+          <div v-if="activeTab === 'appearance'" class="space-y-6">
+            <Card>
             <div class="p-6 space-y-4">
               <div class="flex items-center gap-2">
                 <Palette :size="18" class="text-muted-foreground" />
@@ -229,9 +246,12 @@
               <Button @click="saveColorConfig">Save Colors</Button>
             </div>
           </Card>
+          </div>
 
-          <GroupsManager :projectId="projectId" />
-        </div>
+          <div v-if="activeTab === 'access'">
+            <GroupsManager :projectId="projectId" />
+          </div>
+        </Tabs>
       </template>
     </div>
   </div>
@@ -241,6 +261,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Database, RefreshCw, Palette, Plus, X, Plug, CheckCircle2, XCircle } from 'lucide-vue-next'
+import Tabs from '../components/ui/tabs.vue'
 import { useProjectStore } from '../stores/project.store'
 import { projectApi } from '../services/project.api'
 import ProjectSettingsSkeleton from '../components/skeletons/ProjectSettingsSkeleton.vue'
@@ -287,6 +308,15 @@ const bqForm = ref({ projectId: '', dataset: '' })
 const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: '', apiKey: '' })
 const chartLibForm = ref({ library: 'vega-lite' as ChartLibrary })
 const colorForm = ref({ palette: [] as string[], background: '', textColor: '' })
+const activeTab = ref('general')
+
+const tabOptions = [
+  { value: 'general', label: 'General' },
+  { value: 'database', label: 'Database' },
+  { value: 'ai', label: 'AI & Charts' },
+  { value: 'appearance', label: 'Appearance' },
+  { value: 'access', label: 'Access' },
+]
 
 function applyPreset(preset: { palette: string[] }) {
   colorForm.value.palette = [...preset.palette]
@@ -456,7 +486,10 @@ async function detectSchema() {
   detectingSchema.value = true
   try {
     await projectStore.detectSchema(projectId)
-    project.value = projectStore.currentProject
+    const updated = await projectApi.getById(projectId)
+    if (project.value) {
+      project.value.schemaDetectedAt = updated.schemaDetectedAt ? new Date(updated.schemaDetectedAt) : undefined
+    }
     toast.success('Schema detected successfully')
   } catch {
     toast.error('Failed to detect schema')

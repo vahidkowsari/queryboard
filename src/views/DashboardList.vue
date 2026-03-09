@@ -30,10 +30,6 @@
           >
             <Activity :size="18" />
           </Button>
-          <Button variant="outline" @click="$router.push(`/projects/${projectId}/schema`)">
-            <Database :size="20" />
-            Schema
-          </Button>
           <Button variant="outline" @click="showAskPanel = true">
             <MessageSquare :size="18" />
             Ask
@@ -235,7 +231,6 @@ import {
   ArrowUpDown,
   LayoutDashboard,
   Copy,
-  Database,
   Settings,
   Settings2,
   Activity,
