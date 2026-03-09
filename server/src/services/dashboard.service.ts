@@ -13,6 +13,7 @@ export function createDashboardService(db: Db) {
           name: dashboards.name,
           description: dashboards.description,
           shareToken: dashboards.shareToken,
+          thumbnail: dashboards.thumbnail,
           refreshCron: dashboards.refreshCron,
           lastRefreshedAt: dashboards.lastRefreshedAt,
           createdAt: dashboards.createdAt,
@@ -121,6 +122,18 @@ export function createDashboardService(db: Db) {
         .orderBy(asc(charts.position), asc(charts.createdAt))
 
       return { ...rows[0], charts: chartRows }
+    },
+
+    async updateThumbnail(id: string, thumbnail: Buffer) {
+      const rows = await db
+        .update(dashboards)
+        .set({
+          thumbnail,
+          updatedAt: new Date(),
+        })
+        .where(eq(dashboards.id, id))
+        .returning()
+      return rows[0] || null
     },
   }
 }
