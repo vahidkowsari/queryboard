@@ -1,18 +1,18 @@
 export async function generateDashboardThumbnail(containerEl: HTMLElement): Promise<string> {
   const html2canvas = (await import('html2canvas')).default
 
+  // Capture at actual container dimensions for full page width
   const canvas = await html2canvas(containerEl, {
-    scale: 0.4,
+    scale: 0.3,
     useCORS: true,
     logging: false,
     backgroundColor: '#ffffff',
-    width: 800,
-    height: 600,
   })
 
+  // Scale down to thumbnail size while maintaining aspect ratio
   const thumbnailCanvas = document.createElement('canvas')
-  const maxWidth = 320
-  const maxHeight = 240
+  const maxWidth = 400
+  const maxHeight = 300
   
   const scale = Math.min(maxWidth / canvas.width, maxHeight / canvas.height)
   thumbnailCanvas.width = canvas.width * scale
