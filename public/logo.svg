@@ -1,0 +1,48 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGradient)"/>
+  
+  <!-- Database icon (stacked disks) -->
+  <g transform="translate(100, 140)">
+    <!-- Top disk -->
+    <ellipse cx="80" cy="20" rx="70" ry="18" fill="#ffffff" opacity="0.9"/>
+    <rect x="10" y="20" width="140" height="36" fill="#ffffff" opacity="0.9"/>
+    <ellipse cx="80" cy="56" rx="70" ry="18" fill="#e0e7ff" opacity="0.9"/>
+    
+    <!-- Middle disk -->
+    <ellipse cx="80" cy="90" rx="70" ry="18" fill="#ffffff" opacity="0.9"/>
+    <rect x="10" y="90" width="140" height="36" fill="#ffffff" opacity="0.9"/>
+    <ellipse cx="80" cy="126" rx="70" ry="18" fill="#e0e7ff" opacity="0.9"/>
+    
+    <!-- Bottom disk -->
+    <ellipse cx="80" cy="160" rx="70" ry="18" fill="#ffffff" opacity="0.9"/>
+    <rect x="10" y="160" width="140" height="36" fill="#ffffff" opacity="0.9"/>
+    <ellipse cx="80" cy="196" rx="70" ry="18" fill="#e0e7ff" opacity="0.9"/>
+  </g>
+  
+  <!-- Chart bars -->
+  <g transform="translate(280, 180)">
+    <!-- Bar 1 -->
+    <rect x="0" y="80" width="35" height="100" rx="4" fill="url(#chartGradient)" opacity="0.95"/>
+    <!-- Bar 2 -->
+    <rect x="50" y="40" width="35" height="140" rx="4" fill="url(#chartGradient)" opacity="0.95"/>
+    <!-- Bar 3 -->
+    <rect x="100" y="20" width="35" height="160" rx="4" fill="url(#chartGradient)" opacity="0.95"/>
+  </g>
+  
+  <!-- Connecting line/arrow -->
+  <path d="M 240 260 L 270 260" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 265 252 L 275 260 L 265 268" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/>
+</svg>
