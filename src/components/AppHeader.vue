@@ -2,8 +2,8 @@
   <header class="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
     <div class="max-w-7xl mx-auto flex items-center justify-between h-14 px-8">
       <router-link to="/" class="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-          <BarChart3 :size="18" class="text-primary" />
+        <div class="flex items-center justify-center w-8 h-8">
+          <img src="/logo.svg" alt="QueryBoard" class="w-full h-full" />
         </div>
         <span class="font-bold text-lg tracking-tight">QueryBoard</span>
       </router-link>
@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { BarChart3, ChevronRight, LogOut, Shield, Moon, Sun, Search } from 'lucide-vue-next'
+import { ChevronRight, LogOut, Shield, Moon, Sun, Search } from 'lucide-vue-next'
 import Session from 'supertokens-web-js/recipe/session'
 import { useProjectStore } from '../stores/project.store'
 import { useDashboardStore } from '../stores/dashboard.store'

@@ -3,7 +3,7 @@ import { ref, computed, onMounted, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAuthorisationURLWithQueryParamsAndSetState } from 'supertokens-web-js/recipe/thirdparty'
 import { signIn } from 'supertokens-web-js/recipe/emailpassword'
-import { BarChart3, Loader2 } from 'lucide-vue-next'
+import { Loader2 } from 'lucide-vue-next'
 import { API_BASE_URL } from '../services/api'
 import GoogleIcon from '../components/icons/GoogleIcon.vue'
 import GithubIcon from '../components/icons/GithubIcon.vue'
@@ -114,8 +114,8 @@ async function handleOAuthSignIn(provider: string) {
   <div class="min-h-screen flex items-center justify-center bg-muted/50 px-4">
     <div class="w-full max-w-sm">
       <div class="flex flex-col items-center gap-2 mb-8">
-        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-          <BarChart3 :size="24" class="text-primary" />
+        <div class="flex items-center justify-center w-16 h-16">
+          <img src="/logo.svg" alt="QueryBoard Logo" class="w-full h-full" />
         </div>
         <h1 class="text-2xl font-bold tracking-tight">QueryBoard</h1>
         <p class="text-sm text-muted-foreground">Sign in to your account</p>
