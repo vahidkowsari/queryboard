@@ -1,6 +1,7 @@
 import supertokens from 'supertokens-node'
 import Session from 'supertokens-node/recipe/session/index.js'
 import ThirdParty from 'supertokens-node/recipe/thirdparty/index.js'
+import EmailPassword from 'supertokens-node/recipe/emailpassword/index.js'
 import UserRoles from 'supertokens-node/recipe/userroles/index.js'
 import { config } from './config.js'
 
@@ -22,6 +23,45 @@ export function initSuperTokens() {
       websiteBasePath: '/auth',
     },
     recipeList: [
+      EmailPassword.init({
+        override: {
+          functions: (originalImplementation) => ({
+            ...originalImplementation,
+            signUp: async (input) => {
+              if (config.supertokens.allowedEmailDomain) {
+                if (!input.email.includes('@')) {
+                  throw new Error('Invalid email format.')
+                }
+                const domain = input.email.split('@')[1]
+                if (domain !== config.supertokens.allowedEmailDomain) {
+                  throw new Error(
+                    `Only @${config.supertokens.allowedEmailDomain} accounts are allowed.`,
+                  )
+                }
+              }
+              const result = await originalImplementation.signUp(input)
+              if (result.status === 'OK' && result.recipeUserId) {
+                await assignDefaultRole(result.user.id)
+              }
+              return result
+            },
+            signIn: async (input) => {
+              if (config.supertokens.allowedEmailDomain) {
+                if (!input.email.includes('@')) {
+                  throw new Error('Invalid email format.')
+                }
+                const domain = input.email.split('@')[1]
+                if (domain !== config.supertokens.allowedEmailDomain) {
+                  throw new Error(
+                    `Only @${config.supertokens.allowedEmailDomain} accounts are allowed.`,
+                  )
+                }
+              }
+              return originalImplementation.signIn(input)
+            },
+          }),
+        },
+      }),
       ThirdParty.init({
         signInAndUpFeature: {
           providers: [
@@ -65,6 +105,23 @@ export function initSuperTokens() {
                         {
                           clientId: config.supertokens.microsoftClientId,
                           clientSecret: config.supertokens.microsoftClientSecret,
+                        },
+                      ],
+                    },
+                  },
+                ]
+              : []),
+            ...(config.supertokens.oktaClientId && config.supertokens.oktaDomain
+              ? [
+                  {
+                    config: {
+                      thirdPartyId: 'okta',
+                      name: 'Okta',
+                      oidcDiscoveryEndpoint: `https://${config.supertokens.oktaDomain}/.well-known/openid-configuration`,
+                      clients: [
+                        {
+                          clientId: config.supertokens.oktaClientId,
+                          clientSecret: config.supertokens.oktaClientSecret,
                         },
                       ],
                     },
@@ -138,4 +195,52 @@ async function assignDefaultRole(userId: string) {
   const role = isFirstUser ? ROLES.ADMIN : ROLES.VIEWER
   await UserRoles.addRoleToUser('public', userId, role)
   console.log(`Assigned role "${role}" to user ${userId}`)
+}
+
+export async function createInitialAdmin() {
+  if (!config.supertokens.adminEmail || !config.supertokens.adminPassword) {
+    console.log('No ADMIN_EMAIL/ADMIN_PASSWORD configured, skipping initial admin creation')
+    return
+  }
+
+  const email = config.supertokens.adminEmail
+  const password = config.supertokens.adminPassword
+
+  if (config.supertokens.allowedEmailDomain) {
+    if (!email.includes('@')) {
+      console.error(`Invalid admin email format: ${email}`)
+      return
+    }
+    const domain = email.split('@')[1]
+    if (domain !== config.supertokens.allowedEmailDomain) {
+      console.error(
+        `Admin email domain (@${domain}) does not match allowed domain (@${config.supertokens.allowedEmailDomain})`,
+      )
+      return
+    }
+  }
+
+  try {
+    const existingUsers = await supertokens.listUsersByAccountInfo('public', { email })
+    if (existingUsers.length > 0) {
+      const existingUser = existingUsers[0]
+      console.log(`Admin user ${email} already exists`)
+      const rolesRes = await UserRoles.getRolesForUser('public', existingUser.id)
+      if (rolesRes.status === 'OK' && !rolesRes.roles.includes(ROLES.ADMIN)) {
+        await UserRoles.addRoleToUser('public', existingUser.id, ROLES.ADMIN)
+        console.log(`Added admin role to existing user ${email}`)
+      }
+      return
+    }
+
+    const result = await EmailPassword.signUp('public', email, password)
+    if (result.status === 'OK') {
+      await UserRoles.addRoleToUser('public', result.user.id, ROLES.ADMIN)
+      console.log(`Created initial admin user: ${email}`)
+    } else {
+      console.error(`Failed to create admin user: ${result.status}`)
+    }
+  } catch (err) {
+    console.error('Error creating initial admin user:', err)
+  }
 }

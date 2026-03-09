@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, type Component } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getAuthorisationURLWithQueryParamsAndSetState } from 'supertokens-web-js/recipe/thirdparty'
+import { signIn } from 'supertokens-web-js/recipe/emailpassword'
 import { BarChart3, Loader2 } from 'lucide-vue-next'
 import { API_BASE_URL } from '../services/api'
 import GoogleIcon from '../components/icons/GoogleIcon.vue'
 import GithubIcon from '../components/icons/GithubIcon.vue'
 import MicrosoftIcon from '../components/icons/MicrosoftIcon.vue'
+import OktaIcon from '../components/icons/OktaIcon.vue'
 import UiButton from '../components/ui/button.vue'
 import UiCard from '../components/ui/card.vue'
+import UiInput from '../components/ui/input.vue'
 
 interface ProviderInfo {
   id: string
@@ -20,14 +23,20 @@ const providerMap: Record<string, ProviderInfo> = {
   google: { id: 'google', label: 'Continue with Google', icon: GoogleIcon },
   github: { id: 'github', label: 'Continue with GitHub', icon: GithubIcon },
   'active-directory': { id: 'active-directory', label: 'Continue with Microsoft', icon: MicrosoftIcon },
+  okta: { id: 'okta', label: 'Continue with Okta', icon: OktaIcon },
 }
 
 const route = useRoute()
+const router = useRouter()
 const loadingProvider = ref<string | null>(null)
 const error = ref('')
 const providers = ref<ProviderInfo[]>([])
 const loadingProviders = ref(true)
 const idleLogout = computed(() => route.query.reason === 'idle')
+
+const email = ref('')
+const password = ref('')
+const signingIn = ref(false)
 
 onMounted(async () => {
   try {
@@ -42,6 +51,42 @@ onMounted(async () => {
     loadingProviders.value = false
   }
 })
+
+async function handleEmailPasswordSignIn() {
+  if (!email.value || !password.value) {
+    error.value = 'Please enter email and password'
+    return
+  }
+
+  signingIn.value = true
+  error.value = ''
+
+  try {
+    const response = await signIn({
+      formFields: [
+        { id: 'email', value: email.value },
+        { id: 'password', value: password.value },
+      ],
+    })
+
+    if (response.status === 'OK') {
+      router.push('/')
+    } else if (response.status === 'WRONG_CREDENTIALS_ERROR') {
+      error.value = 'Invalid email or password'
+    } else {
+      error.value = 'Sign in failed. Please try again.'
+    }
+  } catch (err: unknown) {
+    const stErr = err as { isSuperTokensGeneralError?: boolean; message?: string }
+    if (stErr.isSuperTokensGeneralError) {
+      error.value = stErr.message || 'Something went wrong.'
+    } else {
+      error.value = 'Unable to sign in. Please try again.'
+    }
+  } finally {
+    signingIn.value = false
+  }
+}
 
 async function handleOAuthSignIn(provider: string) {
   loadingProvider.value = provider
@@ -92,20 +137,65 @@ async function handleOAuthSignIn(provider: string) {
           <Loader2 :size="20" class="animate-spin text-muted-foreground" />
         </div>
 
-        <div v-else class="space-y-3">
-          <UiButton
-            v-for="p in providers"
-            :key="p.id"
-            type="button"
-            variant="outline"
-            :disabled="!!loadingProvider"
-            class="w-full flex items-center justify-center gap-2"
-            @click="handleOAuthSignIn(p.id)"
-          >
-            <Loader2 v-if="loadingProvider === p.id" :size="16" class="animate-spin" />
-            <component v-else :is="p.icon" :size="16" />
-            {{ p.label }}
-          </UiButton>
+        <div v-else class="space-y-4">
+          <!-- Email/Password Login -->
+          <form @submit.prevent="handleEmailPasswordSignIn" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Email</label>
+              <UiInput
+                v-model="email"
+                type="email"
+                placeholder="admin@example.com"
+                :disabled="signingIn"
+                required
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Password</label>
+              <UiInput
+                v-model="password"
+                type="password"
+                placeholder="Enter your password"
+                :disabled="signingIn"
+                required
+              />
+            </div>
+            <UiButton
+              type="submit"
+              :disabled="signingIn || loadingProvider !== null || !email || !password"
+              class="w-full"
+            >
+              <Loader2 v-if="signingIn" :size="16" class="animate-spin mr-2" />
+              Sign In
+            </UiButton>
+          </form>
+
+          <!-- Divider -->
+          <div v-if="providers.length > 0" class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t"></div>
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+              <span class="bg-card px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <!-- OAuth Providers -->
+          <div v-if="providers.length > 0" class="space-y-3">
+            <UiButton
+              v-for="p in providers"
+              :key="p.id"
+              type="button"
+              variant="outline"
+              :disabled="!!loadingProvider || signingIn"
+              class="w-full flex items-center justify-center gap-2"
+              @click="handleOAuthSignIn(p.id)"
+            >
+              <Loader2 v-if="loadingProvider === p.id" :size="16" class="animate-spin" />
+              <component v-else :is="p.icon" :size="16" />
+              {{ p.label }}
+            </UiButton>
+          </div>
         </div>
       </UiCard>
     </div>
