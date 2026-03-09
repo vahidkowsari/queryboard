@@ -20,7 +20,7 @@
     "@anthropic-ai/sdk": "^0.32.1",
     "@aws-sdk/client-athena": "^3.478.0",
     "@tailwindcss/typography": "^0.5.19",
-    "ai": "^4.0.38",
+    "ai": "^6.0.116",
     "axios": "^1.6.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
