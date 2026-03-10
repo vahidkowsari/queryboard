@@ -1,12 +1,12 @@
 <template>
   <Teleport to="body">
-    <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div class="fixed inset-0 bg-black/50" @click="$emit('close')" />
-      <Card :class="['relative w-full flex flex-col', maxWidthClass, 'max-h-[85vh]']">
-        <div class="overflow-y-auto flex-1 p-6">
+      <Card :class="['relative w-full flex flex-col', maxWidthClass, 'max-h-[90vh] sm:max-h-[85vh]']">
+        <div class="overflow-y-auto flex-1 p-4 sm:p-6">
           <slot />
         </div>
-        <div v-if="$slots.footer" class="border-t p-6 pt-4 bg-background">
+        <div v-if="$slots.footer" class="border-t p-4 sm:p-6 pt-3 sm:pt-4 bg-background">
           <slot name="footer" />
         </div>
       </Card>

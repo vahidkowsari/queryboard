@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen">
-    <div class="max-w-7xl mx-auto px-8 py-8">
-      <div class="flex items-center justify-between mb-8">
-        <div class="flex items-center gap-3">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div class="flex items-center gap-2 sm:gap-3">
           <Button variant="ghost" size="icon" @click="$router.push('/')">
             <ArrowLeft :size="20" />
           </Button>
@@ -13,7 +13,7 @@
             </p>
           </div>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-2 sm:gap-3 flex-wrap">
           <Button
             variant="outline"
             size="icon"
@@ -32,11 +32,11 @@
           </Button>
           <Button variant="outline" @click="showAskPanel = true">
             <MessageSquare :size="18" />
-            Ask
+            <span class="hidden sm:inline">Ask</span>
           </Button>
           <Button v-if="isEditor()" @click="showCreateModal = true">
-            <Plus :size="20" />
-            New Dashboard
+            <Plus :size="18" class="sm:mr-0" />
+            <span class="hidden sm:inline">New Dashboard</span>
           </Button>
         </div>
       </div>
@@ -84,7 +84,7 @@
       </div>
 
       <!-- Card view -->
-      <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-else-if="viewMode === 'card'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card
           v-for="dashboard in sortedDashboards"
           :key="dashboard.id"
