@@ -1,5 +1,5 @@
 .PHONY: install dev dev-server dev-all build lint lint-fix format format-check type-check clean \
-       docker-up docker-down docker-build docker-logs docker-ps \
+       docker-up docker-up-build docker-down docker-restart docker-rebuild docker-logs docker-logs-server docker-logs-frontend docker-ps \
        prod-up prod-down prod-build prod-logs prod-ps prod-backup \
        tf-init tf-plan tf-apply tf-destroy tf-output \
        ecr-login ecr-push deploy-backend deploy-frontend
@@ -69,11 +69,26 @@ clean:
 docker-up:
 	docker compose up -d
 
+docker-up-build:
+	docker compose up -d --build
+
 docker-down:
 	docker compose down
 
+docker-restart:
+	docker compose down && docker compose up -d
+
+docker-rebuild:
+	docker compose down && docker compose up -d --build
+
 docker-logs:
 	docker compose logs -f
+
+docker-logs-server:
+	docker compose logs -f server
+
+docker-logs-frontend:
+	docker compose logs -f frontend
 
 docker-ps:
 	docker compose ps
