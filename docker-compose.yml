@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -9,22 +9,73 @@ services:
       POSTGRES_USER: charting
       POSTGRES_PASSWORD: charting_dev
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./server/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U charting -d charting"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   supertokens:
     image: registry.supertokens.io/supertokens/supertokens-postgresql:latest
     container_name: supertokens-core
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       POSTGRESQL_CONNECTION_URI: 'postgresql://charting:charting_dev@postgres:5432/charting'
       ACCESS_TOKEN_VALIDITY: 900 # 15 minutes (seconds)
       REFRESH_TOKEN_VALIDITY: 10080 # 7 days (minutes)
     ports:
       - '3567:3567'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3567/hello || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: ./server
+    container_name: queryboard-server
+    depends_on:
+      postgres:
+        condition: service_started
+      supertokens:
+        condition: service_healthy
+    environment:
+      PORT: "3001"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: charting
+      DB_USER: charting
+      DB_PASSWORD: charting_dev
+      SUPERTOKENS_CONNECTION_URI: "http://supertokens:3567"
+      API_DOMAIN: "http://localhost:3001"
+      WEBSITE_DOMAIN: "http://localhost:5173"
+      ADMIN_EMAIL: "admin@example.com"
+      ADMIN_PASSWORD: "change-this-password"
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: queryboard-frontend
+    depends_on:
+      - server
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+    ports:
+      - "5173:5173"
     restart: unless-stopped
 
 volumes:
