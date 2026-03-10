@@ -162,6 +162,18 @@ resource "aws_ecs_task_definition" "supertokens" {
         value = "postgresql://${var.db_username}:${var.db_password}@${aws_rds_cluster.main.endpoint}:5432/${var.db_name}"
       },
       {
+        name  = "POSTGRESQL_CONNECTION_POOL_SIZE"
+        value = "20"
+      },
+      {
+        name  = "POSTGRESQL_MINIMUM_IDLE_CONNECTIONS"
+        value = "5"
+      },
+      {
+        name  = "POSTGRESQL_CONNECTION_TIMEOUT"
+        value = "10000"
+      },
+      {
         name  = "ACCESS_TOKEN_VALIDITY"
         value = "900"
       },

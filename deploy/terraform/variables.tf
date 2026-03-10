@@ -187,6 +187,13 @@ variable "okta_domain" {
   default     = ""
 }
 
+variable "supertokens_api_key" {
+  description = "SuperTokens API key for managed core"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ── LLM API Keys ───────────────────────────────────────
 
 variable "anthropic_api_key" {
