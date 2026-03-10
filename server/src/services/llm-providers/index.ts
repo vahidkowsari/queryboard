@@ -3,10 +3,10 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { config } from '../../config.js'
 import type { LLMVendor, LLMConfig } from '../../types.js'
-import type { LanguageModelV1 } from 'ai'
+import type { LanguageModel } from 'ai'
 
 interface ResolvedLLM {
-  model: LanguageModelV1
+  model: LanguageModel
   vendor: LLMVendor
   modelId: string
 }

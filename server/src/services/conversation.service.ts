@@ -70,7 +70,15 @@ export function createConversationService(db: Db) {
     await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id))
   }
 
-  async function getMessages(conversationId: string): Promise<MessageRow[]> {
+  async function getMessages(conversationId: string, userId?: string): Promise<MessageRow[]> {
+    // If userId provided, verify conversation ownership first
+    if (userId) {
+      const conv = await getById(conversationId, userId)
+      if (!conv) {
+        throw new Error('Conversation not found or access denied')
+      }
+    }
+    
     return db
       .select()
       .from(conversationMessages)
@@ -83,7 +91,16 @@ export function createConversationService(db: Db) {
     role: string,
     content: string,
     extra?: { sql?: string; data?: unknown; columns?: unknown; steps?: unknown },
+    userId?: string,
   ): Promise<MessageRow> {
+    // If userId provided, verify conversation ownership first
+    if (userId) {
+      const conv = await getById(conversationId, userId)
+      if (!conv) {
+        throw new Error('Conversation not found or access denied')
+      }
+    }
+    
     const rows = await db
       .insert(conversationMessages)
       .values({
