@@ -1,4 +1,5 @@
 .PHONY: install dev dev-server dev-all build lint lint-fix format format-check type-check clean \
+       test test-watch test-setup \
        docker-up docker-up-build docker-down docker-restart docker-rebuild docker-logs docker-logs-server docker-logs-frontend docker-ps \
        prod-up prod-down prod-build prod-logs prod-ps prod-backup \
        tf-init tf-plan tf-apply tf-destroy tf-output \
@@ -59,6 +60,25 @@ check: lint format-check type-check
 
 # ── Fix all (lint fix + format) ──────────────────────────
 fix: lint-fix format
+
+# ── Tests ────────────────────────────────────────────────
+TEST_DB_URL = postgresql://charting:charting_dev@localhost:5432/queryboard_test
+
+test-setup:
+	@echo "Setting up test database..."
+	@docker compose up -d postgres
+	@sleep 2
+	@docker exec charting-db psql -U charting -c "DROP DATABASE IF EXISTS queryboard_test;" || true
+	@docker exec charting-db psql -U charting -c "CREATE DATABASE queryboard_test;"
+	@DB_HOST=localhost DB_PORT=5432 DB_NAME=queryboard_test DB_USER=charting DB_PASSWORD=charting_dev \
+		cd server && npx drizzle-kit push
+	@echo "Test database ready!"
+
+test:
+	@cd server && TEST_DATABASE_URL=$(TEST_DB_URL) npm test
+
+test-watch:
+	@cd server && TEST_DATABASE_URL=$(TEST_DB_URL) npm run test:watch
 
 # ── Clean ────────────────────────────────────────────────
 clean:

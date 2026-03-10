@@ -112,7 +112,7 @@ describe('requireDashboardAccess middleware', () => {
   it('reads dashboardId from params.dashboardId fallback', async () => {
     mockCanAccess.mockResolvedValue(true)
     const middleware = requireDashboardAccess(fakeDb, 'view')
-    const req = createMockReq({ roles: ['editor'], params: { dashboardId: 'dash-99' } })
+    const req = createMockReq({ roles: ['viewer'], params: { dashboardId: 'dash-99' } })
     const res = createMockRes()
     const next = vi.fn()
 
@@ -126,7 +126,7 @@ describe('requireDashboardAccess middleware', () => {
     mockCanAccess.mockResolvedValue(true)
     const middleware = requireDashboardAccess(fakeDb, 'view')
     const req = createMockReq({
-      roles: ['editor'],
+      roles: ['viewer'],
       params: { id: 'dash-primary', dashboardId: 'dash-fallback' },
     })
     const res = createMockRes()
