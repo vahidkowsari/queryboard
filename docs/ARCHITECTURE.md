@@ -54,7 +54,7 @@ queryboard/
 │   │   │   ├── projects.ts       # Project CRUD
 │   │   │   ├── dashboards.ts     # Dashboard CRUD
 │   │   │   ├── charts.ts         # Chart CRUD
-│   │   │   ├── claude.ts         # /generate-chart (SSE streaming)
+│   │   │   ├── agents.ts         # AI agents (chart generation, Q&A)
 │   │   │   └── schema.ts         # Schema detection + retrieval
 │   │   ├── services/
 │   │   │   │   ├── chart-agent.ts    # Agentic chart generation (core)
@@ -142,7 +142,8 @@ All project-scoped routes are prefixed with `/api/projects/:projectId`.
 | GET/POST | `/.../schema` | Get or detect schema |
 | GET/POST/PUT/DELETE | `/.../dashboards` | Dashboard CRUD |
 | GET/POST/PUT/DELETE | `/.../dashboards/:id/charts` | Chart CRUD |
-| POST | `/.../claude/generate-chart` | AI chart generation (SSE) |
+| POST | `/.../agents/generate-chart` | AI chart generation (SSE) |
+| POST | `/.../agents/ask` | AI Q&A agent (SSE) |
 
 ## Frontend Routes
 

@@ -13,7 +13,7 @@ import { errorHandler, asyncHandler } from './middleware/error.js'
 import { createProjectRoutes } from './routes/projects.js'
 import { createDashboardRoutes } from './routes/dashboards.js'
 import { createChartRoutes } from './routes/charts.js'
-import { createClaudeRoutes } from './routes/claude.js'
+import { createAgentRoutes } from './routes/agents.js'
 import { createSchemaRoutes } from './routes/schema.js'
 import { createTokenUsageRoutes } from './routes/token-usage.js'
 import { createConversationRoutes } from './routes/conversations.js'
@@ -83,7 +83,7 @@ async function startServer() {
   app.use('/api/projects', verifySession(), createProjectRoutes(db))
   app.use('/api/projects/:projectId/dashboards', verifySession(), createDashboardRoutes(db, refreshScheduler))
   app.use('/api/projects/:projectId/dashboards', verifySession(), createChartRoutes(db))
-  app.use('/api/projects/:projectId/claude', verifySession(), createClaudeRoutes(db))
+  app.use('/api/projects/:projectId/agents', verifySession(), createAgentRoutes(db))
   app.use('/api/projects/:projectId/schema', verifySession(), createSchemaRoutes(db))
   app.use('/api/projects/:projectId/token-usage', verifySession(), createTokenUsageRoutes(db))
   app.use('/api/projects/:projectId/conversations', verifySession(), createConversationRoutes(db))

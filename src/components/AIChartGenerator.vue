@@ -285,7 +285,7 @@ async function generateChart() {
   const pid = dashboardStore.projectId
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${pid}/claude/generate-chart`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${pid}/agents/generate-chart`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

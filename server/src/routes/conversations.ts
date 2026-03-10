@@ -35,9 +35,10 @@ export function createConversationRoutes(db: Db): Router {
   router.get(
     '/:conversationId',
     asyncHandler(async (req: SessionRequest, res) => {
-      const conv = await service.getById(req.params.conversationId, getUserId(req))
+      const userId = getUserId(req)
+      const conv = await service.getById(req.params.conversationId, userId)
       if (!conv) return void res.status(404).json({ error: 'Conversation not found' })
-      const messages = await service.getMessages(conv.id)
+      const messages = await service.getMessages(conv.id, userId)
       res.json({ ...conv, messages })
     }),
   )

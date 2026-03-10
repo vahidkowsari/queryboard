@@ -13,7 +13,7 @@ import type { Db } from '../db/index.js'
 import type { Schema } from '../types.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
 
-export function createClaudeRoutes(db: Db): Router {
+export function createAgentRoutes(db: Db): Router {
   const router = Router({ mergeParams: true })
   const tokenUsageService = createTokenUsageService(db)
   const conversationService = createConversationService(db)
@@ -151,6 +151,7 @@ export function createClaudeRoutes(db: Db): Router {
       }
 
       // Fetch conversation history BEFORE saving current message to avoid duplication
+      // Skip ownership check since we already validated at line 144
       const previousMessages = await conversationService.getMessages(convId)
       const conversationHistory = previousMessages.map(msg => ({
         role: msg.role as 'user' | 'assistant',
@@ -158,6 +159,7 @@ export function createClaudeRoutes(db: Db): Router {
       }))
 
       // Save user message AFTER fetching history
+      // Skip ownership check since we already validated at line 144
       await conversationService.addMessage(convId, 'user', question)
 
       res.writeHead(200, {
@@ -202,6 +204,7 @@ export function createClaudeRoutes(db: Db): Router {
         }
 
         // Save assistant message
+        // Skip ownership check since we already validated at line 144
         await conversationService.addMessage(convId, 'assistant', result.answer, {
           sql: result.sql,
           data: result.data,

@@ -139,7 +139,7 @@ async function ask() {
   scrollToBottom()
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${props.projectId}/claude/ask`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${props.projectId}/agents/ask`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
