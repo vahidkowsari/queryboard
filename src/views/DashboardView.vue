@@ -10,9 +10,9 @@
     </div>
 
     <div v-else>
-      <div class="max-w-7xl mx-auto px-8 py-8">
-        <div class="flex items-center justify-between mb-8">
-          <div class="flex items-center gap-4">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+          <div class="flex items-center gap-3 sm:gap-4">
             <Button variant="ghost" size="icon" @click="router.push(`/projects/${projectId}`)">
               <ArrowLeft :size="20" />
             </Button>
@@ -25,7 +25,7 @@
               <p class="text-sm text-muted-foreground mt-1">Last updated {{ formatDate(dashboard.updatedAt, true) }}</p>
             </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <div v-if="dashboard.charts.length > 0" class="flex border rounded-md">
               <Button
                 variant="ghost"
@@ -93,7 +93,7 @@
               title="Add Chart"
             >
               <Plus :size="18" />
-              Add Chart
+              <span class="hidden sm:inline">Add Chart</span>
             </Button>
           </div>
         </div>
@@ -196,8 +196,8 @@
             v-model="sortedCharts"
             :class="
               viewMode === 'compact'
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-                : 'grid grid-cols-1 lg:grid-cols-2 gap-6'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'
+                : 'grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6'
             "
             :animation="200"
             handle=".drag-handle"

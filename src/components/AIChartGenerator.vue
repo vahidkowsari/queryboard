@@ -1,6 +1,6 @@
 <template>
   <Card>
-    <div class="p-6 space-y-6">
+    <div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <h3 class="text-xl font-semibold">{{ editChart ? 'Edit Chart' : 'Generate Chart with AI' }}</h3>
@@ -18,10 +18,10 @@
       </div>
 
       <!-- Chart Type + Actions row -->
-      <div class="flex items-end justify-between gap-4 flex-wrap">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div class="flex-1 min-w-0">
           <label class="block text-sm font-medium mb-2">Chart Type</label>
-          <div class="flex gap-2 flex-wrap">
+          <div class="flex gap-1.5 sm:gap-2 flex-wrap">
             <button
               v-for="opt in chartTypeOptions"
               :key="opt.value"
@@ -37,7 +37,7 @@
             </button>
           </div>
         </div>
-        <div class="flex gap-3 shrink-0">
+        <div class="flex gap-2 sm:gap-3 flex-wrap sm:flex-nowrap w-full sm:w-auto">
           <Button v-if="loading" @click="cancelGeneration" variant="destructive">
             <X :size="20" />
             Cancel

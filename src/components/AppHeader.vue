@@ -1,11 +1,11 @@
 <template>
   <header class="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto flex items-center justify-between h-14 px-8">
-      <router-link to="/" class="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-        <div class="flex items-center justify-center w-8 h-8">
+    <div class="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6 md:px-8">
+      <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-80 transition-opacity">
+        <div class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8">
           <img src="/logo.svg" alt="QueryBoard" class="w-full h-full" />
         </div>
-        <span class="font-bold text-lg tracking-tight">QueryBoard</span>
+        <span class="font-bold text-base sm:text-lg tracking-tight hidden xs:inline">QueryBoard</span>
       </router-link>
 
       <nav v-if="showBreadcrumb" class="hidden sm:flex items-center gap-1.5 text-sm">
@@ -26,7 +26,7 @@
       </nav>
       <div v-else />
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
         <button
           @click="showSearch = !showSearch"
           class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

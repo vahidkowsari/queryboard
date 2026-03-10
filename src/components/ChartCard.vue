@@ -1,6 +1,6 @@
 <template>
   <Card class="hover:shadow-lg transition-shadow">
-    <div :class="compact ? 'p-3' : 'p-6'">
+    <div :class="compact ? 'p-2 sm:p-3' : 'p-4 sm:p-6'">
       <div v-if="!compact" class="flex items-start justify-between mb-4">
         <div class="flex-1 flex items-center gap-2">
           <GripVertical
@@ -10,19 +10,19 @@
           <h3 class="text-lg font-semibold">{{ chart.name }}</h3>
           <InfoTooltip v-if="chart.description" :text="chart.description" />
         </div>
-        <div class="flex gap-1 ml-4">
-          <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('fullscreen', chart)" title="Full screen">
-            <Maximize2 :size="14" />
+        <div class="flex gap-1 ml-2 sm:ml-4">
+          <Button variant="ghost" size="icon" class="h-8 w-8 sm:h-7 sm:w-7" @click="$emit('fullscreen', chart)" title="Full screen">
+            <Maximize2 :size="16" class="sm:w-3.5 sm:h-3.5" />
           </Button>
           <div class="relative">
             <Button
               variant="ghost"
               size="icon"
-              class="h-7 w-7"
+              class="h-8 w-8 sm:h-7 sm:w-7"
               @click="showExportMenu = !showExportMenu"
               title="Export"
             >
-              <Download :size="14" />
+              <Download :size="16" class="sm:w-3.5 sm:h-3.5" />
             </Button>
             <div
               v-if="showExportMenu"
