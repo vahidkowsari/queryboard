@@ -60,6 +60,11 @@ function createQATools(ctx: ToolHandlerContext, log: (msg: string) => void) {
 
 const MAX_TURNS = 10
 
+export interface ConversationHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export async function runQAAgent(
   question: string,
   schema: Schema,
@@ -68,6 +73,7 @@ export async function runQAAgent(
   onThinking?: (text: string) => void,
   llmConfig?: LLMConfig | null,
   signal?: AbortSignal,
+  conversationHistory?: ConversationHistoryMessage[],
 ): Promise<QAResult> {
   const steps: string[] = []
   const log = (msg: string) => {
@@ -84,7 +90,12 @@ export async function runQAAgent(
 
   const ctx: ToolHandlerContext = { schema, executor, lastQueryResult: null, storedResults: [] }
   const agentTools = createQATools(ctx, log)
-  const messages: ModelMessage[] = [{ role: 'user', content: question }]
+  
+  const messages: ModelMessage[] = [
+    ...(conversationHistory || []).map(msg => ({ role: msg.role, content: msg.content })),
+    { role: 'user', content: question }
+  ]
+  
   const tokenUsage: TokenUsageInfo = { promptTokens: 0, completionTokens: 0, totalTokens: 0, vendor, model: modelId }
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {

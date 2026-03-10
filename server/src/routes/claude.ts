@@ -139,12 +139,25 @@ export function createClaudeRoutes(db: Db): Router {
 
       // Create or validate conversation
       let convId = conversationId as string | undefined
-      if (!convId) {
+      if (convId) {
+        // Validate conversation exists and belongs to user and project
+        const conv = await conversationService.getById(convId, userId)
+        if (!conv || conv.projectId !== project.id) {
+          return void res.status(404).json({ error: 'Conversation not found' })
+        }
+      } else {
         const conv = await conversationService.create(project.id, userId, question.substring(0, 100))
         convId = conv.id
       }
 
-      // Save user message
+      // Fetch conversation history BEFORE saving current message to avoid duplication
+      const previousMessages = await conversationService.getMessages(convId)
+      const conversationHistory = previousMessages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }))
+
+      // Save user message AFTER fetching history
       await conversationService.addMessage(convId, 'user', question)
 
       res.writeHead(200, {
@@ -173,6 +186,7 @@ export function createClaudeRoutes(db: Db): Router {
           },
           project.llmConfig,
           ac.signal,
+          conversationHistory,
         )
 
         if (result.tokenUsage.totalTokens > 0) {
