@@ -4,7 +4,8 @@ import supertokens from 'supertokens-node'
 import { middleware as stMiddleware, errorHandler as stErrorHandler, type SessionRequest } from 'supertokens-node/framework/express/index.js'
 import { verifySession } from 'supertokens-node/recipe/session/framework/express/index.js'
 import pg from 'pg'
-import { config } from './config.js'
+import { loadConfig } from './config-loader.js'
+import { setConfig } from './config.js'
 import { initSuperTokens, seedRoles, createInitialAdmin, ROLES } from './auth.js'
 import { requireRole } from './middleware/roles.js'
 import { createAdminRoutes } from './routes/admin.js'
@@ -28,82 +29,90 @@ import { createRefreshScheduler } from './services/refresh-scheduler.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-initSuperTokens()
+async function startServer() {
+  const config = await loadConfig()
+  setConfig(config) // Make config available globally
 
-const app = express()
-app.use(
-  cors({
-    origin: config.supertokens.websiteDomain,
-    allowedHeaders: ['content-type', ...supertokens.getAllCORSHeaders()],
-    credentials: true,
-  }),
-)
-app.use(stMiddleware())
-app.use(express.json({ limit: '10mb' }))
+  initSuperTokens()
 
-// --- PostgreSQL + Drizzle ---
-const pool = new pg.Pool(config.db)
-const db = createDb(pool)
-const refreshScheduler = createRefreshScheduler(db)
+  const app = express()
+  app.use(
+    cors({
+      origin: config.supertokens.websiteDomain,
+      allowedHeaders: ['content-type', ...supertokens.getAllCORSHeaders()],
+      credentials: true,
+    }),
+  )
+  app.use(stMiddleware())
+  app.use(express.json({ limit: '10mb' }))
 
-// --- Startup: connect, migrate, seed ---
-pool
-  .query('SELECT NOW()')
-  .then(() => console.log('PostgreSQL connected'))
-  .then(() => migrate(db, { migrationsFolder: join(__dirname, '..', 'migrations') }))
-  .then(() => console.log('Migrations applied'))
-  .then(() => seedProjectsFromConfig(db))
-  .then(() => seedRoles())
-  .then(() => console.log('Roles seeded'))
-  .then(() => createInitialAdmin())
-  .then(() => refreshScheduler.loadAllSchedules())
-  .catch((err: Error) => console.error('Startup failed:', err.message))
+  // --- PostgreSQL + Drizzle ---
+  const pool = new pg.Pool(config.db)
+  const db = createDb(pool)
+  const refreshScheduler = createRefreshScheduler(db)
 
-// --- Public: enabled OAuth providers ---
-app.get('/auth/providers', (_req, res) => {
-  const providers: string[] = []
-  if (config.supertokens.googleClientId) providers.push('google')
-  if (config.supertokens.githubClientId) providers.push('github')
-  if (config.supertokens.microsoftClientId) providers.push('active-directory')
-  res.json({ providers })
-})
+  // --- Startup: connect, migrate, seed ---
+  await pool.query('SELECT NOW()')
+  console.log('PostgreSQL connected')
+  await migrate(db, { migrationsFolder: join(__dirname, '..', 'migrations') })
+  console.log('Migrations applied')
+  await seedProjectsFromConfig(db)
+  await seedRoles()
+  console.log('Roles seeded')
+  await createInitialAdmin()
+  await refreshScheduler.loadAllSchedules()
 
-// --- Auth info endpoint ---
-app.get('/auth/me', verifySession(), async (req: SessionRequest, res) => {
-  const userId = req.session!.getUserId()
-  const user = await supertokens.getUser(userId)
-  const roles: string[] = req.session!.getAccessTokenPayload()?.roles ?? []
-  res.json({ id: userId, email: user?.emails?.[0] ?? null, roles })
-})
+  // --- Public: enabled OAuth providers ---
+  app.get('/auth/providers', (_req, res) => {
+    const providers: string[] = []
+    if (config.supertokens.googleClientId) providers.push('google')
+    if (config.supertokens.githubClientId) providers.push('github')
+    if (config.supertokens.microsoftClientId) providers.push('active-directory')
+    res.json({ providers })
+  })
 
-// --- Protected API routes ---
-app.use('/api/projects', verifySession(), createProjectRoutes(db))
-app.use('/api/projects/:projectId/dashboards', verifySession(), createDashboardRoutes(db, refreshScheduler))
-app.use('/api/projects/:projectId/dashboards', verifySession(), createChartRoutes(db))
-app.use('/api/projects/:projectId/claude', verifySession(), createClaudeRoutes(db))
-app.use('/api/projects/:projectId/schema', verifySession(), createSchemaRoutes(db))
-app.use('/api/projects/:projectId/token-usage', verifySession(), createTokenUsageRoutes(db))
-app.use('/api/projects/:projectId/conversations', verifySession(), createConversationRoutes(db))
-app.use('/api/projects/:projectId/groups', verifySession(), createGroupRoutes(db))
-app.use('/api/projects/:projectId/dashboards', verifySession(), createPermissionRoutes(db))
-app.use('/api/admin', verifySession(), requireRole(ROLES.ADMIN), createAdminRoutes())
+  // --- Auth info endpoint ---
+  app.get('/auth/me', verifySession(), async (req: SessionRequest, res) => {
+    const userId = req.session!.getUserId()
+    const user = await supertokens.getUser(userId)
+    const roles: string[] = req.session!.getAccessTokenPayload()?.roles ?? []
+    res.json({ id: userId, email: user?.emails?.[0] ?? null, roles })
+  })
 
-// --- Public shared dashboard route (no auth required) ---
-const sharedDashboardService = createDashboardService(db)
-app.get(
-  '/api/shared/:token',
-  asyncHandler(async (req, res) => {
-    const dashboard = await sharedDashboardService.getByShareToken(req.params.token)
-    if (!dashboard) return void res.status(404).json({ error: 'Shared dashboard not found' })
-    res.json(dashboard)
-  }),
-)
+  // --- Protected API routes ---
+  app.use('/api/projects', verifySession(), createProjectRoutes(db))
+  app.use('/api/projects/:projectId/dashboards', verifySession(), createDashboardRoutes(db, refreshScheduler))
+  app.use('/api/projects/:projectId/dashboards', verifySession(), createChartRoutes(db))
+  app.use('/api/projects/:projectId/claude', verifySession(), createClaudeRoutes(db))
+  app.use('/api/projects/:projectId/schema', verifySession(), createSchemaRoutes(db))
+  app.use('/api/projects/:projectId/token-usage', verifySession(), createTokenUsageRoutes(db))
+  app.use('/api/projects/:projectId/conversations', verifySession(), createConversationRoutes(db))
+  app.use('/api/projects/:projectId/groups', verifySession(), createGroupRoutes(db))
+  app.use('/api/projects/:projectId/dashboards', verifySession(), createPermissionRoutes(db))
+  app.use('/api/admin', verifySession(), requireRole(ROLES.ADMIN), createAdminRoutes())
 
-// --- Error handling (SuperTokens first, then app) ---
-app.use(stErrorHandler())
-app.use(errorHandler)
+  // --- Public shared dashboard route (no auth required) ---
+  const sharedDashboardService = createDashboardService(db)
+  app.get(
+    '/api/shared/:token',
+    asyncHandler(async (req, res) => {
+      const dashboard = await sharedDashboardService.getByShareToken(req.params.token)
+      if (!dashboard) return void res.status(404).json({ error: 'Shared dashboard not found' })
+      res.json(dashboard)
+    }),
+  )
 
-// --- Start ---
-app.listen(config.port, () => {
-  console.log(`QueryBoard server running on http://localhost:${config.port}`)
+  // --- Error handling (SuperTokens first, then app) ---
+  app.use(stErrorHandler())
+  app.use(errorHandler)
+
+  // --- Start ---
+  app.listen(config.port, () => {
+    console.log(`QueryBoard server running on http://localhost:${config.port}`)
+  })
+}
+
+startServer().catch((err) => {
+  console.error('Failed to start server:', err)
+  process.exit(1)
 })
