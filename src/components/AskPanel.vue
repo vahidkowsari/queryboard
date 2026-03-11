@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2 } from 'lucide-vue-next'
 import { marked } from 'marked'
 import { API_BASE_URL } from '../services/api'
 import { config } from '../config'
 import { conversationApi, type Conversation, type ConversationMessage } from '../services/conversation.api'
+import { useRole } from '../composables/useRole'
 import Button from './ui/button.vue'
+import ConversationPermissions from './ConversationPermissions.vue'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -42,6 +44,8 @@ const showSidebar = ref(true)
 const copiedIndex = ref<number | null>(null)
 const panelMode = ref<'float' | 'maximized'>('float')
 const thinkingTexts = ref<string[]>([])
+const showPermissions = ref(false)
+const { isAdmin, refreshRoles } = useRole()
 
 async function copyToClipboard(text: string, index: number) {
   await navigator.clipboard.writeText(text)
@@ -125,7 +129,8 @@ function onEscape(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await refreshRoles()
   if (props.show) loadConversations()
   document.addEventListener('keydown', onEscape)
 })
@@ -326,6 +331,14 @@ function formatTime(dateStr: string): string {
               </div>
               <div class="flex items-center gap-1">
                 <button
+                  v-if="isAdmin() && activeConversationId"
+                  @click="showPermissions = true"
+                  class="text-muted-foreground hover:text-foreground transition-colors rounded-lg p-1 hover:bg-muted"
+                  title="Manage permissions"
+                >
+                  <Settings2 :size="16" />
+                </button>
+                <button
                   @click="panelMode = panelMode === 'maximized' ? 'float' : 'maximized'"
                   class="text-muted-foreground hover:text-foreground transition-colors rounded-lg p-1 hover:bg-muted"
                   :title="panelMode === 'maximized' ? 'Restore' : 'Maximize'"
@@ -474,6 +487,14 @@ function formatTime(dateStr: string): string {
             </div>
           </div>
         </div>
+
+        <!-- Permissions Modal -->
+        <ConversationPermissions
+          v-if="showPermissions && activeConversationId"
+          :projectId="projectId"
+          :conversationId="activeConversationId"
+          @close="showPermissions = false"
+        />
       </div>
     </Transition>
   </Teleport>
