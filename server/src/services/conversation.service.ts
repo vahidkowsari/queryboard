@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { conversations, conversationMessages } from '../db/schema.js'
 import type { Db } from '../db/index.js'
 
@@ -24,19 +24,19 @@ export interface MessageRow {
 }
 
 export function createConversationService(db: Db) {
-  async function listByProject(projectId: string, userId: string): Promise<ConversationRow[]> {
+  async function listByProject(projectId: string): Promise<ConversationRow[]> {
     return db
       .select()
       .from(conversations)
-      .where(and(eq(conversations.projectId, projectId), eq(conversations.userId, userId)))
+      .where(eq(conversations.projectId, projectId))
       .orderBy(desc(conversations.updatedAt))
   }
 
-  async function getById(id: string, userId: string): Promise<ConversationRow | null> {
+  async function getById(id: string): Promise<ConversationRow | null> {
     const rows = await db
       .select()
       .from(conversations)
-      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .where(eq(conversations.id, id))
       .limit(1)
     return rows[0] ?? null
   }
@@ -49,19 +49,19 @@ export function createConversationService(db: Db) {
     return rows[0]!
   }
 
-  async function updateTitle(id: string, userId: string, title: string): Promise<ConversationRow | null> {
+  async function updateTitle(id: string, title: string): Promise<ConversationRow | null> {
     const rows = await db
       .update(conversations)
       .set({ title, updatedAt: new Date() })
-      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .where(eq(conversations.id, id))
       .returning()
     return rows[0] ?? null
   }
 
-  async function remove(id: string, userId: string): Promise<boolean> {
+  async function remove(id: string): Promise<boolean> {
     const rows = await db
       .delete(conversations)
-      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .where(eq(conversations.id, id))
       .returning()
     return rows.length > 0
   }
@@ -70,15 +70,7 @@ export function createConversationService(db: Db) {
     await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id))
   }
 
-  async function getMessages(conversationId: string, userId?: string): Promise<MessageRow[]> {
-    // If userId provided, verify conversation ownership first
-    if (userId) {
-      const conv = await getById(conversationId, userId)
-      if (!conv) {
-        throw new Error('Conversation not found or access denied')
-      }
-    }
-    
+  async function getMessages(conversationId: string): Promise<MessageRow[]> {
     return db
       .select()
       .from(conversationMessages)
@@ -91,16 +83,7 @@ export function createConversationService(db: Db) {
     role: string,
     content: string,
     extra?: { sql?: string; data?: unknown; columns?: unknown; steps?: unknown },
-    userId?: string,
   ): Promise<MessageRow> {
-    // If userId provided, verify conversation ownership first
-    if (userId) {
-      const conv = await getById(conversationId, userId)
-      if (!conv) {
-        throw new Error('Conversation not found or access denied')
-      }
-    }
-    
     const rows = await db
       .insert(conversationMessages)
       .values({

@@ -9,6 +9,7 @@ import { requireRole } from '../middleware/roles.js'
 import { ROLES } from '../auth.js'
 import { createTokenUsageService } from '../services/token-usage.service.js'
 import { createConversationService } from '../services/conversation.service.js'
+import { createPermissionService } from '../services/permission.service.js'
 import type { Db } from '../db/index.js'
 import type { Schema } from '../types.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
@@ -140,10 +141,20 @@ export function createAgentRoutes(db: Db): Router {
       // Create or validate conversation
       let convId = conversationId as string | undefined
       if (convId) {
-        // Validate conversation exists and belongs to user and project
-        const conv = await conversationService.getById(convId, userId)
+        // Validate conversation exists and belongs to project
+        const conv = await conversationService.getById(convId)
         if (!conv || conv.projectId !== project.id) {
           return void res.status(404).json({ error: 'Conversation not found' })
+        }
+        
+        // Check permissions - admins bypass, others need explicit permission
+        const roles: string[] = req.session?.getAccessTokenPayload()?.roles ?? []
+        if (!roles.includes('admin')) {
+          const permissionService = createPermissionService(db)
+          const allowed = await permissionService.canAccessConversation(convId, userId, 'edit')
+          if (!allowed) {
+            return void res.status(403).json({ error: 'You do not have permission to access this conversation' })
+          }
         }
       } else {
         const conv = await conversationService.create(project.id, userId, question.substring(0, 100))
@@ -151,7 +162,6 @@ export function createAgentRoutes(db: Db): Router {
       }
 
       // Fetch conversation history BEFORE saving current message to avoid duplication
-      // Skip ownership check since we already validated at line 144
       const previousMessages = await conversationService.getMessages(convId)
       const conversationHistory = previousMessages.map(msg => ({
         role: msg.role as 'user' | 'assistant',
@@ -159,7 +169,6 @@ export function createAgentRoutes(db: Db): Router {
       }))
 
       // Save user message AFTER fetching history
-      // Skip ownership check since we already validated at line 144
       await conversationService.addMessage(convId, 'user', question)
 
       res.writeHead(200, {
@@ -204,7 +213,6 @@ export function createAgentRoutes(db: Db): Router {
         }
 
         // Save assistant message
-        // Skip ownership check since we already validated at line 144
         await conversationService.addMessage(convId, 'assistant', result.answer, {
           sql: result.sql,
           data: result.data,
