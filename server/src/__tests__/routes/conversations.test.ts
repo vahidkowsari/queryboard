@@ -47,7 +47,7 @@ describe('Conversation Routes', () => {
       expect(response.body[0].userId).toBe(userId)
     })
 
-    it('should not return conversations from other users', async () => {
+    it('should return all conversations with open access by default', async () => {
       const service = createConversationService(db)
       await service.create(testProjectId, 'other-user', 'Other Conv')
       await service.create(testProjectId, userId, 'My Conv')
@@ -56,8 +56,8 @@ describe('Conversation Routes', () => {
         .get(`/api/projects/${testProjectId}/conversations`)
         .expect(200)
 
-      expect(response.body).toHaveLength(1)
-      expect(response.body[0].title).toBe('My Conv')
+      // With open access, all conversations are visible
+      expect(response.body).toHaveLength(2)
     })
   })
 
@@ -109,13 +109,16 @@ describe('Conversation Routes', () => {
       expect(response.body.error).toBe('Conversation not found')
     })
 
-    it('should return 404 for conversation owned by different user', async () => {
+    it('should return conversation with open access by default', async () => {
       const service = createConversationService(db)
       const conv = await service.create(testProjectId, 'other-user', 'Test')
 
-      await request(app)
+      // With open access, any user can view conversations
+      const response = await request(app)
         .get(`/api/projects/${testProjectId}/conversations/${conv.id}`)
-        .expect(404)
+        .expect(200)
+      
+      expect(response.body.id).toBe(conv.id)
     })
   })
 
@@ -139,14 +142,17 @@ describe('Conversation Routes', () => {
         .expect(404)
     })
 
-    it('should return 404 when updating conversation owned by different user', async () => {
+    it('should allow updating conversation with open access by default', async () => {
       const service = createConversationService(db)
       const conv = await service.create(testProjectId, 'other-user', 'Test')
 
-      await request(app)
+      // With open access, any user can edit conversations
+      const response = await request(app)
         .patch(`/api/projects/${testProjectId}/conversations/${conv.id}`)
         .send({ title: 'New Title' })
-        .expect(404)
+        .expect(200)
+      
+      expect(response.body.title).toBe('New Title')
     })
   })
 
@@ -162,7 +168,7 @@ describe('Conversation Routes', () => {
       expect(response.body.deleted).toBe(true)
 
       // Verify it's actually deleted
-      const found = await service.getById(conv.id, userId)
+      const found = await service.getById(conv.id)
       expect(found).toBeNull()
     })
 
@@ -172,13 +178,14 @@ describe('Conversation Routes', () => {
         .expect(404)
     })
 
-    it('should return 404 when deleting conversation owned by different user', async () => {
+    it('should allow deletion with open access by default', async () => {
       const service = createConversationService(db)
       const conv = await service.create(testProjectId, 'other-user', 'Test')
 
+      // With open access (no permissions set), any user can delete
       await request(app)
         .delete(`/api/projects/${testProjectId}/conversations/${conv.id}`)
-        .expect(404)
+        .expect(200)
     })
   })
 })

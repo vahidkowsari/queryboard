@@ -26,6 +26,15 @@ export interface ConversationWithMessages extends Conversation {
   messages: ConversationMessage[]
 }
 
+export interface ConversationPermission {
+  id: string
+  conversationId: string
+  userId?: string | null
+  groupId?: string | null
+  permission: 'view' | 'edit'
+  createdAt: string
+}
+
 export const conversationApi = {
   async list(projectId: string): Promise<Conversation[]> {
     const { data } = await api.get(`/projects/${projectId}/conversations`)
@@ -49,5 +58,29 @@ export const conversationApi = {
 
   async remove(projectId: string, conversationId: string): Promise<void> {
     await api.delete(`/projects/${projectId}/conversations/${conversationId}`)
+  },
+
+  async listPermissions(projectId: string, conversationId: string): Promise<ConversationPermission[]> {
+    const { data } = await api.get(`/projects/${projectId}/conversations/${conversationId}/permissions`)
+    return data
+  },
+
+  async setPermission(
+    projectId: string,
+    conversationId: string,
+    permission: 'view' | 'edit',
+    userId?: string,
+    groupId?: string
+  ): Promise<ConversationPermission> {
+    const { data } = await api.post(`/projects/${projectId}/conversations/${conversationId}/permissions`, {
+      userId,
+      groupId,
+      permission,
+    })
+    return data
+  },
+
+  async removePermission(projectId: string, conversationId: string, permissionId: string): Promise<void> {
+    await api.delete(`/projects/${projectId}/conversations/${conversationId}/permissions/${permissionId}`)
   },
 }

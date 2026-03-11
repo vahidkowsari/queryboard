@@ -44,15 +44,14 @@ describe('ConversationService', () => {
   })
 
   describe('listByProject', () => {
-    it('should list conversations for user', async () => {
+    it('should list all conversations for project', async () => {
       await service.create(testProjectId, userId1, 'Conv 1')
       await service.create(testProjectId, userId1, 'Conv 2')
       await service.create(testProjectId, userId2, 'Conv 3')
       
-      const list = await service.listByProject(testProjectId, userId1)
+      const list = await service.listByProject(testProjectId)
       
-      expect(list).toHaveLength(2)
-      expect(list.every(c => c.userId === userId1)).toBe(true)
+      expect(list).toHaveLength(3)
     })
 
     it('should order by updatedAt descending', async () => {
@@ -60,37 +59,38 @@ describe('ConversationService', () => {
       await new Promise(resolve => setTimeout(resolve, 10))
       const conv2 = await service.create(testProjectId, userId1, 'Conv 2')
       
-      const list = await service.listByProject(testProjectId, userId1)
+      const list = await service.listByProject(testProjectId)
       
       expect(list[0].id).toBe(conv2.id)
       expect(list[1].id).toBe(conv1.id)
     })
 
     it('should return empty array if no conversations', async () => {
-      const list = await service.listByProject(testProjectId, userId1)
+      const list = await service.listByProject(testProjectId)
       
       expect(list).toEqual([])
     })
   })
 
   describe('getById', () => {
-    it('should return conversation by id for owner', async () => {
+    it('should return conversation by id', async () => {
       const created = await service.create(testProjectId, userId1, 'Test')
-      const found = await service.getById(created.id, userId1)
+      const found = await service.getById(created.id)
       
       expect(found).toBeDefined()
       expect(found?.id).toBe(created.id)
     })
 
-    it('should return null if conversation belongs to different user', async () => {
+    it('should return conversation regardless of user', async () => {
       const created = await service.create(testProjectId, userId1, 'Test')
-      const found = await service.getById(created.id, userId2)
+      const found = await service.getById(created.id)
       
-      expect(found).toBeNull()
+      expect(found).toBeDefined()
+      expect(found?.id).toBe(created.id)
     })
 
     it('should return null if conversation not found', async () => {
-      const found = await service.getById('00000000-0000-0000-0000-000000000000', userId1)
+      const found = await service.getById('00000000-0000-0000-0000-000000000000')
       
       expect(found).toBeNull()
     })
@@ -99,37 +99,38 @@ describe('ConversationService', () => {
   describe('updateTitle', () => {
     it('should update conversation title', async () => {
       const conv = await service.create(testProjectId, userId1, 'Old Title')
-      const updated = await service.updateTitle(conv.id, userId1, 'New Title')
+      const updated = await service.updateTitle(conv.id, 'New Title')
       
       expect(updated).toBeDefined()
       expect(updated?.title).toBe('New Title')
       expect(updated?.updatedAt.getTime()).toBeGreaterThan(conv.updatedAt.getTime())
     })
 
-    it('should return null if conversation belongs to different user', async () => {
+    it('should update conversation regardless of user', async () => {
       const conv = await service.create(testProjectId, userId1, 'Test')
-      const updated = await service.updateTitle(conv.id, userId2, 'New Title')
+      const updated = await service.updateTitle(conv.id, 'New Title')
       
-      expect(updated).toBeNull()
+      expect(updated).toBeDefined()
+      expect(updated?.title).toBe('New Title')
     })
   })
 
   describe('remove', () => {
     it('should delete conversation', async () => {
       const conv = await service.create(testProjectId, userId1, 'Test')
-      const deleted = await service.remove(conv.id, userId1)
+      const deleted = await service.remove(conv.id)
       
       expect(deleted).toBe(true)
       
-      const found = await service.getById(conv.id, userId1)
+      const found = await service.getById(conv.id)
       expect(found).toBeNull()
     })
 
-    it('should return false if conversation belongs to different user', async () => {
+    it('should delete conversation regardless of user', async () => {
       const conv = await service.create(testProjectId, userId1, 'Test')
-      const deleted = await service.remove(conv.id, userId2)
+      const deleted = await service.remove(conv.id)
       
-      expect(deleted).toBe(false)
+      expect(deleted).toBe(true)
     })
   })
 
@@ -167,7 +168,7 @@ describe('ConversationService', () => {
       await new Promise(resolve => setTimeout(resolve, 10))
       await service.addMessage(conv.id, 'user', 'Hello')
       
-      const updated = await service.getById(conv.id, userId1)
+      const updated = await service.getById(conv.id)
       expect(updated?.updatedAt.getTime()).toBeGreaterThan(conv.updatedAt.getTime())
     })
   })
@@ -194,15 +195,9 @@ describe('ConversationService', () => {
       expect(messages).toEqual([])
     })
 
-    it('should return empty array if conversation not found when userId provided', async () => {
+    it('should return empty array if conversation not found', async () => {
       const messages = await service.getMessages('00000000-0000-0000-0000-000000000000')
       expect(messages).toEqual([])
-    })
-
-    it('should return empty array if conversation belongs to different user when userId provided', async () => {
-      const conv = await service.create(testProjectId, userId1, 'Test')
-      const messages = await service.getMessages(conv.id)
-      expect(messages).toHaveLength(0)
     })
   })
 })

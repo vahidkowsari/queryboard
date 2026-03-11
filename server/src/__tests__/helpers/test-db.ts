@@ -30,6 +30,7 @@ export async function cleanupTestDb(): Promise<void> {
 export async function clearAllTables(db: Db): Promise<void> {
   // Clear tables in correct order to respect foreign key constraints
   await db.delete(schema.conversationMessages)
+  await db.delete(schema.conversationPermissions)
   await db.delete(schema.conversations)
   await db.delete(schema.tokenUsage)
   await db.delete(schema.groupMembers)

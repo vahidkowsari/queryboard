@@ -174,3 +174,22 @@ export const dashboardPermissions = pgTable(
     index('idx_dashboard_permissions_group_id').on(table.groupId),
   ],
 )
+
+export const conversationPermissions = pgTable(
+  'conversation_permissions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id', { length: 128 }),
+    groupId: uuid('group_id').references(() => groups.id, { onDelete: 'cascade' }),
+    permission: varchar('permission', { length: 20 }).notNull().default('view'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_conversation_permissions_conversation_id').on(table.conversationId),
+    index('idx_conversation_permissions_user_id').on(table.userId),
+    index('idx_conversation_permissions_group_id').on(table.groupId),
+  ],
+)
