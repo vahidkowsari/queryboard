@@ -5,15 +5,24 @@ import type { DbEngine, DbConfig, LLMConfig, ChartLibrary, ColorConfig, Schema }
 
 export function createProjectService(db: Db) {
   return {
+    /**
+     * Fetches all projects ordered by most recently updated
+     */
     async list() {
       return db.select().from(projects).orderBy(desc(projects.updatedAt))
     },
 
+    /**
+     * Fetches a specific project by ID
+     */
     async getById(id: string) {
       const rows = await db.select().from(projects).where(eq(projects.id, id))
       return rows[0] || null
     },
 
+    /**
+     * Creates a new project with database and LLM configuration
+     */
     async create(
       name: string,
       dbEngine: DbEngine,
@@ -38,6 +47,9 @@ export function createProjectService(db: Db) {
       return rows[0]
     },
 
+    /**
+     * Updates project configuration fields
+     */
     async update(
       id: string,
       data: {
@@ -66,6 +78,9 @@ export function createProjectService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Updates the cached database schema for a project
+     */
     async updateSchemaCache(id: string, schema: Schema) {
       await db
         .update(projects)
@@ -77,6 +92,9 @@ export function createProjectService(db: Db) {
         .where(eq(projects.id, id))
     },
 
+    /**
+     * Deletes a project and all its associated data
+     */
     async remove(id: string) {
       const rows = await db.delete(projects).where(eq(projects.id, id)).returning({ id: projects.id })
       return rows.length > 0

@@ -5,6 +5,9 @@ import type { Db } from '../db/index.js'
 
 export function createDashboardService(db: Db) {
   return {
+    /**
+     * Fetches all dashboards for a project with chart counts
+     */
     async list(projectId: string) {
       return db
         .select({
@@ -25,6 +28,9 @@ export function createDashboardService(db: Db) {
         .orderBy(desc(dashboards.updatedAt))
     },
 
+    /**
+     * Fetches a specific dashboard with all its charts
+     */
     async getById(id: string) {
       const rows = await db.select().from(dashboards).where(eq(dashboards.id, id))
       if (rows.length === 0) return null
@@ -38,6 +44,9 @@ export function createDashboardService(db: Db) {
       return { ...rows[0], charts: chartRows }
     },
 
+    /**
+     * Creates a new dashboard in a project
+     */
     async create(projectId: string, name: string, description?: string) {
       const rows = await db
         .insert(dashboards)
@@ -50,6 +59,9 @@ export function createDashboardService(db: Db) {
       return rows[0]
     },
 
+    /**
+     * Updates dashboard name and description
+     */
     async update(id: string, name: string, description?: string) {
       const rows = await db
         .update(dashboards)
@@ -63,11 +75,17 @@ export function createDashboardService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Deletes a dashboard and all its charts
+     */
     async remove(id: string) {
       const rows = await db.delete(dashboards).where(eq(dashboards.id, id)).returning({ id: dashboards.id })
       return rows.length > 0
     },
 
+    /**
+     * Generates a random share token for public dashboard access
+     */
     async createShareToken(id: string) {
       const token = crypto.randomBytes(32).toString('hex')
       const rows = await db
@@ -81,6 +99,9 @@ export function createDashboardService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Removes the share token to disable public access
+     */
     async revokeShareToken(id: string) {
       const rows = await db
         .update(dashboards)
@@ -93,6 +114,9 @@ export function createDashboardService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Sets a cron expression for automatic dashboard refresh
+     */
     async setRefreshCron(id: string, cronExpr: string) {
       const rows = await db
         .update(dashboards)
@@ -102,6 +126,9 @@ export function createDashboardService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Removes the automatic refresh schedule
+     */
     async clearRefreshCron(id: string) {
       const rows = await db
         .update(dashboards)
@@ -111,6 +138,9 @@ export function createDashboardService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Fetches a publicly shared dashboard using its share token
+     */
     async getByShareToken(token: string) {
       const rows = await db.select().from(dashboards).where(eq(dashboards.shareToken, token))
       if (rows.length === 0) return null
@@ -124,6 +154,9 @@ export function createDashboardService(db: Db) {
       return { ...rows[0], charts: chartRows }
     },
 
+    /**
+     * Updates the dashboard thumbnail image
+     */
     async updateThumbnail(id: string, thumbnail: Buffer) {
       const rows = await db
         .update(dashboards)

@@ -11,6 +11,10 @@ declare global {
   }
 }
 
+/**
+ * Middleware that loads a project by ID from route params and attaches it to req.project
+ * Returns 404 if project not found
+ */
 export function loadProject(db: Db) {
   const projectService = createProjectService(db)
 

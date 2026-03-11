@@ -13,6 +13,10 @@ const MYSQL_RULES = `MYSQL SQL RULES:
 - Use LIKE for pattern matching (case-insensitive by default with utf8 collations).
 - Use EXPLAIN to understand query plans if performance is an issue.`
 
+/**
+ * Creates a query executor for MySQL with connection pooling
+ * Includes SQL rules for MySQL-specific syntax and functions
+ */
 export function createMySQLExecutor(dbConfig: MySQLDbConfig): QueryExecutor {
   const poolPromise = mysql.createPool({
     host: dbConfig.host,

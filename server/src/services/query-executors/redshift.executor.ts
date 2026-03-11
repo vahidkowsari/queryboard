@@ -16,6 +16,10 @@ const REDSHIFT_RULES = `REDSHIFT SQL RULES:
 - Use APPROXIMATE COUNT(DISTINCT col) for large cardinality counts.
 - Prefer sort key columns in WHERE and ORDER BY for performance.`
 
+/**
+ * Creates a query executor for Amazon Redshift (PostgreSQL 8.0 based)
+ * Includes SQL rules for Redshift-specific syntax and limitations
+ */
 export function createRedshiftExecutor(dbConfig: RedshiftDbConfig): QueryExecutor {
   const pool = new pg.Pool({
     host: dbConfig.host,

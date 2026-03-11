@@ -4,11 +4,17 @@ import type { Db } from '../db/index.js'
 import type { ChartData } from '../types.js'
 
 export function createChartService(db: Db) {
+  /**
+   * Updates the dashboard's updatedAt timestamp
+   */
   async function touchDashboard(dashboardId: string) {
     await db.update(dashboards).set({ updatedAt: new Date() }).where(eq(dashboards.id, dashboardId))
   }
 
   return {
+    /**
+     * Fetches a specific chart by dashboard and chart ID
+     */
     async getById(dashboardId: string, chartId: string) {
       const rows = await db
         .select()
@@ -17,6 +23,9 @@ export function createChartService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Creates a new chart in a dashboard with auto-incremented position
+     */
     async create(dashboardId: string, data: ChartData) {
       const [{ nextPos }] = await db
         .select({
@@ -46,6 +55,9 @@ export function createChartService(db: Db) {
       return rows[0]
     },
 
+    /**
+     * Updates a chart's configuration and metadata
+     */
     async update(dashboardId: string, chartId: string, data: ChartData) {
       const rows = await db
         .update(charts)
@@ -68,6 +80,9 @@ export function createChartService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Updates only the data field of a chart (used for refresh operations)
+     */
     async updateData(dashboardId: string, chartId: string, data: unknown) {
       const rows = await db
         .update(charts)
@@ -82,6 +97,9 @@ export function createChartService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Reorders charts within a dashboard based on provided chart ID array
+     */
     async reorder(dashboardId: string, chartIds: string[]) {
       await db.transaction(async (tx) => {
         for (let i = 0; i < chartIds.length; i++) {
@@ -94,6 +112,9 @@ export function createChartService(db: Db) {
       })
     },
 
+    /**
+     * Moves a chart from one dashboard to another
+     */
     async move(chartId: string, fromDashboardId: string, toDashboardId: string) {
       const [{ nextPos }] = await db
         .select({ nextPos: sql<number>`COALESCE(MAX(${charts.position}), -1) + 1` })
@@ -113,6 +134,9 @@ export function createChartService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Deletes a chart from a dashboard
+     */
     async remove(dashboardId: string, chartId: string) {
       const rows = await db
         .delete(charts)

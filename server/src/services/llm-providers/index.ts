@@ -5,12 +5,20 @@ import { config } from '../../config.js'
 import type { LLMVendor, LLMConfig } from '../../types.js'
 import type { LanguageModel } from 'ai'
 
+/**
+ * Resolved LLM model with vendor and model ID information
+ */
 interface ResolvedLLM {
   model: LanguageModel
   vendor: LLMVendor
   modelId: string
 }
 
+/**
+ * Creates an LLM model instance based on vendor configuration
+ * Supports Anthropic (Claude), OpenAI (GPT), and Google (Gemini)
+ * Falls back to default API keys from config if not provided
+ */
 export function createLLMModel(llmConfig?: LLMConfig | null): ResolvedLLM {
   const vendor = llmConfig?.vendor ?? 'anthropic'
   const apiKey = llmConfig?.apiKey || getDefaultApiKey(vendor)
@@ -42,6 +50,9 @@ export function createLLMModel(llmConfig?: LLMConfig | null): ResolvedLLM {
   }
 }
 
+/**
+ * Retrieves the default API key for a given LLM vendor from config
+ */
 function getDefaultApiKey(vendor: LLMVendor): string {
   switch (vendor) {
     case 'anthropic':

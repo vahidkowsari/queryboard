@@ -3,6 +3,10 @@ import type { SessionRequest } from 'supertokens-node/framework/express/index.js
 import { createPermissionService, type PermissionLevel } from '../services/permission.service.js'
 import type { Db } from '../db/index.js'
 
+/**
+ * Middleware that checks if a user has the required permission level for a conversation
+ * Admins bypass all checks, editors can view all conversations, viewers need explicit permissions
+ */
 export function requireConversationAccess(db: Db, level: PermissionLevel) {
   const permissionService = createPermissionService(db)
 

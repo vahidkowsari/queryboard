@@ -9,6 +9,9 @@ export interface LLMResult {
   model: string
 }
 
+/**
+ * Sends a prompt to the configured LLM and returns the response with token usage
+ */
 export async function askLLM(prompt: string, maxTokens = 2048, llmConfig?: LLMConfig | null): Promise<LLMResult> {
   const { model, vendor, modelId } = createLLMModel(llmConfig)
   const result = await generateText({

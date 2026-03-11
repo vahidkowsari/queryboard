@@ -6,6 +6,9 @@ import { rowsToObjects } from './chart-agent-handlers.js'
 import { buildSystemPrompt } from './chart-agent-prompts.js'
 import { createDataTools, type ToolHandlerContext, type LogFn } from './agent-tools.js'
 
+/**
+ * Token usage information returned from LLM calls
+ */
 export interface TokenUsageInfo {
   promptTokens: number
   completionTokens: number
@@ -27,6 +30,9 @@ export interface ChartAgentResult {
   filters: ChartFilter[]
 }
 
+/**
+ * Existing chart data that can be used to modify or regenerate a chart
+ */
 export interface ExistingChart {
   sql?: string
   chartSpec?: object
@@ -35,6 +41,9 @@ export interface ExistingChart {
   userQuery?: string
 }
 
+/**
+ * Creates the chart-specific tools including data exploration tools and create_chart
+ */
 function createChartTools(ctx: ToolHandlerContext, log: LogFn, chartSpecDescription: string) {
   return {
     ...createDataTools(ctx, log),
@@ -64,6 +73,10 @@ function createChartTools(ctx: ToolHandlerContext, log: LogFn, chartSpecDescript
   }
 }
 
+/**
+ * Converts string numbers to actual numbers in chart spec data values
+ * This fixes issues where LLMs return numeric data as strings
+ */
 function coerceNumbersInSpec(spec: Record<string, unknown>): void {
   const layers = Array.isArray(spec.layer) ? (spec.layer as Record<string, unknown>[]) : [spec]
   for (const layer of layers) {
@@ -88,6 +101,11 @@ function coerceNumbersInSpec(spec: Record<string, unknown>): void {
 
 const MAX_TURNS = 20
 
+/**
+ * Runs the chart generation agent that explores schema, queries data, and creates visualizations
+ * Uses an agentic loop with tools for data exploration and chart creation
+ * @returns Chart result with title, SQL, data, chart spec, and token usage
+ */
 export async function runChartAgent(
   userQuery: string,
   schema: Schema,
