@@ -6,10 +6,16 @@ export type PermissionLevel = 'view' | 'edit'
 
 export function createPermissionService(db: Db) {
   return {
+    /**
+     * Fetches all permissions for a dashboard
+     */
     async listForDashboard(dashboardId: string) {
       return db.select().from(dashboardPermissions).where(eq(dashboardPermissions.dashboardId, dashboardId))
     },
 
+    /**
+     * Sets a permission for a user or group on a dashboard (replaces existing)
+     */
     async setPermission(dashboardId: string, permission: PermissionLevel, userId?: string, groupId?: string) {
       if (!userId && !groupId) throw new Error('userId or groupId required')
       if (userId && groupId) throw new Error('Cannot specify both userId and groupId')
@@ -35,6 +41,9 @@ export function createPermissionService(db: Db) {
       })
     },
 
+    /**
+     * Removes a specific permission by ID
+     */
     async removePermission(id: string) {
       const rows = await db
         .delete(dashboardPermissions)
@@ -43,10 +52,17 @@ export function createPermissionService(db: Db) {
       return rows.length > 0
     },
 
+    /**
+     * Removes all permissions for a dashboard
+     */
     async removeAllForDashboard(dashboardId: string) {
       await db.delete(dashboardPermissions).where(eq(dashboardPermissions.dashboardId, dashboardId))
     },
 
+    /**
+     * Checks if a user has the required permission level for a dashboard
+     * Returns true if no permissions are set (open access) or user has matching permission
+     */
     async canAccess(dashboardId: string, userId: string, requiredLevel: PermissionLevel): Promise<boolean> {
       // Check if dashboard has any permissions set
       const allPerms = await db
@@ -75,10 +91,16 @@ export function createPermissionService(db: Db) {
       return matchingPerms.some((p) => p.permission === 'edit')
     },
 
+    /**
+     * Fetches all permissions for a conversation
+     */
     async listForConversation(conversationId: string) {
       return db.select().from(conversationPermissions).where(eq(conversationPermissions.conversationId, conversationId))
     },
 
+    /**
+     * Sets a permission for a user or group on a conversation (replaces existing)
+     */
     async setConversationPermission(conversationId: string, permission: PermissionLevel, userId?: string, groupId?: string) {
       if (!userId && !groupId) throw new Error('userId or groupId required')
       if (userId && groupId) throw new Error('Cannot specify both userId and groupId')
@@ -104,6 +126,9 @@ export function createPermissionService(db: Db) {
       })
     },
 
+    /**
+     * Removes a specific conversation permission by ID
+     */
     async removeConversationPermission(id: string) {
       const rows = await db
         .delete(conversationPermissions)
@@ -112,10 +137,17 @@ export function createPermissionService(db: Db) {
       return rows.length > 0
     },
 
+    /**
+     * Removes all permissions for a conversation
+     */
     async removeAllForConversation(conversationId: string) {
       await db.delete(conversationPermissions).where(eq(conversationPermissions.conversationId, conversationId))
     },
 
+    /**
+     * Checks if a user has the required permission level for a conversation
+     * Returns true if no permissions are set (open access) or user has matching permission
+     */
     async canAccessConversation(conversationId: string, userId: string, requiredLevel: PermissionLevel): Promise<boolean> {
       // Check if conversation has any permissions set
       const allPerms = await db

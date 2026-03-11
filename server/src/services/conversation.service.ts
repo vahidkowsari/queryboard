@@ -24,6 +24,9 @@ export interface MessageRow {
 }
 
 export function createConversationService(db: Db) {
+  /**
+   * Fetches all conversations for a project, ordered by most recently updated
+   */
   async function listByProject(projectId: string): Promise<ConversationRow[]> {
     return db
       .select()
@@ -32,6 +35,9 @@ export function createConversationService(db: Db) {
       .orderBy(desc(conversations.updatedAt))
   }
 
+  /**
+   * Fetches a specific conversation by ID
+   */
   async function getById(id: string): Promise<ConversationRow | null> {
     const rows = await db
       .select()
@@ -41,6 +47,9 @@ export function createConversationService(db: Db) {
     return rows[0] ?? null
   }
 
+  /**
+   * Creates a new conversation for a user in a project
+   */
   async function create(projectId: string, userId: string, title?: string): Promise<ConversationRow> {
     const rows = await db
       .insert(conversations)
@@ -49,6 +58,9 @@ export function createConversationService(db: Db) {
     return rows[0]!
   }
 
+  /**
+   * Updates a conversation's title
+   */
   async function updateTitle(id: string, title: string): Promise<ConversationRow | null> {
     const rows = await db
       .update(conversations)
@@ -58,6 +70,9 @@ export function createConversationService(db: Db) {
     return rows[0] ?? null
   }
 
+  /**
+   * Deletes a conversation and all its messages
+   */
   async function remove(id: string): Promise<boolean> {
     const rows = await db
       .delete(conversations)
@@ -66,10 +81,16 @@ export function createConversationService(db: Db) {
     return rows.length > 0
   }
 
+  /**
+   * Updates the conversation's updatedAt timestamp
+   */
   async function touchUpdatedAt(id: string): Promise<void> {
     await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id))
   }
 
+  /**
+   * Fetches all messages for a conversation in chronological order
+   */
   async function getMessages(conversationId: string): Promise<MessageRow[]> {
     return db
       .select()
@@ -78,6 +99,9 @@ export function createConversationService(db: Db) {
       .orderBy(conversationMessages.createdAt)
   }
 
+  /**
+   * Adds a new message to a conversation with optional SQL query and result data
+   */
   async function addMessage(
     conversationId: string,
     role: string,

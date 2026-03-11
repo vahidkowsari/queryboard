@@ -7,6 +7,9 @@ import {
 import { fromSSO } from '@aws-sdk/credential-provider-sso'
 import type { AthenaQueryResult, AthenaDbConfig } from '../types.js'
 
+/**
+ * Creates an AWS Athena client with optional SSO profile authentication
+ */
 export function createAthenaClient(dbConfig: AthenaDbConfig): AthenaClient {
   return new AthenaClient({
     region: dbConfig.region,
@@ -14,6 +17,10 @@ export function createAthenaClient(dbConfig: AthenaDbConfig): AthenaClient {
   })
 }
 
+/**
+ * Executes a SQL query on AWS Athena and polls for results
+ * Waits up to 120 seconds for query completion
+ */
 export async function executeAthenaQuery(
   client: AthenaClient,
   dbConfig: AthenaDbConfig,

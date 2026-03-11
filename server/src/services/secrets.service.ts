@@ -10,6 +10,9 @@ const cache = new Map<string, SecretCache>()
 
 let client: SecretsManagerClient | null = null
 
+/**
+ * Gets or creates a singleton AWS Secrets Manager client
+ */
 function getClient(): SecretsManagerClient {
   if (!client) {
     client = new SecretsManagerClient({
@@ -19,6 +22,9 @@ function getClient(): SecretsManagerClient {
   return client
 }
 
+/**
+ * Fetches a secret from AWS Secrets Manager with 5-minute caching
+ */
 export async function getSecret(secretName: string): Promise<string> {
   const cached = cache.get(secretName)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -45,6 +51,9 @@ export async function getSecret(secretName: string): Promise<string> {
   }
 }
 
+/**
+ * Fetches a secret and parses it as JSON
+ */
 export async function getSecretJson<T = Record<string, string>>(secretName: string): Promise<T> {
   const secretString = await getSecret(secretName)
   try {
@@ -55,6 +64,9 @@ export async function getSecretJson<T = Record<string, string>>(secretName: stri
   }
 }
 
+/**
+ * Clears the secrets cache (useful for testing or forcing refresh)
+ */
 export function clearCache(): void {
   cache.clear()
 }

@@ -18,6 +18,9 @@ import {
   type MergeStrategy,
 } from './chart-agent-handlers.js'
 
+/**
+ * Context passed to tool handlers containing schema, executor, and query results
+ */
 export interface ToolHandlerContext {
   schema: Schema
   executor: QueryExecutor
@@ -27,6 +30,10 @@ export interface ToolHandlerContext {
 
 export type LogFn = (msg: string) => void
 
+/**
+ * Creates all data exploration and query tools available to AI agents
+ * Includes schema inspection, data sampling, SQL execution, and result merging
+ */
 export function createDataTools(ctx: ToolHandlerContext, log: LogFn) {
   return {
     list_tables: tool({

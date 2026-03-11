@@ -7,7 +7,13 @@ import type { DbEngine, DbConfig } from '../types.js'
 
 const activeTasks = new Map<string, ScheduledTask>()
 
+/**
+ * Creates a dashboard refresh scheduler that runs queries on cron schedules
+ */
 export function createRefreshScheduler(db: Db) {
+  /**
+   * Refreshes all charts in a dashboard by re-executing their queries
+   */
   async function refreshDashboard(dashboardId: string) {
     const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId))
     if (!dashboard) return
@@ -41,6 +47,10 @@ export function createRefreshScheduler(db: Db) {
     console.log(`[CronRefresh] Refreshed dashboard "${dashboard.name}" (${dashboardCharts.length} charts)`)
   }
 
+  /**
+   * Schedules a dashboard to refresh on a cron schedule
+   * Validates cron expression and stops any existing schedule
+   */
   function scheduleDashboard(dashboardId: string, cronExpr: string) {
     // Stop existing task if any
     const existing = activeTasks.get(dashboardId)
@@ -63,6 +73,9 @@ export function createRefreshScheduler(db: Db) {
     console.log(`[CronRefresh] Scheduled dashboard ${dashboardId} with cron "${cronExpr}"`)
   }
 
+  /**
+   * Stops the scheduled refresh for a dashboard
+   */
   function unscheduleDashboard(dashboardId: string) {
     const existing = activeTasks.get(dashboardId)
     if (existing) {
@@ -72,6 +85,9 @@ export function createRefreshScheduler(db: Db) {
     }
   }
 
+  /**
+   * Loads and activates all dashboard refresh schedules from the database
+   */
   async function loadAllSchedules() {
     const rows = await db
       .select({ id: dashboards.id, refreshCron: dashboards.refreshCron })

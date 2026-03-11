@@ -24,11 +24,17 @@ export interface TokenUsageSummary {
 }
 
 export const tokenUsageApi = {
+  /**
+   * Fetches paginated token usage records for a project
+   */
   async getByProject(projectId: string, limit = 50, offset = 0): Promise<TokenUsageRow[]> {
     const { data } = await api.get(`/projects/${projectId}/token-usage`, { params: { limit, offset } })
     return data
   },
 
+  /**
+   * Fetches aggregated token usage summary with breakdowns by model and operation
+   */
   async getSummary(projectId: string, days?: number): Promise<TokenUsageSummary> {
     const params: Record<string, number> = {}
     if (days) params.days = days

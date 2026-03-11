@@ -1,5 +1,8 @@
 import type { Schema, QueryExecutor, QueryResult } from '../types.js'
 
+/**
+ * Converts query result rows to array of objects with column names as keys
+ */
 export function rowsToObjects(columns: string[], rows: string[][]): Record<string, string>[] {
   return rows.map((row) => {
     const obj: Record<string, string> = {}
@@ -10,6 +13,9 @@ export function rowsToObjects(columns: string[], rows: string[][]): Record<strin
   })
 }
 
+/**
+ * Formats row counts in human-readable format (K, M, B)
+ */
 function formatRowCount(n?: number): string {
   if (!n) return ''
   if (n >= 1_000_000_000) return `~${(n / 1_000_000_000).toFixed(1)}B rows`
@@ -18,6 +24,9 @@ function formatRowCount(n?: number): string {
   return `~${n} rows`
 }
 
+/**
+ * Lists all tables with descriptions and column counts
+ */
 export function handleListTables(schema: Schema): string {
   const lines = Object.entries(schema.tables).map(([name, info]) => {
     const desc = info.description ? ` — ${info.description}` : ''
@@ -27,6 +36,9 @@ export function handleListTables(schema: Schema): string {
   return lines.join('\n')
 }
 
+/**
+ * Returns column information for a specific table
+ */
 export function handleGetColumns(schema: Schema, tableName: string): string {
   const table = schema.tables[tableName]
   if (!table) return `Error: Table "${tableName}" not found. Use list_tables to see available tables.`
@@ -40,6 +52,9 @@ export function handleGetColumns(schema: Schema, tableName: string): string {
   return `${header}\n${lines.join('\n')}`
 }
 
+/**
+ * Executes a query to get sample rows from a table
+ */
 export async function handleGetSampleData(executor: QueryExecutor, tableName: string, limit: number): Promise<string> {
   const sql = `SELECT * FROM ${tableName} LIMIT ${limit}`
   const result = await executor.execute(sql)
@@ -50,6 +65,10 @@ export async function handleGetSampleData(executor: QueryExecutor, tableName: st
   return text
 }
 
+/**
+ * Gets table row count and column statistics (distinct count, min, max)
+ * Uses approximate functions for large tables to avoid expensive scans
+ */
 export async function handleGetTableStats(executor: QueryExecutor, tableName: string, columns: string[]): Promise<string> {
   // First, get a quick approximate row count using a small LIMIT to avoid full table scan
   const quickCountSql = `SELECT COUNT(*) as approx_count FROM (SELECT 1 FROM ${tableName} LIMIT 10000) t`
@@ -101,6 +120,9 @@ export async function handleGetTableStats(executor: QueryExecutor, tableName: st
   return text
 }
 
+/**
+ * Searches for tables and columns matching a keyword
+ */
 export function handleSearchTables(schema: Schema, keyword: string): string {
   const lower = keyword.toLowerCase()
   const matches: string[] = []
@@ -127,6 +149,9 @@ export function handleSearchTables(schema: Schema, keyword: string): string {
   return `Found ${matches.length} matches for "${keyword}":\n${matches.join('\n')}`
 }
 
+/**
+ * Gets distinct values and their counts for a column
+ */
 export async function handleGetDistinctValues(
   executor: QueryExecutor,
   tableName: string,
@@ -144,6 +169,9 @@ export async function handleGetDistinctValues(
   return text
 }
 
+/**
+ * Analyzes NULL vs non-NULL counts for specified columns
+ */
 export async function handleGetNullAnalysis(
   executor: QueryExecutor,
   tableName: string,
@@ -168,6 +196,9 @@ export async function handleGetNullAnalysis(
   return text
 }
 
+/**
+ * Gets min, max, and distinct count for a date/timestamp column
+ */
 export async function handleGetDateRange(
   executor: QueryExecutor,
   tableName: string,
@@ -180,6 +211,9 @@ export async function handleGetDateRange(
   return `Date range for ${tableName}.${column}: min=${row[0] ?? '?'}, max=${row[1] ?? '?'}, ${row[2] ?? '?'} distinct values`
 }
 
+/**
+ * Detects likely foreign key relationships based on column naming patterns
+ */
 export function handleGetTableRelationships(schema: Schema): string {
   const tables = Object.entries(schema.tables)
   const tableNames = new Set(Object.keys(schema.tables))
@@ -217,6 +251,10 @@ export interface StoredQueryResult {
 
 export type MergeStrategy = 'concat' | 'join' | 'label'
 
+/**
+ * Merges multiple stored query results using different strategies
+ * Strategies: concat (union with _source), join (left join on key), label (stack with _source)
+ */
 export function handleMergeResults(
   storedResults: StoredQueryResult[],
   names: string[],
@@ -315,11 +353,17 @@ export function handleMergeResults(
   }
 }
 
+/**
+ * Validates SQL syntax using EXPLAIN without executing the query
+ */
 export async function handleValidateSql(executor: QueryExecutor, sql: string): Promise<string> {
   const result = await executor.execute(`EXPLAIN ${sql}`)
   return `SQL is valid. Query plan:\n${result.rows.map((r) => r.join(' ')).join('\n')}`
 }
 
+/**
+ * Extracts table names from SQL and provides column hints for error messages
+ */
 export function getColumnHintFromSql(sql: string, schema: Schema): string | null {
   const tableNames = Object.keys(schema.tables)
   const sqlLower = sql.toLowerCase()
@@ -333,6 +377,10 @@ export function getColumnHintFromSql(sql: string, schema: Schema): string | null
   return `⚠️ Use get_columns to verify column names before retrying. Here are the actual columns for the tables in your query:\n${lines.join('\n')}`
 }
 
+/**
+ * Executes a SQL query with automatic LIMIT if not specified
+ * Returns both the result and a formatted text description
+ */
 export async function handleRunQuery(executor: QueryExecutor, sql: string, limit: number = 10000): Promise<{ result: QueryResult; text: string }> {
   const hasLimit = /\bLIMIT\s+\d+/i.test(sql)
   const finalSql = hasLimit ? sql : `${sql.replace(/;\s*$/, '')} LIMIT ${limit}`

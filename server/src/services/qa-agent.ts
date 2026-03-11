@@ -5,6 +5,9 @@ import { rowsToObjects } from './chart-agent-handlers.js'
 import { createDataTools, type ToolHandlerContext } from './agent-tools.js'
 import type { TokenUsageInfo } from './chart-agent.js'
 
+/**
+ * Result from the QA agent containing answer, optional SQL/data, and token usage
+ */
 export interface QAResult {
   answer: string
   sql?: string
@@ -44,6 +47,9 @@ This database may have tables with billions of rows. You MUST follow these rules
 Be concise but thorough. Include specific numbers and data when available.
 After a successful run_query, call answer_question — do NOT run unnecessary extra queries.`
 
+/**
+ * Creates the QA-specific tools including data exploration and answer_question
+ */
 function createQATools(ctx: ToolHandlerContext, log: (msg: string) => void) {
   return {
     ...createDataTools(ctx, log),
@@ -70,11 +76,19 @@ function createQATools(ctx: ToolHandlerContext, log: (msg: string) => void) {
 
 const MAX_TURNS = 10
 
+/**
+ * Message format for conversation history
+ */
 export interface ConversationHistoryMessage {
   role: 'user' | 'assistant'
   content: string
 }
 
+/**
+ * Runs the Q&A agent that answers questions about data using schema exploration and SQL queries
+ * Supports conversation history for multi-turn conversations
+ * @returns Answer with optional SQL query, data, and token usage
+ */
 export async function runQAAgent(
   question: string,
   schema: Schema,

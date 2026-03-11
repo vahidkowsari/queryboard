@@ -15,6 +15,10 @@ const BIGQUERY_RULES = `BIGQUERY SQL RULES:
 - Avoid SELECT * on large tables — always specify columns.
 - Use SAFE_CAST() for safe type conversions that return NULL instead of errors.`
 
+/**
+ * Creates a query executor for Google BigQuery
+ * Includes SQL rules for BigQuery Standard SQL syntax
+ */
 export function createBigQueryExecutor(dbConfig: BigQueryDbConfig): QueryExecutor {
   const bq = new BigQuery({
     projectId: dbConfig.projectId,

@@ -14,6 +14,10 @@ import type {
   RedshiftDbConfig,
 } from '../../types.js'
 
+/**
+ * Factory function that creates the appropriate query executor based on database engine
+ * Each executor handles database-specific SQL syntax and connection management
+ */
 export function createQueryExecutor(engine: DbEngine, config: DbConfig): QueryExecutor {
   switch (engine) {
     case 'athena':

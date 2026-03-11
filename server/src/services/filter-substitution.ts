@@ -25,6 +25,10 @@ export function substituteFilters(
   return sql
 }
 
+/**
+ * Formats and validates a filter value based on its type
+ * Handles dates, numbers, booleans, and string escaping
+ */
 function formatFilterValue(type: ChartFilter['type'], value: string): string {
   switch (type) {
     case 'date':
@@ -53,6 +57,9 @@ function formatFilterValue(type: ChartFilter['type'], value: string): string {
       return value === 'true' || value === '1' ? 'true' : 'false'
 
     default:
+/**
+ * Escapes single quotes in strings and wraps in quotes for SQL safety
+ */
       return escapeString(value)
   }
 }

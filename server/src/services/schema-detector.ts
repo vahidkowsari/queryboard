@@ -8,6 +8,10 @@ const SCHEMA_PATH = join(__dirname, '..', '..', 'schema.json')
 
 let cachedSchema: Schema | null = null
 
+/**
+ * Detects database schema using the provided schema provider
+ * Caches schema to disk and memory for faster subsequent loads
+ */
 export async function detectSchema(provider: SchemaProvider, { force = false } = {}): Promise<Schema> {
   if (cachedSchema && !force) return cachedSchema
 
@@ -38,10 +42,17 @@ export async function detectSchema(provider: SchemaProvider, { force = false } =
   return schema
 }
 
+/**
+ * Returns the currently cached schema without re-detection
+ */
 export function getSchema(): Schema | null {
   return cachedSchema
 }
 
+/**
+ * Converts schema to a formatted prompt string for LLM agents
+ * Includes table/column descriptions and SQL safety rules
+ */
 export function schemaToPrompt(schema: Schema | null, rules = ''): string {
   if (!schema) return 'No schema available.'
 
@@ -69,12 +80,19 @@ export function schemaToPrompt(schema: Schema | null, rules = ''): string {
   return prompt
 }
 
+/**
+ * Returns a list of table names with their descriptions
+ */
 export function tableNamesWithDescriptions(schema: Schema): string {
   return Object.entries(schema.tables)
     .map(([name, info]) => (info.description ? `${name} — ${info.description}` : name))
     .join('\n')
 }
 
+/**
+ * Converts a subset of tables to a formatted prompt string for LLM agents
+ * Used when only specific tables are relevant to a query
+ */
 export function selectedTablesToPrompt(schema: Schema, tables: string[], rules = ''): string {
   let prompt = `Database: ${schema.database} (${schema.engine})\n\nRelevant tables and columns:\n\n`
   for (const table of tables) {

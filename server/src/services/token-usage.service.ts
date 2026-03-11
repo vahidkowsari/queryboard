@@ -6,6 +6,9 @@ import { estimateCost } from './token-costs.js'
 
 export function createTokenUsageService(db: Db) {
   return {
+    /**
+     * Records LLM token usage with estimated cost
+     */
     async record(data: TokenUsageRecord) {
       const cost = data.estimatedCost ?? String(estimateCost(data.model, data.promptTokens, data.completionTokens))
       await db.insert(tokenUsage).values({
@@ -21,6 +24,9 @@ export function createTokenUsageService(db: Db) {
       })
     },
 
+    /**
+     * Fetches paginated token usage records for a project
+     */
     async getByProject(projectId: string, limit = 50, offset = 0) {
       return db
         .select()
@@ -31,6 +37,9 @@ export function createTokenUsageService(db: Db) {
         .offset(offset)
     },
 
+    /**
+     * Generates aggregated token usage summary with breakdowns by model and operation
+     */
     async getSummary(projectId: string, sinceDays?: number): Promise<TokenUsageSummary> {
       const conditions = [eq(tokenUsage.projectId, projectId)]
       if (sinceDays) {
