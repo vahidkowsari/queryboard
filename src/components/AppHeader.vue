@@ -1,46 +1,55 @@
 <template>
   <header class="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
     <div class="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6 md:px-8">
-      <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-80 transition-opacity">
-        <div class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8">
-          <img src="/logo.svg" alt="QueryBoard" class="w-full h-full" />
-        </div>
-        <span class="font-bold text-base sm:text-lg tracking-tight hidden xs:inline">QueryBoard</span>
-      </router-link>
-
-      <nav v-if="showBreadcrumb" class="hidden sm:flex items-center gap-1.5 text-sm">
-        <router-link to="/" class="text-muted-foreground hover:text-foreground transition-colors">
-          Projects
+      <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-80 transition-opacity shrink-0">
+          <div class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8">
+            <img src="/logo.svg" alt="QueryBoard" class="w-full h-full" />
+          </div>
+          <span class="font-bold text-base sm:text-lg tracking-tight hidden xs:inline">QueryBoard</span>
         </router-link>
-        <ChevronRight :size="14" class="text-muted-foreground/50" />
-        <router-link
-          :to="`/projects/${projectStore.currentProject!.id}`"
-          class="text-muted-foreground hover:text-foreground transition-colors max-w-[200px] truncate"
-        >
-          {{ projectStore.currentProject!.name }}
-        </router-link>
-        <template v-if="pageTitle">
-          <ChevronRight :size="14" class="text-muted-foreground/50" />
-          <span class="text-foreground font-medium truncate max-w-[200px]">{{ pageTitle }}</span>
+        <template v-if="showBreadcrumb">
+          <ChevronRight :size="14" class="text-muted-foreground/50 shrink-0 hidden sm:block" />
+          <nav class="hidden sm:flex items-center gap-1.5 text-sm min-w-0">
+            <router-link
+              :to="`/projects/${projectStore.currentProject!.id}`"
+              class="text-muted-foreground hover:text-foreground transition-colors max-w-[200px] truncate"
+            >
+              {{ projectStore.currentProject!.name }}
+            </router-link>
+            <template v-if="pageTitle">
+              <ChevronRight :size="14" class="text-muted-foreground/50 shrink-0" />
+              <span class="text-foreground font-medium truncate max-w-[200px]">{{ pageTitle }}</span>
+            </template>
+          </nav>
         </template>
-      </nav>
-      <div v-else />
+      </div>
 
-      <div class="flex items-center gap-2 sm:gap-3">
+      <button
+        @click="showSearch = !showSearch"
+        class="hidden sm:flex items-center gap-2.5 w-56 lg:w-64 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 text-sm text-muted-foreground hover:bg-muted hover:border-border transition-all"
+        title="Search (Ctrl+K)"
+      >
+        <Search :size="15" class="shrink-0 opacity-50" />
+        <span class="flex-1 text-left text-muted-foreground/70">Search...</span>
+        <kbd class="flex items-center gap-0.5 rounded-md border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium font-mono text-muted-foreground/60">⌘K</kbd>
+      </button>
+      <button
+        @click="showSearch = !showSearch"
+        class="sm:hidden flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title="Search"
+      >
+        <Search :size="16" />
+      </button>
+
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <span
-          class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+          class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium min-w-[70px] justify-center"
           :class="roleBadge.classes"
         >
           <Eye v-if="primaryRole === 'viewer'" :size="12" />
           {{ roleBadge.label }}
         </span>
-        <button
-          @click="showSearch = !showSearch"
-          class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          title="Search (Ctrl+K)"
-        >
-          <Search :size="16" />
-        </button>
         <button
           @click="toggleDark"
           class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
