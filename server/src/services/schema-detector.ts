@@ -13,8 +13,10 @@ let cachedSchema: Schema | null = null
  * Caches schema to disk and memory for faster subsequent loads
  */
 export async function detectSchema(provider: SchemaProvider, { force = false } = {}): Promise<Schema> {
+  // Return cached schema if available and not forcing refresh
   if (cachedSchema && !force) return cachedSchema
 
+  // Try to load from disk cache first
   if (!force && existsSync(SCHEMA_PATH)) {
     try {
       const raw = readFileSync(SCHEMA_PATH, 'utf-8')
@@ -27,10 +29,12 @@ export async function detectSchema(provider: SchemaProvider, { force = false } =
     }
   }
 
+  // Auto-detect schema from database
   console.log(`Schema: Auto-detecting via ${provider.name} provider...`)
   const schema = await provider.detectSchema()
   cachedSchema = schema
 
+  // Save to disk for future loads
   try {
     writeFileSync(SCHEMA_PATH, JSON.stringify(schema, null, 2))
     console.log(`Schema: Saved to ${SCHEMA_PATH}`)
@@ -56,10 +60,12 @@ export function getSchema(): Schema | null {
 export function schemaToPrompt(schema: Schema | null, rules = ''): string {
   if (!schema) return 'No schema available.'
 
+  // Build formatted schema description for LLM
   let prompt = `Database: ${schema.database} (${schema.engine || 'unknown'})\n\nAvailable tables and columns:\n\n`
   for (const [table, info] of Object.entries(schema.tables)) {
     const tableDesc = info.description ? ` — ${info.description}` : ''
     prompt += `${table}${tableDesc}\n`
+    // List all columns with types and descriptions
     for (const c of info.columns) {
       const name = typeof c === 'string' ? c : c.name
       const type = typeof c === 'string' ? '' : c.type
@@ -69,12 +75,14 @@ export function schemaToPrompt(schema: Schema | null, rules = ''): string {
     prompt += '\n'
   }
 
+  // Add safety rules to prevent LLM hallucination
   prompt += `IMPORTANT RULES:
 - ONLY use the tables and columns listed above. Do NOT invent or guess column names.
 - If a column you need does not exist, use the closest available column or explain the limitation.
 - When joining, double-check that the column you reference actually belongs to the table alias you use. Verify against the column lists above.
 - Always use LIMIT to avoid scanning too much data.`
 
+  // Append database-specific SQL rules if provided
   if (rules) prompt += '\n' + rules
 
   return prompt

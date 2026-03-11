@@ -119,6 +119,7 @@ export async function runChartAgent(
   colorConfig?: ColorConfig | null,
   signal?: AbortSignal,
 ): Promise<ChartAgentResult> {
+  // Track all steps for debugging and user feedback
   const steps: string[] = []
   const log = (msg: string) => {
     steps.push(msg)
@@ -126,15 +127,18 @@ export async function runChartAgent(
     console.log(`ChartAgent: ${msg}`)
   }
 
+  // Initialize LLM model and chart library configuration
   const { model, vendor, modelId } = createLLMModel(llmConfig)
   const libConfig = getChartLibraryConfig(chartLibrary)
   log(`Using ${vendor}/${modelId}, chart library: ${libConfig.name}`)
 
+  // Add chart type hint to system prompt if user specified a type
   const chartTypeHint =
     chartType && chartType !== 'auto'
       ? `\nThe user has specifically requested a ${chartType} chart. Use that type unless the data is incompatible.\n`
       : ''
 
+  // Build system prompt with all necessary context and rules
   const systemPrompt = buildSystemPrompt({
     existingChart,
     sqlRules: executor.sqlRules,
@@ -143,14 +147,17 @@ export async function runChartAgent(
     colorConfig,
   })
 
+  // Initialize tool context and agent tools
   const ctx: ToolHandlerContext = { schema, executor, lastQueryResult: null, storedResults: [] }
   const agentTools = createChartTools(ctx, log, libConfig.specDescription)
   const messages: ModelMessage[] = [{ role: 'user', content: userQuery }]
   const tokenUsage: TokenUsageInfo = { promptTokens: 0, completionTokens: 0, totalTokens: 0, vendor, model: modelId }
 
+  // Main agentic loop - agent explores schema, queries data, and creates chart
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     console.log(`ChartAgent: Turn ${turn + 1}`)
 
+    // Force chart creation if running out of turns and we have data
     if (turn >= MAX_TURNS - 2 && ctx.lastQueryResult) {
       messages.push({
         role: 'user',
@@ -159,6 +166,7 @@ export async function runChartAgent(
       })
     }
 
+    // Call LLM with tools - it will decide which tool to use or create the chart
     const result = await generateText({
       model,
       system: systemPrompt,
@@ -168,16 +176,19 @@ export async function runChartAgent(
       abortSignal: signal,
     })
 
+    // Track token usage for cost monitoring
     const turnInput = result.usage?.inputTokens ?? 0
     const turnOutput = result.usage?.outputTokens ?? 0
     tokenUsage.promptTokens += turnInput
     tokenUsage.completionTokens += turnOutput
     tokenUsage.totalTokens += turnInput + turnOutput
 
+    // Stream thinking text to UI if provided
     if (result.text?.trim()) {
       onThinking?.(result.text)
     }
 
+    // Check if agent called create_chart tool - this ends the loop
     const createChartCall = result.toolCalls?.find((tc) => tc.toolName === 'create_chart')
     if (createChartCall) {
       const input = (
@@ -187,14 +198,17 @@ export async function runChartAgent(
       ).input
       log(`Creating chart: "${input.title}"`)
 
+      // Parse and validate chart specification JSON from LLM
       let chartSpec: object
       try {
         chartSpec = JSON.parse(input.chart_spec)
+        // Fix LLM tendency to return numbers as strings
         coerceNumbersInSpec(chartSpec as Record<string, unknown>)
       } catch {
         throw new Error(`Failed to parse chart spec JSON. The LLM returned invalid JSON (possibly truncated). Raw start: ${input.chart_spec?.substring(0, 200)}...`)
       }
 
+      // Parse optional filters if provided
       let filters: ChartFilter[] = []
       if (input.filters) {
         try {
@@ -205,6 +219,7 @@ export async function runChartAgent(
         }
       }
 
+      // Get data from last query result or existing chart
       let data: Record<string, string>[] = []
       let columns: string[] = []
       if (ctx.lastQueryResult) {
@@ -229,12 +244,15 @@ export async function runChartAgent(
       }
     }
 
+    // If no tool calls, agent is stuck - throw error
     if (!result.toolCalls || result.toolCalls.length === 0) {
       throw new Error(`Agent finished without creating a chart: ${result.text || 'No response'}`)
     }
 
+    // Add agent's response to message history for next turn
     messages.push(...result.response.messages)
   }
 
+  // If we exit loop without creating chart, agent failed
   throw new Error('Agent exceeded maximum turns without creating a chart')
 }

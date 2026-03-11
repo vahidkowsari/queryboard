@@ -99,6 +99,7 @@ export async function runQAAgent(
   signal?: AbortSignal,
   conversationHistory?: ConversationHistoryMessage[],
 ): Promise<QAResult> {
+  // Track all steps for debugging
   const steps: string[] = []
   const log = (msg: string) => {
     steps.push(msg)
@@ -106,25 +107,29 @@ export async function runQAAgent(
     console.log(`QAAgent: ${msg}`)
   }
 
+  // Initialize LLM model
   const { model, vendor, modelId } = createLLMModel(llmConfig)
   log(`Using ${vendor}/${modelId}`)
 
-  const sqlRules = executor.sqlRules || ''
-  const systemPrompt = `${SYSTEM_PROMPT}\n\n${sqlRules}`
-
+  // Initialize tool context and agent tools
   const ctx: ToolHandlerContext = { schema, executor, lastQueryResult: null, storedResults: [] }
   const agentTools = createQATools(ctx, log)
-  
-  const messages: ModelMessage[] = [
-    ...(conversationHistory || []).map(msg => ({ role: msg.role, content: msg.content })),
-    { role: 'user', content: question }
-  ]
-  
+  const messages: ModelMessage[] = [{ role: 'user', content: question }]
+
+  // Prepend conversation history for multi-turn conversations
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const msg of conversationHistory) {
+      messages.unshift({ role: msg.role, content: msg.content })
+    }
+  }
+
   const tokenUsage: TokenUsageInfo = { promptTokens: 0, completionTokens: 0, totalTokens: 0, vendor, model: modelId }
 
+  // Main agent loop - agent explores schema and queries data to answer question
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     console.log(`QAAgent: Turn ${turn + 1}`)
 
+    // Warn agent to answer soon if running out of turns
     if (turn >= MAX_TURNS - 2) {
       messages.push({
         role: 'user',
@@ -132,35 +137,42 @@ export async function runQAAgent(
       })
     }
 
+    // Call LLM with tools - it will decide which tool to use or answer the question
     const result = await generateText({
       model,
-      system: systemPrompt,
+      system: SYSTEM_PROMPT,
       messages,
       tools: agentTools,
       maxOutputTokens: 8192,
       abortSignal: signal,
     })
 
+    // Track token usage for cost monitoring
     const turnInput = result.usage?.inputTokens ?? 0
     const turnOutput = result.usage?.outputTokens ?? 0
     tokenUsage.promptTokens += turnInput
     tokenUsage.completionTokens += turnOutput
     tokenUsage.totalTokens += turnInput + turnOutput
 
+    // Stream thinking text to UI if provided
     if (result.text?.trim()) {
       onThinking?.(result.text)
     }
 
+    // Check if agent called answer_question tool - this ends the loop
     const answerCall = result.toolCalls?.find((tc) => tc.toolName === 'answer_question')
     if (answerCall) {
       const input = (answerCall as unknown as { input: { answer: string; sql?: string } }).input
       log('Answering question')
 
+      // Include query data if agent ran a query
       let data: Record<string, string>[] | undefined
       let columns: string[] | undefined
+      let sql: string | undefined
       if (ctx.lastQueryResult) {
         columns = ctx.lastQueryResult.columns
         data = rowsToObjects(columns, ctx.lastQueryResult.rows)
+        sql = 'See steps for SQL query'
       }
 
       return {
@@ -173,17 +185,15 @@ export async function runQAAgent(
       }
     }
 
+    // If no tool calls, agent is stuck - throw error
     if (!result.toolCalls || result.toolCalls.length === 0) {
-      // If the model responds with text only (no tool call), treat it as the answer
-      return {
-        answer: result.text || 'I was unable to answer the question.',
-        steps,
-        tokenUsage,
-      }
+      throw new Error(`Agent finished without answering: ${result.text || 'No response'}`)
     }
 
+    // Add agent's response to message history for next turn
     messages.push(...result.response.messages)
   }
 
+  // If we exit loop without answering, agent failed
   throw new Error('Agent exceeded maximum turns without answering')
 }

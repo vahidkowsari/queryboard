@@ -261,6 +261,7 @@ export function handleMergeResults(
   strategy: MergeStrategy,
   joinKey?: string,
 ): { result: QueryResult; text: string } {
+  // Find requested results and validate they exist
   const selected = names.map((n) => storedResults.find((s) => s.name === n))
   const missing = names.filter((_, i) => !selected[i])
   if (missing.length > 0) {
@@ -272,6 +273,7 @@ export function handleMergeResults(
 
   const results = selected as StoredQueryResult[]
 
+  // CONCAT strategy: Union all results with _source column to identify origin
   if (strategy === 'concat') {
     const allCols = new Set<string>()
     for (const r of results) r.result.columns.forEach((c) => allCols.add(c))
@@ -295,23 +297,28 @@ export function handleMergeResults(
     return { result: merged, text }
   }
 
+  // JOIN strategy: Left join two results on a key column
   if (strategy === 'join' && joinKey) {
     const [left, right] = results
     const rightMap = new Map<string, string[]>()
     const rightKeyIdx = right.result.columns.indexOf(joinKey)
     const leftKeyIdx = left.result.columns.indexOf(joinKey)
+    // Validate join key exists in both results
     if (leftKeyIdx < 0 || rightKeyIdx < 0) {
       return {
         result: { columns: [], rows: [] },
         text: `Error: Join key "${joinKey}" not found in both results. Left columns: ${left.result.columns.join(', ')}. Right columns: ${right.result.columns.join(', ')}`,
       }
     }
+    // Build lookup map for right table
     for (const row of right.result.rows) {
       rightMap.set(row[rightKeyIdx], row)
     }
+    // Combine columns (excluding duplicate join key from right)
     const rightExtraCols = right.result.columns.filter((c) => c !== joinKey)
     const columns = [...left.result.columns, ...rightExtraCols]
     const rows: string[][] = []
+    // Perform left join
     for (const leftRow of left.result.rows) {
       const key = leftRow[leftKeyIdx]
       const rightRow = rightMap.get(key)
@@ -330,10 +337,12 @@ export function handleMergeResults(
     return { result: merged, text }
   }
 
+  // LABEL strategy: Stack results with same schema, adding _source column
   if (strategy === 'label') {
     const first = results[0]
     const columns = ['_source', ...first.result.columns]
     const rows: string[][] = []
+    // Stack all rows with source label
     for (const r of results) {
       for (const row of r.result.rows) {
         rows.push([r.name, ...row])
