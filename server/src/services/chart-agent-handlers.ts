@@ -51,21 +51,43 @@ export async function handleGetSampleData(executor: QueryExecutor, tableName: st
 }
 
 export async function handleGetTableStats(executor: QueryExecutor, tableName: string, columns: string[]): Promise<string> {
-  const countSql = `SELECT COUNT(*) as row_count FROM ${tableName}`
-  const countResult = await executor.execute(countSql)
-  const rowCount = countResult.rows[0]?.[0] ?? 'unknown'
+  // First, get a quick approximate row count using a small LIMIT to avoid full table scan
+  const quickCountSql = `SELECT COUNT(*) as approx_count FROM (SELECT 1 FROM ${tableName} LIMIT 10000) t`
+  let rowCount = 'unknown'
+  let isApproximate = false
+  
+  try {
+    const quickResult = await executor.execute(quickCountSql)
+    const count = Number(quickResult.rows[0]?.[0] ?? 0)
+    if (count >= 10000) {
+      rowCount = '10K+ (large table)'
+      isApproximate = true
+    } else if (count > 0) {
+      // For smaller tables, get exact count
+      const exactCountSql = `SELECT COUNT(*) as row_count FROM ${tableName}`
+      const exactResult = await executor.execute(exactCountSql)
+      rowCount = exactResult.rows[0]?.[0] ?? 'unknown'
+    }
+  } catch {
+    rowCount = 'unknown'
+  }
 
-  const statParts = columns.slice(0, 6).map((col) =>
-    `COUNT(DISTINCT ${col}) as ${col}_distinct, MIN(${col}) as ${col}_min, MAX(${col}) as ${col}_max`
-  )
-  const statsSql = `SELECT ${statParts.join(', ')} FROM ${tableName} LIMIT 1`
+  // Use approximate functions for large tables to avoid expensive scans
+  const statParts = columns.slice(0, 6).map((col) => {
+    if (isApproximate) {
+      return `approx_distinct(${col}) as ${col}_distinct, MIN(${col}) as ${col}_min, MAX(${col}) as ${col}_max`
+    }
+    return `COUNT(DISTINCT ${col}) as ${col}_distinct, MIN(${col}) as ${col}_min, MAX(${col}) as ${col}_max`
+  })
+  
+  const statsSql = `SELECT ${statParts.join(', ')} FROM ${tableName}`
 
-  let text = `Table: ${tableName}\nTotal rows: ${rowCount}\n`
+  let text = `Table: ${tableName}\nTotal rows: ${rowCount}${isApproximate ? ' (⚠️ LARGE TABLE - use LIMIT in queries!)' : ''}\n`
   try {
     const statsResult = await executor.execute(statsSql)
     const row = statsResult.rows[0]
     if (row) {
-      text += `Column stats:\n`
+      text += `Column stats${isApproximate ? ' (approximate)' : ''}:\n`
       columns.slice(0, 6).forEach((col, i) => {
         const distinct = row[i * 3] ?? '?'
         const min = row[i * 3 + 1] ?? '?'

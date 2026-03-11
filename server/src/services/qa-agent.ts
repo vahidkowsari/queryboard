@@ -20,16 +20,26 @@ You have access to tools that let you explore the schema and run SQL queries. Us
 
 Workflow:
 1. If the question is about schema (tables, columns, relationships), use schema exploration tools (list_tables, get_columns, search_tables, get_table_relationships) and answer directly.
-2. If the question requires querying data (counts, aggregations, lookups), explore the schema first, then run a SQL query to get the answer.
+2. If the question requires querying data (counts, aggregations, lookups):
+   a. First, use get_table_stats to check table size before writing queries
+   b. If table shows "LARGE TABLE" warning, use LIMIT aggressively in all queries
+   c. Explore the schema, then run a SQL query to get the answer
 3. Call answer_question when you have enough information to provide a complete answer.
 
 ⚠️ CRITICAL — LARGE TABLE SAFETY:
 This database may have tables with billions of rows. You MUST follow these rules:
-1. EVERY query on a fact table (>1M rows) MUST include a LIMIT in CTEs/subqueries.
-2. For aggregations on large tables, limit input rows first.
-3. NEVER join two large fact tables directly without filtering.
-4. Use dimension tables (dim_*) freely — they are small.
-5. If a query fails with "scan limit" or "CANCELLED", reduce the LIMIT and retry.
+1. ALWAYS call get_table_stats FIRST to check table size before querying
+2. For tables marked "LARGE TABLE" (>1M rows):
+   - EVERY query MUST include LIMIT (start with 50K-100K max)
+   - Use approx_distinct() instead of COUNT(DISTINCT)
+   - Use approx_percentile(col, 0.5) for medians/percentiles
+   - Filter data BEFORE aggregating (use WHERE with date ranges, etc.)
+3. NEVER join two large fact tables directly without filtering first
+4. Use dimension tables (dim_*) freely — they are small
+5. If a query fails with "CANCELLED" or times out:
+   - Reduce LIMIT by 50% and retry
+   - Add more WHERE filters to reduce data scanned
+   - Use approximate functions instead of exact counts
 
 Be concise but thorough. Include specific numbers and data when available.
 After a successful run_query, call answer_question — do NOT run unnecessary extra queries.`
