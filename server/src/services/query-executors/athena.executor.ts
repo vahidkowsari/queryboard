@@ -10,7 +10,13 @@ const ATHENA_RULES = `ATHENA SQL RULES:
 - Always use LIMIT to avoid scanning too much data.
 - Prefer simple flat queries over complex CTEs.
 - JOIN KEYS: fact tables join to dimension tables via matching column names.
-- Dimension tables with only ID columns have no descriptive name columns — group by the ID directly.`
+- Dimension tables with only ID columns have no descriptive name columns — group by the ID directly.
+
+APPROXIMATE FUNCTIONS (use for large tables >1M rows):
+- approx_distinct(col) — approximate distinct count (faster than COUNT(DISTINCT))
+- approx_percentile(col, 0.5) — approximate median (NOT percentile_approx!)
+- approx_percentile(col, array[0.25, 0.5, 0.75]) — multiple percentiles
+- These functions are much faster on large datasets and should be preferred when exact precision is not critical.`
 
 export function createAthenaExecutor(dbConfig: AthenaDbConfig): QueryExecutor {
   const client = createAthenaClient(dbConfig)

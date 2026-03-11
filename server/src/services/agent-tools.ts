@@ -82,7 +82,7 @@ export function createDataTools(ctx: ToolHandlerContext, log: LogFn) {
     }),
     get_table_stats: tool({
       description:
-        'Get row count and column statistics (distinct count, min, max) for a table. Use this to understand data distribution before choosing aggregations or filters.',
+        'Get row count and column statistics (distinct count, min, max) for a table. ALWAYS call this FIRST before querying a table to check if it is large (>1M rows). Large tables require LIMIT clauses and approximate functions. Use this to understand data distribution before choosing aggregations or filters.',
       inputSchema: jsonSchema<{ table_name: string; columns: string[] }>({
         type: 'object',
         properties: {
