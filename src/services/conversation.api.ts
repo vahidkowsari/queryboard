@@ -18,6 +18,7 @@ export interface ConversationMessage {
   data?: Record<string, string>[] | null
   columns?: string[] | null
   steps?: string[] | null
+  thinkingTexts?: string[] | null
   createdAt: string
 }
 

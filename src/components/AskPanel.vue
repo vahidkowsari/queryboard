@@ -23,6 +23,7 @@ interface Message {
   data?: Record<string, string>[]
   columns?: string[]
   steps?: string[]
+  thinkingTexts?: string[]
 }
 
 const conversations = ref<Conversation[]>([])
@@ -36,9 +37,11 @@ const inputRef = ref<HTMLTextAreaElement | null>(null)
 const messagesRef = ref<HTMLElement | null>(null)
 const expandedSql = ref<number | null>(null)
 const expandedData = ref<number | null>(null)
+const expandedReasoning = ref<number | null>(null)
 const showSidebar = ref(true)
 const copiedIndex = ref<number | null>(null)
 const panelMode = ref<'float' | 'maximized'>('float')
+const thinkingTexts = ref<string[]>([])
 
 async function copyToClipboard(text: string, index: number) {
   await navigator.clipboard.writeText(text)
@@ -70,6 +73,7 @@ async function selectConversation(conv: Conversation) {
   messages.value = []
   expandedSql.value = null
   expandedData.value = null
+  expandedReasoning.value = null
   try {
     const full = await conversationApi.get(props.projectId, conv.id)
     messages.value = full.messages.map((m: ConversationMessage) => ({
@@ -79,6 +83,7 @@ async function selectConversation(conv: Conversation) {
       data: (m.data as Record<string, string>[] | null) ?? undefined,
       columns: (m.columns as string[] | null) ?? undefined,
       steps: (m.steps as string[] | null) ?? undefined,
+      thinkingTexts: (m.thinkingTexts as string[] | null) ?? undefined,
     }))
     scrollToBottom()
   } catch {
@@ -92,6 +97,7 @@ function startNewConversation() {
   messages.value = []
   expandedSql.value = null
   expandedData.value = null
+  expandedReasoning.value = null
   nextTick(() => inputRef.value?.focus())
 }
 
@@ -136,6 +142,7 @@ async function ask() {
   question.value = ''
   loading.value = true
   agentSteps.value = []
+  thinkingTexts.value = []
   scrollToBottom()
 
   try {
@@ -181,7 +188,13 @@ async function ask() {
               loadConversations()
             } else if (eventType === 'step') {
               agentSteps.value.push(data.step)
+              thinkingTexts.value.push('')
               scrollToBottom()
+            } else if (eventType === 'thinking') {
+              const idx = agentSteps.value.length - 1
+              if (idx >= 0) {
+                thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
+              }
             } else if (eventType === 'result') {
               messages.value.push({
                 role: 'assistant',
@@ -190,6 +203,7 @@ async function ask() {
                 data: data.data,
                 columns: data.columns,
                 steps: data.steps,
+                thinkingTexts: thinkingTexts.value.length > 0 ? [...thinkingTexts.value] : undefined,
               })
               scrollToBottom()
             } else if (eventType === 'error') {
@@ -208,6 +222,7 @@ async function ask() {
   } finally {
     loading.value = false
     agentSteps.value = []
+    thinkingTexts.value = []
     scrollToBottom()
   }
 }
@@ -398,6 +413,27 @@ function formatTime(dateStr: string): string {
                         </table>
                         <div v-if="msg.data.length > config.dataPreviewMaxRows" class="px-3 py-1.5 text-xs text-muted-foreground border-t">
                           Showing {{ config.dataPreviewMaxRows }} of {{ msg.data.length }} rows
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Reasoning toggle -->
+                    <div v-if="msg.thinkingTexts && msg.thinkingTexts.length > 0" class="ml-2">
+                      <button
+                        @click="expandedReasoning = expandedReasoning === i ? null : i"
+                        class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span>{{ expandedReasoning === i ? 'Hide' : 'Show' }} reasoning</span>
+                        <ChevronUp v-if="expandedReasoning === i" :size="12" />
+                        <ChevronDown v-else :size="12" />
+                      </button>
+                      <div v-if="expandedReasoning === i" class="mt-1.5 space-y-2">
+                        <div
+                          v-for="(thinking, ti) in msg.thinkingTexts"
+                          :key="ti"
+                          class="p-2.5 bg-primary/10 rounded-lg text-xs text-primary italic whitespace-pre-wrap border border-primary/20"
+                        >
+                          {{ thinking }}
                         </div>
                       </div>
                     </div>
