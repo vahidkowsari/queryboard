@@ -4,8 +4,12 @@
       <div class="flex items-center justify-between mb-8">
         <h1 class="text-3xl font-bold">Projects</h1>
         <div class="flex gap-3">
+          <Button v-if="isAdmin()" variant="outline" @click="router.push('/admin/users')">
+            <Shield :size="20" />
+            Manage Users
+          </Button>
           <Button variant="outline" @click="triggerImport">
-            <Upload :size="20" />
+            <ArrowDownToLine :size="20" />
             Import
           </Button>
           <Button @click="showCreateModal = true">
@@ -229,7 +233,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Trash2, FolderOpen, Database, Settings, Download, Upload } from 'lucide-vue-next'
+import { Plus, Trash2, FolderOpen, Database, Settings, Download, ArrowDownToLine, Shield } from 'lucide-vue-next'
 import { useProjectStore } from '../stores/project.store'
 import ProjectListSkeleton from '../components/skeletons/ProjectListSkeleton.vue'
 import Button from '../components/ui/button.vue'
@@ -240,6 +244,7 @@ import DbConfigForm from '../components/DbConfigForm.vue'
 import Modal from '../components/Modal.vue'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
+import { useRole } from '../composables/useRole'
 import type { DbEngine, LLMVendor, ChartLibrary } from '../types'
 import { buildDbConfig } from '../utils/buildDbConfig'
 
@@ -247,6 +252,7 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+const { isAdmin } = useRole()
 
 const showCreateModal = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)

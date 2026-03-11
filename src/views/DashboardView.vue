@@ -114,7 +114,9 @@
           <div v-if="dashboard.charts.length === 0" class="text-center py-16">
             <BarChart3 :size="64" class="mx-auto text-muted-foreground mb-4" />
             <h2 class="text-xl font-semibold mb-2">No charts yet</h2>
-            <p class="text-muted-foreground mb-6">Add your first chart using AI</p>
+            <p class="text-muted-foreground mb-6">
+              {{ isEditor() ? 'Add your first chart using AI' : 'No charts have been added yet. Contact an editor or admin to add charts.' }}
+            </p>
             <Button v-if="isEditor()" @click="router.push(`/projects/${projectId}/dashboard/${dashboard.id}/charts/new`)">
               Add Chart
             </Button>
@@ -178,10 +180,10 @@
                       <Button variant="ghost" size="icon" @click="refreshChart(chart)" title="Refresh">
                         <RefreshCw :size="16" />
                       </Button>
-                      <Button variant="ghost" size="icon" @click="openMoveModal(chart)" title="Move">
+                      <Button v-if="isEditor()" variant="ghost" size="icon" @click="openMoveModal(chart)" title="Move">
                         <ArrowRightLeft :size="16" />
                       </Button>
-                      <Button variant="ghost" size="icon" @click="deleteChart(chart)" title="Delete">
+                      <Button v-if="isEditor()" variant="ghost" size="icon" @click="deleteChart(chart)" title="Delete">
                         <Trash2 :size="16" />
                       </Button>
                     </div>

@@ -70,11 +70,13 @@ const router = createRouter({
       path: '/projects/:projectId/dashboard/:dashboardId/charts/new',
       name: 'chart-create',
       component: ChartCreate,
+      meta: { requiresEditor: true },
     },
     {
       path: '/projects/:projectId/dashboard/:dashboardId/charts/:chartId',
       name: 'chart-edit',
       component: ChartView,
+      meta: { requiresEditor: true },
     },
     {
       path: '/projects/:projectId/dashboard/:dashboardId/charts/:chartId/fullscreen',
@@ -102,10 +104,14 @@ router.beforeEach(async (to, _from, next) => {
   const hasSession = await Session.doesSessionExist()
   if (!hasSession) return next({ name: 'auth' })
 
-  const { refreshRoles, isAdmin } = useRole()
+  const { refreshRoles, isAdmin, isEditor } = useRole()
   await refreshRoles()
 
   if (to.meta.requiresAdmin && !isAdmin()) {
+    return next({ name: 'home' })
+  }
+
+  if (to.meta.requiresEditor && !isEditor()) {
     return next({ name: 'home' })
   }
 

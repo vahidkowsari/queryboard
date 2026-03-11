@@ -27,6 +27,13 @@
       <div v-else />
 
       <div class="flex items-center gap-2 sm:gap-3">
+        <span
+          class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+          :class="roleBadge.classes"
+        >
+          <Eye v-if="primaryRole === 'viewer'" :size="12" />
+          {{ roleBadge.label }}
+        </span>
         <button
           @click="showSearch = !showSearch"
           class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -42,14 +49,6 @@
           <Sun v-if="isDark" :size="16" />
           <Moon v-else :size="16" />
         </button>
-        <router-link
-          v-if="isAdmin()"
-          to="/admin/users"
-          class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Shield :size="16" />
-          <span class="hidden sm:inline">Admin</span>
-        </router-link>
         <button
           @click="handleSignOut"
           class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -66,7 +65,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronRight, LogOut, Shield, Moon, Sun, Search } from 'lucide-vue-next'
+import { ChevronRight, LogOut, Moon, Sun, Search, Eye } from 'lucide-vue-next'
 import Session from 'supertokens-web-js/recipe/session'
 import { useProjectStore } from '../stores/project.store'
 import { useDashboardStore } from '../stores/dashboard.store'
@@ -78,7 +77,22 @@ const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
 const dashboardStore = useDashboardStore()
-const { isAdmin } = useRole()
+const { roles } = useRole()
+
+const primaryRole = computed(() => {
+  if (roles.value.includes('admin')) return 'admin'
+  if (roles.value.includes('editor')) return 'editor'
+  return 'viewer'
+})
+
+const roleBadge = computed((): { label: string; classes: string } => {
+  const map: Record<string, { label: string; classes: string }> = {
+    admin: { label: 'Admin', classes: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+    editor: { label: 'Editor', classes: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+    viewer: { label: 'View Only', classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  }
+  return map[primaryRole.value]!
+})
 const { isDark, toggle: toggleDark } = useDarkMode()
 const showSearch = ref(false)
 
