@@ -21,9 +21,12 @@ export function createAthenaSchemaProvider(
     )
     const executionId = start.QueryExecutionId!
 
-    const maxWait = 30_000
+    const maxWait = 60_000
     const t0 = Date.now()
-    while (Date.now() - t0 < maxWait) {
+    while (true) {
+      if (Date.now() - t0 >= maxWait) {
+        throw new Error(`Athena query timed out after ${maxWait}ms (executionId: ${executionId})`)
+      }
       const status = await athenaClient.send(new GetQueryExecutionCommand({ QueryExecutionId: executionId }))
       const state = status.QueryExecution?.Status?.State
       if (state === 'SUCCEEDED') break
@@ -44,12 +47,20 @@ export function createAthenaSchemaProvider(
     async detectSchema(): Promise<Schema> {
       console.log(`Schema: Detecting from Athena database "${database}"...`)
 
-      const tableRows = await runQuery(`SHOW TABLES IN ${database}`)
-      const tableNames = tableRows.map((row) => row[0]).filter(Boolean)
-      console.log(`Schema: Found ${tableNames.length} tables`)
+      const tableRows = await runQuery(`SHOW TABLES IN \`${database}\``)
+      const allTableNames = tableRows.map((row) => row[0]).filter(Boolean)
+
+      // Detect views
+      let viewSet = new Set<string>()
+      try {
+        const viewRows = await runQuery(`SHOW VIEWS IN \`${database}\``)
+        viewSet = new Set(viewRows.map((row) => row[0]).filter(Boolean))
+      } catch { /* views not supported in this Athena setup */ }
+
+      console.log(`Schema: Found ${allTableNames.length} tables/views (${viewSet.size} views)`)
 
       const tables: Schema['tables'] = {}
-      for (const table of tableNames) {
+      for (const table of allTableNames) {
         try {
           const colRows = await runQuery(
             `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = '${database}' AND table_name = '${table}' ORDER BY ordinal_position`,
@@ -57,19 +68,41 @@ export function createAthenaSchemaProvider(
           const columns = colRows.map((row) => ({
             name: row[0].trim(),
             type: row[1]?.trim() || 'string',
+            nullable: true, // Athena columns are nullable by default
           }))
 
+          // Row count
           let rowCount: number | undefined
           try {
             const propRows = await runQuery(`SHOW TBLPROPERTIES \`${database}\`.\`${table}\`('numRows')`)
             const val = propRows[0]?.[0]?.trim()
             if (val && !isNaN(Number(val)) && Number(val) > 0) rowCount = Number(val)
-          } catch {
-            // numRows property not available for this table
+          } catch { /* numRows not available */ }
+
+          // Partition key detection via SHOW CREATE TABLE
+          let partitionKeys: string[] | undefined
+          if (!viewSet.has(table)) {
+            try {
+              const createRows = await runQuery(`SHOW CREATE TABLE \`${database}\`.\`${table}\``)
+              const ddl = createRows.map((r) => r[0]).join('\n')
+              const partMatch = ddl.match(/PARTITIONED BY\s*\(([^)]+)\)/i)
+              if (partMatch) {
+                partitionKeys = partMatch[1]
+                  .split(',')
+                  .map((s) => s.trim().split(/\s+/)[0].replace(/`/g, '').toLowerCase())
+                  .filter(Boolean)
+                // Mark partition columns
+                for (const col of columns) {
+                  if (partitionKeys!.includes(col.name.toLowerCase())) {
+                    (col as any).isPartitionKey = true
+                  }
+                }
+              }
+            } catch { /* DDL not available */ }
           }
 
-          tables[table] = { columns, rowCount }
-          console.log(`Schema:   ${table}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}`)
+          tables[table] = { columns, rowCount, isView: viewSet.has(table) || undefined, partitionKeys }
+          console.log(`Schema:   ${table}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(table) ? ' [view]' : ''}${partitionKeys ? ` [partitioned by: ${partitionKeys.join(', ')}]` : ''}`)
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err)
           console.warn(`Schema:   ${table}: FAILED - ${msg}`)
