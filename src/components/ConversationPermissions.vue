@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { Settings2, Trash2, Loader2, Users, User, Shield } from 'lucide-vue-next'
 import { conversationApi, type ConversationPermission } from '../services/conversation.api'
 import { groupApi, type Group } from '../services/group.api'
@@ -20,6 +20,9 @@ const newType = ref<'user' | 'group'>('user')
 const newTargetId = ref('')
 const newLevel = ref<'view' | 'edit'>('view')
 const adding = ref(false)
+const removing = ref<Set<string>>(new Set())
+
+watch(newType, () => { newTargetId.value = '' })
 
 onMounted(async () => {
   try {
@@ -85,12 +88,18 @@ async function addPermission() {
 }
 
 async function removePermission(permId: string) {
+  if (removing.value.has(permId)) return
+  removing.value = new Set(removing.value).add(permId)
   try {
     await conversationApi.removePermission(props.projectId, props.conversationId, permId)
     permissions.value = permissions.value.filter((p) => p.id !== permId)
     toast.success('Permission removed')
   } catch {
     toast.error('Failed to remove permission')
+  } finally {
+    const next = new Set(removing.value)
+    next.delete(permId)
+    removing.value = next
   }
 }
 
@@ -183,8 +192,9 @@ const targetOptions = computed(() => {
                   {{ perm.permission }}
                 </span>
               </div>
-              <UiButton variant="ghost" size="sm" @click="removePermission(perm.id)">
-                <Trash2 :size="14" class="text-destructive" />
+              <UiButton variant="ghost" size="sm" @click="removePermission(perm.id)" :disabled="removing.has(perm.id)">
+                <Loader2 v-if="removing.has(perm.id)" :size="14" class="animate-spin text-muted-foreground" />
+                <Trash2 v-else :size="14" class="text-destructive" />
               </UiButton>
             </div>
           </div>
