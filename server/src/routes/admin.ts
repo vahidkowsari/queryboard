@@ -114,12 +114,17 @@ export function createAdminRoutes(db: Db): Router {
     '/users/:userId/groups/:groupId',
     asyncHandler(async (req, res) => {
       const { userId, groupId } = req.params
-      
+
+      const [group] = await db.select({ id: groups.id }).from(groups).where(eq(groups.id, groupId)).limit(1)
+      if (!group) {
+        return void res.status(404).json({ error: 'Group not found' })
+      }
+
       await db
         .insert(groupMembers)
         .values({ groupId, userId })
         .onConflictDoNothing()
-      
+
       res.json({ success: true })
     }),
   )
@@ -128,11 +133,16 @@ export function createAdminRoutes(db: Db): Router {
     '/users/:userId/groups/:groupId',
     asyncHandler(async (req, res) => {
       const { userId, groupId } = req.params
-      
+
+      const [group] = await db.select({ id: groups.id }).from(groups).where(eq(groups.id, groupId)).limit(1)
+      if (!group) {
+        return void res.status(404).json({ error: 'Group not found' })
+      }
+
       await db
         .delete(groupMembers)
         .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
-      
+
       res.json({ success: true })
     }),
   )
