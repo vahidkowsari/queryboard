@@ -4,6 +4,7 @@ import type { Schema, LLMConfig, ProgressCallback } from '../types.js'
 const BATCH_SIZE = 10
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
+const MAX_COLS_FOR_DESCRIPTION = 100
 
 export interface EnrichmentResult {
   schema: Schema
@@ -31,14 +32,17 @@ export async function enrichSchemaWithDescriptions(
     onProgress?.({ phase: 'enriching', message: `Enriching descriptions: batch ${batchNum}/${totalBatches}`, current: batchNum, total: totalBatches })
     const batchInfo = batch
       .map((t) => {
-        const cols = schema.tables[t].columns.map((c) => `${c.name} (${c.type})`).join(', ')
-        return `${t}: ${cols}`
+        const cols = schema.tables[t].columns
+        if (cols.length > MAX_COLS_FOR_DESCRIPTION) {
+          return `${t}: [${cols.length} columns — too many to list, provide table description only]`
+        }
+        return `${t}: ${cols.map((c) => `${c.name} (${c.type})`).join(', ')}`
       })
       .join('\n')
 
     const prompt = `You are a data expert. For each table below, provide:
 1. A one-line table description
-2. A short description for each column
+2. A short description for each column (skip columns section for tables marked as "too many to list")
 
 Tables:
 ${batchInfo}
