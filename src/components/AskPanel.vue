@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2, User } from 'lucide-vue-next'
 import { marked } from 'marked'
 import { API_BASE_URL } from '../services/api'
@@ -47,6 +47,7 @@ const panelMode = ref<'float' | 'maximized'>('float')
 const thinkingTexts = ref<string[]>([])
 const showPermissions = ref(false)
 const userEmailMap = ref<Map<string, string>>(new Map())
+const hasMultipleOwners = computed(() => new Set(conversations.value.map((c) => c.userId)).size > 1)
 const { isAdmin, refreshRoles } = useRole()
 
 async function copyToClipboard(text: string, index: number) {
@@ -316,7 +317,7 @@ function formatTime(dateStr: string): string {
                 <div class="flex-1 min-w-0 pointer-events-none">
                   <div class="truncate font-medium">{{ conv.title }}</div>
                   <div class="text-muted-foreground mt-0.5">{{ formatTime(conv.updatedAt) }}</div>
-                  <div v-if="userEmailMap.get(conv.userId)" class="text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                  <div v-if="hasMultipleOwners && userEmailMap.get(conv.userId)" class="text-muted-foreground truncate mt-0.5 flex items-center gap-1">
                     <User :size="9" />{{ userEmailMap.get(conv.userId) }}
                   </div>
                 </div>

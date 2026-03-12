@@ -99,6 +99,13 @@
       "when": 1773300000000,
       "tag": "0013_add_schema_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1773400000000,
+      "tag": "0014_add_chart_created_by",
+      "breakpoints": true
     }
   ]
 }
