@@ -342,11 +342,29 @@ const form = ref({ name: '', description: '' })
 const dbForm = ref({ database: '', workgroup: '', region: '', profile: '' })
 const rdbmsForm = ref({ host: 'localhost', port: '5432', database: '', user: '', password: '' })
 const bqForm = ref({ projectId: '', dataset: '' })
-const defaultModels: Record<LLMVendor, string> = {
-  anthropic: 'claude-sonnet-4-20250514',
-  openai: 'gpt-4o',
-  google: 'gemini-2.0-flash',
+const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
+  anthropic: [
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (legacy)' },
+  ],
+  openai: [
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'o3', label: 'o3' },
+  ],
+  google: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.0-pro', label: 'Gemini 2.0 Pro' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  ],
 }
+
+const defaultModels = Object.fromEntries(
+  Object.entries(vendorModels).map(([vendor, models]) => [vendor, models[0].value])
+) as Record<LLMVendor, string>
 
 const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '' })
 
@@ -375,26 +393,6 @@ function addColor() {
 
 function removeColor(index: number) {
   colorForm.value.palette.splice(index, 1)
-}
-
-const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
-  anthropic: [
-    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-    { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
-    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (legacy)' },
-  ],
-  openai: [
-    { value: 'gpt-4o', label: 'GPT-4o' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-    { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'o3', label: 'o3' },
-  ],
-  google: [
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { value: 'gemini-2.0-pro', label: 'Gemini 2.0 Pro' },
-    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-  ],
 }
 
 onMounted(async () => {
