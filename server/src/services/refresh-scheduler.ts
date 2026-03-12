@@ -6,6 +6,7 @@ import type { Db } from '../db/index.js'
 import type { DbEngine, DbConfig } from '../types.js'
 
 const activeTasks = new Map<string, ScheduledTask>()
+const refreshing = new Set<string>()
 
 /**
  * Creates a dashboard refresh scheduler that runs queries on cron schedules
@@ -15,42 +16,50 @@ export function createRefreshScheduler(db: Db) {
    * Refreshes all charts in a dashboard by re-executing their queries
    */
   async function refreshDashboard(dashboardId: string) {
-    // Load dashboard and validate it exists
-    const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId))
-    if (!dashboard) return
+    // Skip if a refresh is already in progress for this dashboard
+    if (refreshing.has(dashboardId)) return
+    refreshing.add(dashboardId)
 
-    // Load project to get database connection config
-    const [project] = await db.select().from(projects).where(eq(projects.id, dashboard.projectId))
-    if (!project) return
+    try {
+      // Load dashboard and validate it exists
+      const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId))
+      if (!dashboard) return
 
-    // Load all charts in dashboard
-    const dashboardCharts = await db.select().from(charts).where(eq(charts.dashboardId, dashboardId))
-    if (dashboardCharts.length === 0) return
+      // Load project to get database connection config
+      const [project] = await db.select().from(projects).where(eq(projects.id, dashboard.projectId))
+      if (!project) return
 
-    // Create query executor for the project's database
-    const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
+      // Load all charts in dashboard
+      const dashboardCharts = await db.select().from(charts).where(eq(charts.dashboardId, dashboardId))
+      if (dashboardCharts.length === 0) return
 
-    // Re-execute each chart's query and update data
-    for (const chart of dashboardCharts) {
-      if (!chart.query) continue
-      try {
-        const result = await executor.execute(chart.query)
-        await db
-          .update(charts)
-          .set({ data: result.rows, updatedAt: new Date() })
-          .where(eq(charts.id, chart.id))
-      } catch (err) {
-        console.error(`[CronRefresh] Failed to refresh chart "${chart.name}" (${chart.id}):`, (err as Error).message)
+      // Create query executor for the project's database
+      const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
+
+      // Re-execute each chart's query and update data
+      for (const chart of dashboardCharts) {
+        if (!chart.query) continue
+        try {
+          const result = await executor.execute(chart.query)
+          await db
+            .update(charts)
+            .set({ data: result.rows, updatedAt: new Date() })
+            .where(eq(charts.id, chart.id))
+        } catch (err) {
+          console.error(`[CronRefresh] Failed to refresh chart "${chart.name}" (${chart.id}):`, (err as Error).message)
+        }
       }
+
+      // Update dashboard's last refreshed timestamp
+      await db
+        .update(dashboards)
+        .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
+        .where(eq(dashboards.id, dashboardId))
+
+      console.log(`[CronRefresh] Refreshed dashboard "${dashboard.name}" (${dashboardCharts.length} charts)`)
+    } finally {
+      refreshing.delete(dashboardId)
     }
-
-    // Update dashboard's last refreshed timestamp
-    await db
-      .update(dashboards)
-      .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
-      .where(eq(dashboards.id, dashboardId))
-
-    console.log(`[CronRefresh] Refreshed dashboard "${dashboard.name}" (${dashboardCharts.length} charts)`)
   }
 
   /**
