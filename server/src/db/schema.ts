@@ -175,6 +175,26 @@ export const dashboardPermissions = pgTable(
   ],
 )
 
+export const schemaJobs = pgTable(
+  'schema_jobs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    phase: varchar('phase', { length: 30 }),
+    message: text('message'),
+    current: integer('current'),
+    total: integer('total'),
+    errorMessage: text('error_message'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('idx_schema_jobs_project_id').on(table.projectId)],
+)
+
 export const conversationPermissions = pgTable(
   'conversation_permissions',
   {

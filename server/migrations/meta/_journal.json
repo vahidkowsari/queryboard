@@ -92,6 +92,13 @@
       "when": 1773208939709,
       "tag": "0012_add_conversation_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1741651200000,
+      "tag": "0013_add_schema_jobs",
+      "breakpoints": true
     }
   ]
 }

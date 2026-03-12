@@ -1,5 +1,5 @@
 import { api, API_BASE_URL } from './api'
-import type { DbEngine, DbConfig, LLMConfig, ChartLibrary, ColorConfig } from '../types'
+import type { DbEngine, DbConfig, LLMConfig, ChartLibrary, ColorConfig, SchemaJob } from '../types'
 
 export interface ProjectRow {
   id: string
@@ -66,16 +66,24 @@ export const projectApi = {
   },
 
   /**
-   * Triggers database schema detection for the project (non-streaming)
+   * Starts schema detection as a background job. Returns the job ID immediately.
    */
-  async detectSchema(projectId: string): Promise<unknown> {
-    const { data } = await api.post(`/projects/${projectId}/schema`)
+  async startSchemaDetection(projectId: string): Promise<{ jobId: string }> {
+    const { data } = await api.post(`/projects/${projectId}/schema/detect`)
     return data
   },
 
   /**
-   * Triggers schema detection and streams progress events via SSE.
-   * Calls onProgress for each event, onComplete on success, onError on failure/timeout.
+   * Fetches the latest schema detection job for a project.
+   */
+  async getSchemaJob(projectId: string): Promise<SchemaJob | null> {
+    const { data } = await api.get(`/projects/${projectId}/schema/job`)
+    return data
+  },
+
+  /**
+   * Streams live schema detection progress via SSE.
+   * Sends current job state immediately, then streams updates until complete/error.
    * Returns a cancel function to close the connection early.
    */
   detectSchemaWithProgress(

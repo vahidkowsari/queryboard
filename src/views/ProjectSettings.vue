@@ -90,35 +90,39 @@
                       View Schema
                     </Button>
                     <Button
-                      @click="detectSchema"
-                      :disabled="detectingSchema || !schemaEnabled"
+                      @click="startDetect"
+                      :disabled="schemaJobRunning || !schemaEnabled"
                       :title="schemaEnabled ? '' : 'Test the connection first'"
                     >
-                      <RefreshCw :size="16" :class="{ 'animate-spin': detectingSchema }" />
-                      {{ detectingSchema ? 'Detecting...' : 'Detect Schema' }}
+                      <RefreshCw :size="16" :class="{ 'animate-spin': schemaJobRunning }" />
+                      {{ schemaJobRunning ? 'Detecting...' : 'Detect Schema' }}
                     </Button>
                   </div>
                 </div>
 
-                <!-- Progress UI -->
-                <div v-if="detectingSchema || schemaError" class="mt-3 space-y-2">
-                  <div v-if="schemaError" class="flex items-start gap-2 text-xs text-destructive">
+                <!-- Job progress UI -->
+                <div v-if="schemaJob" class="mt-3 space-y-2">
+                  <div v-if="schemaJob.status === 'error'" class="flex items-start gap-2 text-xs text-destructive">
                     <XCircle :size="14" class="mt-0.5 shrink-0" />
-                    <span>{{ schemaError }}</span>
+                    <span>{{ schemaJob.errorMessage || 'Schema detection failed' }}</span>
                   </div>
-                  <template v-else>
+                  <div v-else-if="schemaJob.status === 'complete'" class="flex items-center gap-2 text-xs text-green-600">
+                    <CheckCircle2 :size="14" class="shrink-0" />
+                    <span>{{ schemaJob.message || 'Schema detection complete!' }}</span>
+                  </div>
+                  <template v-else-if="schemaJob.status === 'running'">
                     <div class="flex items-center gap-2 text-xs text-muted-foreground">
                       <Loader2 :size="13" class="animate-spin shrink-0" />
-                      <span>{{ schemaProgress.message || 'Starting...' }}</span>
+                      <span>{{ schemaJob.message || 'Starting...' }}</span>
                     </div>
-                    <div v-if="schemaProgress.total" class="w-full bg-muted rounded-full h-1.5">
+                    <div v-if="schemaJob.total" class="w-full bg-muted rounded-full h-1.5">
                       <div
                         class="bg-primary h-1.5 rounded-full transition-all duration-300"
-                        :style="{ width: `${Math.round(((schemaProgress.current ?? 0) / schemaProgress.total) * 100)}%` }"
+                        :style="{ width: `${Math.round(((schemaJob.current ?? 0) / schemaJob.total) * 100)}%` }"
                       />
                     </div>
-                    <p v-if="schemaProgress.total" class="text-xs text-muted-foreground">
-                      {{ schemaProgress.current ?? 0 }} / {{ schemaProgress.total }}
+                    <p v-if="schemaJob.total" class="text-xs text-muted-foreground">
+                      {{ schemaJob.current ?? 0 }} / {{ schemaJob.total }}
                     </p>
                   </template>
                 </div>
@@ -282,11 +286,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Database, RefreshCw, Palette, Plus, X, Plug, CheckCircle2, XCircle, Loader2 } from 'lucide-vue-next'
 import Tabs from '../components/ui/tabs.vue'
 import { useProjectStore } from '../stores/project.store'
+import { useSchemaJobStore } from '../stores/schema-job.store'
 import { projectApi } from '../services/project.api'
 import ProjectSettingsSkeleton from '../components/skeletons/ProjectSettingsSkeleton.vue'
 import Button from '../components/ui/button.vue'
@@ -314,16 +319,16 @@ import { buildDbConfig } from '../utils/buildDbConfig'
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
+const schemaJobStore = useSchemaJobStore()
 const toast = useToast()
 
 const projectId = route.params.projectId as string
 const project = ref<Project | null>(null)
 const loading = ref(true)
-const detectingSchema = ref(false)
-const schemaProgress = ref<{ phase?: string; message?: string; current?: number; total?: number }>({})
-const schemaError = ref('')
-let cancelDetection: (() => void) | null = null
 const testingConnection = ref(false)
+
+const schemaJob = computed(() => schemaJobStore.getJob(projectId))
+const schemaJobRunning = computed(() => schemaJobStore.isRunning(projectId))
 const connectionStatus = ref<'idle' | 'success' | 'error'>('idle')
 const connectionError = ref('')
 
@@ -364,6 +369,16 @@ const defaultModels: Record<LLMVendor, string> = {
 }
 
 onMounted(async () => {
+  // Check if a schema job is already running from a previous navigation
+  try {
+    const job = await schemaJobStore.fetchJob(projectId)
+    if (job?.status === 'running') {
+      schemaJobStore.connectSSE(projectId)
+    }
+  } catch {
+    // non-critical
+  }
+
   try {
     const row = await projectApi.getById(projectId)
     const p: Project = {
@@ -509,17 +524,19 @@ async function testConnection() {
   }
 }
 
-function detectSchema() {
-  detectingSchema.value = true
-  schemaProgress.value = {}
-  schemaError.value = ''
+async function startDetect() {
+  try {
+    await schemaJobStore.startDetection(projectId)
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : 'Failed to start schema detection')
+    return
+  }
 
-  cancelDetection = projectApi.detectSchemaWithProgress(
-    projectId,
-    (event) => {
-      schemaProgress.value = event
-    },
-    async () => {
+  // Watch for job completion to refresh schemaDetectedAt
+  const unwatch = watch(schemaJob, async (job) => {
+    if (!job || job.status === 'running') return
+    unwatch()
+    if (job.status === 'complete') {
       try {
         const updated = await projectApi.getById(projectId)
         if (project.value) {
@@ -528,22 +545,14 @@ function detectSchema() {
         toast.success('Schema detected successfully')
       } catch {
         toast.error('Schema detected but failed to refresh project')
-      } finally {
-        detectingSchema.value = false
-        schemaProgress.value = {}
-        cancelDetection = null
       }
-    },
-    (message) => {
-      schemaError.value = message
-      detectingSchema.value = false
-      cancelDetection = null
-      toast.error(message)
-    },
-  )
+    } else if (job.status === 'error') {
+      toast.error(job.errorMessage || 'Schema detection failed')
+    }
+  })
 }
 
 onUnmounted(() => {
-  cancelDetection?.()
+  schemaJobStore.disconnectSSE(projectId)
 })
 </script>
