@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Shield, Users, Loader2, FolderOpen, Plus, X } from 'lucide-vue-next'
 import { adminApi, type UserWithRole, type AvailableGroup } from '../services/admin.api'
 import type { AppRole } from '../composables/useRole'
+import { useToast } from '../composables/useToast'
 import UiCard from '../components/ui/card.vue'
 import UiButton from '../components/ui/button.vue'
 
@@ -11,7 +12,8 @@ const allGroups = ref<AvailableGroup[]>([])
 const loading = ref(true)
 const updating = ref<string | null>(null)
 const editingGroups = ref<string | null>(null)
-const error = ref('')
+const groupPending = ref<Set<string>>(new Set())
+const toast = useToast()
 
 const roleLabels: Record<AppRole, { label: string; color: string }> = {
   admin: { label: 'Admin', color: 'bg-red-100 text-red-700' },
@@ -34,20 +36,23 @@ onMounted(async () => {
     users.value = usersData
     allGroups.value = groupsData
   } catch {
-    error.value = 'Failed to load users'
+    toast.error('Failed to load users')
   } finally {
     loading.value = false
   }
 })
 
 async function changeRole(userId: string, role: AppRole) {
+  const user = users.value.find((u) => u.id === userId)
+  if (!user || user.roles.includes(role)) return
+  if (!confirm(`Change ${user.email || userId}'s role to ${role}?`)) return
   updating.value = userId
   try {
     await adminApi.setUserRole(userId, role)
-    const user = users.value.find((u) => u.id === userId)
-    if (user) user.roles = [role]
+    user.roles = [role]
+    editingGroups.value = null
   } catch {
-    error.value = 'Failed to update role'
+    toast.error('Failed to update role')
   } finally {
     updating.value = null
   }
@@ -59,32 +64,39 @@ function availableGroupsForUser(user: UserWithRole) {
 }
 
 async function addToGroup(userId: string, groupId: string) {
+  const key = `${userId}:${groupId}`
+  if (groupPending.value.has(key)) return
+  groupPending.value = new Set(groupPending.value).add(key)
   try {
     await adminApi.addUserToGroup(userId, groupId)
     const user = users.value.find((u) => u.id === userId)
     const group = allGroups.value.find((g) => g.id === groupId)
     if (user && group) {
-      user.groups.push({
-        id: group.id,
-        name: group.name,
-        projectId: group.projectId,
-        projectName: group.projectName
-      })
+      user.groups.push({ id: group.id, name: group.name, projectId: group.projectId, projectName: group.projectName })
     }
   } catch {
-    error.value = 'Failed to add user to group'
+    toast.error('Failed to add user to group')
+  } finally {
+    const next = new Set(groupPending.value)
+    next.delete(key)
+    groupPending.value = next
   }
 }
 
 async function removeFromGroup(userId: string, groupId: string) {
+  const key = `${userId}:${groupId}`
+  if (groupPending.value.has(key)) return
+  groupPending.value = new Set(groupPending.value).add(key)
   try {
     await adminApi.removeUserFromGroup(userId, groupId)
     const user = users.value.find((u) => u.id === userId)
-    if (user) {
-      user.groups = user.groups.filter(g => g.id !== groupId)
-    }
+    if (user) user.groups = user.groups.filter(g => g.id !== groupId)
   } catch {
-    error.value = 'Failed to remove user from group'
+    toast.error('Failed to remove user from group')
+  } finally {
+    const next = new Set(groupPending.value)
+    next.delete(key)
+    groupPending.value = next
   }
 }
 </script>
@@ -100,10 +112,6 @@ async function removeFromGroup(userId: string, groupId: string) {
         <h1 class="text-xl font-bold">User Management</h1>
         <p class="text-sm text-muted-foreground">Manage user roles and permissions</p>
       </div>
-    </div>
-
-    <div v-if="error" class="rounded-md bg-destructive/10 text-destructive text-sm px-3 py-2 mb-4">
-      {{ error }}
     </div>
 
     <div v-if="loading" class="flex items-center justify-center py-12">
@@ -154,9 +162,11 @@ async function removeFromGroup(userId: string, groupId: string) {
                     <button
                       v-if="editingGroups === user.id"
                       @click="removeFromGroup(user.id, group.id)"
-                      class="hover:text-destructive ml-0.5"
+                      :disabled="groupPending.has(`${user.id}:${group.id}`)"
+                      class="hover:text-destructive ml-0.5 disabled:opacity-40"
                     >
-                      <X :size="10" />
+                      <Loader2 v-if="groupPending.has(`${user.id}:${group.id}`)" :size="10" class="animate-spin" />
+                      <X v-else :size="10" />
                     </button>
                   </span>
                 </div>
@@ -167,7 +177,8 @@ async function removeFromGroup(userId: string, groupId: string) {
                     v-for="group in availableGroupsForUser(user)"
                     :key="group.id"
                     @click="addToGroup(user.id, group.id)"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-dashed border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 text-xs hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                    :disabled="groupPending.has(`${user.id}:${group.id}`)"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-dashed border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 text-xs hover:bg-purple-50 dark:hover:bg-purple-900/20 disabled:opacity-40"
                     :title="`Add to ${group.projectName} / ${group.name}`"
                   >
                     <Plus :size="10" />
