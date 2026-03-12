@@ -28,15 +28,14 @@ export function createConversationRoutes(db: Db): Router {
       const roles: string[] = req.session?.getAccessTokenPayload()?.roles ?? []
       if (roles.includes('admin') || roles.includes('editor')) return void res.json(conversations)
 
-      // Filter to only conversations the user can view
+      // Batch-filter to only conversations the user can view (avoids N+1 queries)
       const userId = getUserId(req)
-      const visible = await Promise.all(
-        conversations.map(async (c) => {
-          const allowed = await permissionService.canAccessConversation(c.id, userId, 'view')
-          return allowed ? c : null
-        }),
+      const accessible = await permissionService.filterAccessibleConversations(
+        conversations.map((c) => c.id),
+        userId,
       )
-      res.json(visible.filter(Boolean))
+      const accessibleSet = new Set(accessible)
+      res.json(conversations.filter((c) => accessibleSet.has(c.id)))
     }),
   )
 
@@ -80,8 +79,16 @@ export function createConversationRoutes(db: Db): Router {
     '/:conversationId',
     canEdit,
     asyncHandler(async (req: SessionRequest, res) => {
-      const deleted = await service.remove(req.params.conversationId)
-      if (!deleted) return void res.status(404).json({ error: 'Conversation not found' })
+      const conversation = await service.getById(req.params.conversationId)
+      if (!conversation) return void res.status(404).json({ error: 'Conversation not found' })
+
+      // Only the owner or an admin can delete
+      const roles: string[] = req.session?.getAccessTokenPayload()?.roles ?? []
+      if (!roles.includes('admin') && conversation.userId !== getUserId(req)) {
+        return void res.status(403).json({ error: 'Only the conversation owner can delete it' })
+      }
+
+      await service.remove(req.params.conversationId)
       res.json({ deleted: true })
     }),
   )

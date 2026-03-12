@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { dashboardPermissions, conversationPermissions, groupMembers } from '../db/schema.js'
 import type { Db } from '../db/index.js'
 
@@ -142,6 +142,36 @@ export function createPermissionService(db: Db) {
      */
     async removeAllForConversation(conversationId: string) {
       await db.delete(conversationPermissions).where(eq(conversationPermissions.conversationId, conversationId))
+    },
+
+    /**
+     * Batch-filters a list of conversation IDs to those the user can view.
+     * Fetches all permissions and memberships in two queries instead of N.
+     */
+    async filterAccessibleConversations(conversationIds: string[], userId: string): Promise<string[]> {
+      if (conversationIds.length === 0) return []
+
+      const [allPerms, memberships] = await Promise.all([
+        db.select().from(conversationPermissions).where(inArray(conversationPermissions.conversationId, conversationIds)),
+        db.select().from(groupMembers).where(eq(groupMembers.userId, userId)),
+      ])
+
+      const userGroupIds = memberships.map((m) => m.groupId)
+      const permsByConv = new Map<string, typeof allPerms>()
+      for (const p of allPerms) {
+        if (!permsByConv.has(p.conversationId)) permsByConv.set(p.conversationId, [])
+        permsByConv.get(p.conversationId)!.push(p)
+      }
+
+      return conversationIds.filter((id) => {
+        const perms = permsByConv.get(id)
+        if (!perms || perms.length === 0) return true // open access
+        return perms.some(
+          (p) =>
+            (p.userId !== null && p.userId === userId) ||
+            (p.groupId !== null && userGroupIds.includes(p.groupId)),
+        )
+      })
     },
 
     /**
