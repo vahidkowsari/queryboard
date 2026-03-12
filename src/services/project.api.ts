@@ -155,4 +155,12 @@ export const projectApi = {
     const { data } = await api.post('/projects/import', payload)
     return data
   },
+
+  /**
+   * Returns {id, email}[] for all users who own conversations or created charts in this project.
+   */
+  async listUsers(projectId: string): Promise<{ id: string; email: string | null }[]> {
+    const { data } = await api.get(`/projects/${projectId}/users`)
+    return data
+  },
 }

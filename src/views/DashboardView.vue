@@ -129,6 +129,7 @@
                   <th class="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
                   <th class="px-4 py-3 text-left font-medium text-muted-foreground">Description</th>
                   <th class="px-4 py-3 text-left font-medium text-muted-foreground">Type</th>
+                  <th class="px-4 py-3 text-left font-medium text-muted-foreground">Created by</th>
                   <th class="px-4 py-3 text-left font-medium text-muted-foreground">Updated</th>
                   <th class="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                 </tr>
@@ -146,6 +147,9 @@
                     <span class="px-2 py-0.5 rounded-full bg-muted text-xs font-medium">
                       {{ chart.chartType || 'auto' }}
                     </span>
+                  </td>
+                  <td class="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                    {{ chart.createdBy ? (userEmailMap.get(chart.createdBy) ?? '—') : '—' }}
                   </td>
                   <td class="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {{ formatDate(chart.updatedAt, true) }}
@@ -212,6 +216,7 @@
               :compact="viewMode === 'compact'"
               :chart-library="chartLibrary"
               :color-config="colorConfig"
+              :owner-email="chart.createdBy ? userEmailMap.get(chart.createdBy) : undefined"
               @edit="editChart"
               @delete="deleteChart"
               @refresh="refreshChart"
@@ -319,6 +324,7 @@ import {
 import { VueDraggable } from 'vue-draggable-plus'
 import { useDashboardStore } from '../stores/dashboard.store'
 import { dashboardApi } from '../services/dashboard.api'
+import { projectApi } from '../services/project.api'
 import { generateDashboardThumbnail } from '../utils/generateThumbnail'
 import ChartCard from '../components/ChartCard.vue'
 import RefreshSchedule from '../components/RefreshSchedule.vue'
@@ -363,6 +369,7 @@ const { isEditor } = useRole()
 const showAskPanel = ref(false)
 
 const sortedCharts = ref<Chart[]>([])
+const userEmailMap = ref<Map<string, string>>(new Map())
 
 const dashboard = computed(() => {
   const id = route.params.id as string
@@ -593,9 +600,16 @@ onMounted(async () => {
     dashboardName.value = dashboard.value.name
   }
   loading.value = false
-  
+
   if (dashboard.value && dashboard.value.charts.length > 0) {
     scheduleThumbnailUpdate(2000)
+  }
+
+  try {
+    const users = await projectApi.listUsers(projectId)
+    userEmailMap.value = new Map(users.map((u) => [u.id, u.email ?? u.id.slice(0, 8)]))
+  } catch {
+    // non-critical — ownership info just won't show
   }
 })
 

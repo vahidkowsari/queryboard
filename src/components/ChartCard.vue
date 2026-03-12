@@ -2,13 +2,20 @@
   <Card class="hover:shadow-lg transition-shadow">
     <div :class="compact ? 'p-2 sm:p-3' : 'p-4 sm:p-6'">
       <div v-if="!compact" class="flex items-start justify-between mb-4">
-        <div class="flex-1 flex items-center gap-2">
+        <div class="flex-1 flex items-start gap-2">
           <GripVertical
             :size="18"
-            class="drag-handle text-muted-foreground cursor-grab active:cursor-grabbing shrink-0"
+            class="drag-handle text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 mt-1"
           />
-          <h3 class="text-lg font-semibold">{{ chart.name }}</h3>
-          <InfoTooltip v-if="chart.description" :text="chart.description" />
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-semibold">{{ chart.name }}</h3>
+              <InfoTooltip v-if="chart.description" :text="chart.description" />
+            </div>
+            <p v-if="ownerEmail" class="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+              <User :size="11" />{{ ownerEmail }}
+            </p>
+          </div>
         </div>
         <div class="flex gap-1 ml-2 sm:ml-4">
           <Button variant="ghost" size="icon" class="h-8 w-8 sm:h-7 sm:w-7" @click="$emit('fullscreen', chart)" title="Full screen">
@@ -119,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft } from 'lucide-vue-next'
+import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft, User } from 'lucide-vue-next'
 import { useRole } from '../composables/useRole'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
@@ -133,6 +140,7 @@ interface Props {
   compact?: boolean
   chartLibrary?: ChartLibrary
   colorConfig?: ColorConfig
+  ownerEmail?: string | null
 }
 
 const { isEditor } = useRole()

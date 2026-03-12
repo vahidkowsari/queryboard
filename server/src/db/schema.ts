@@ -60,6 +60,7 @@ export const charts = pgTable(
     colorConfig: jsonb('color_config'),
     filters: jsonb('filters'),
     position: integer('position').notNull().default(0),
+    createdBy: varchar('created_by', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
