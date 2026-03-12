@@ -61,19 +61,27 @@
               />
               <Database :size="16" class="text-muted-foreground shrink-0" />
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-mono font-semibold text-sm">{{ tableName }}</span>
                   <span class="text-xs px-2 py-0.5 rounded-full" :class="prefixBadgeClass(tableName)">
                     {{ tablePrefix(tableName) }}
+                  </span>
+                  <span v-if="tableInfo.isView" class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 flex items-center gap-1">
+                    <Eye :size="10" />
+                    view
                   </span>
                 </div>
                 <p v-if="tableInfo.description" class="text-xs text-muted-foreground mt-0.5 truncate">
                   {{ tableInfo.description }}
                 </p>
+                <p v-if="tableInfo.partitionKeys?.length" class="text-xs text-amber-600 mt-0.5">
+                  Partitioned by: {{ tableInfo.partitionKeys.join(', ') }}
+                </p>
               </div>
-              <span class="ml-auto text-xs text-muted-foreground shrink-0">
-                {{ tableInfo.columns.length }} columns
-              </span>
+              <div class="ml-auto flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                <span v-if="tableInfo.rowCount != null">~{{ formatRowCount(tableInfo.rowCount) }} rows</span>
+                <span>{{ tableInfo.columns.length }} columns</span>
+              </div>
             </button>
 
             <div v-if="expanded[tableName]" class="border-t bg-muted/30">
@@ -82,7 +90,7 @@
                   <tr class="border-b text-muted-foreground">
                     <th class="text-left py-2 px-4 pl-12 font-medium w-1/4">Column</th>
                     <th class="text-left py-2 px-4 font-medium w-1/6">Type</th>
-                    <th class="text-left py-2 px-4 font-medium">Description</th>
+                    <th class="text-left py-2 px-4 font-medium">Description / Samples</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -90,16 +98,40 @@
                     v-for="col in tableInfo.columns"
                     :key="col.name"
                     class="border-b last:border-0 hover:bg-muted/50"
-                    :class="{ 'bg-yellow-50': isColumnMatch(col.name) }"
+                    :class="{ 'bg-yellow-50 dark:bg-yellow-900/10': isColumnMatch(col.name) }"
                   >
-                    <td class="py-1.5 px-4 pl-12 font-mono text-xs">{{ col.name.trim() }}</td>
+                    <td class="py-1.5 px-4 pl-12">
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-mono text-xs">{{ col.name.trim() }}</span>
+                        <span v-if="col.isPrimaryKey" class="text-xs px-1 py-0 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex items-center gap-0.5">
+                          <Key :size="9" />PK
+                        </span>
+                        <span v-if="col.isPartitionKey" class="text-xs px-1 py-0 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                          PART
+                        </span>
+                        <span v-if="col.nullable === false" class="text-xs text-muted-foreground">NOT NULL</span>
+                      </div>
+                      <div v-if="col.references" class="flex items-center gap-1 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+                        <ArrowRight :size="10" />
+                        <span class="font-mono">{{ col.references.table }}.{{ col.references.column }}</span>
+                      </div>
+                    </td>
                     <td class="py-1.5 px-4">
-                      <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
+                      <span class="text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
                         {{ col.type }}
                       </span>
                     </td>
-                    <td class="py-1.5 px-4 text-xs text-muted-foreground">
-                      {{ col.description || '—' }}
+                    <td class="py-1.5 px-4 text-xs">
+                      <span v-if="col.description" class="text-muted-foreground">{{ col.description }}</span>
+                      <span v-else-if="!col.sampleValues?.length" class="text-muted-foreground/50">—</span>
+                      <div v-if="col.sampleValues?.length" class="flex flex-wrap gap-1 mt-1">
+                        <span
+                          v-for="val in col.sampleValues.slice(0, 6)"
+                          :key="val"
+                          class="px-1.5 py-0 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono text-xs"
+                        >{{ val }}</span>
+                        <span v-if="col.sampleValues.length > 6" class="text-muted-foreground/60 text-xs">+{{ col.sampleValues.length - 6 }} more</span>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -115,7 +147,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Search, Database, ChevronRight } from 'lucide-vue-next'
+import { ArrowLeft, Search, Database, ChevronRight, Eye, Key, ArrowRight } from 'lucide-vue-next'
 import { api, extractApiError } from '../services/api'
 import Button from '../components/ui/button.vue'
 import Card from '../components/ui/card.vue'
@@ -185,6 +217,12 @@ function isColumnMatch(colName: string): boolean {
   const q = search.value.toLowerCase().trim()
   if (!q) return false
   return colName.toLowerCase().includes(q)
+}
+
+function formatRowCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
+  return String(n)
 }
 
 function tablePrefix(name: string): string {

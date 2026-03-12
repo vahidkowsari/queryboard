@@ -154,11 +154,19 @@ export interface SchemaColumn {
   name: string
   type: string
   description?: string
+  nullable?: boolean
+  isPrimaryKey?: boolean
+  isPartitionKey?: boolean
+  references?: { table: string; column: string }
+  sampleValues?: string[]
 }
 
 export interface SchemaTable {
   description?: string
   columns: SchemaColumn[]
+  rowCount?: number
+  isView?: boolean
+  partitionKeys?: string[]
 }
 
 export interface Schema {

@@ -49,6 +49,7 @@
                 :rdbms="rdbmsForm"
                 :bigquery="bqForm"
                 layout="grid"
+                :show-test-button="false"
                 @update:athena="dbForm = $event"
                 @update:rdbms="rdbmsForm = $event"
                 @update:bigquery="bqForm = $event"

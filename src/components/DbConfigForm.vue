@@ -138,7 +138,7 @@
   </template>
 
   <!-- Test Connection Button -->
-  <div class="pt-4 border-t">
+  <div v-if="showTestButton" class="pt-4 border-t">
     <Button 
       @click="testConnection" 
       :disabled="testing"
@@ -180,10 +180,12 @@ interface Props {
   rdbms: RdbmsFormData
   bigquery: BigQueryFormData
   layout?: 'grid' | 'stack'
+  showTestButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   layout: 'stack',
+  showTestButton: true,
 })
 
 const emit = defineEmits<{
