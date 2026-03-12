@@ -1,5 +1,5 @@
 import { BigQuery } from '@google-cloud/bigquery'
-import type { Schema, SchemaProvider, BigQueryDbConfig } from '../../types.js'
+import type { Schema, SchemaProvider, BigQueryDbConfig, ProgressCallback } from '../../types.js'
 
 function inferReference(colName: string, tableNames: Set<string>): { table: string; column: string } | undefined {
   if (!colName.endsWith('_id')) return undefined
@@ -19,17 +19,21 @@ export function createBigQuerySchemaProvider(dbConfig: BigQueryDbConfig): Schema
   return {
     name: 'bigquery',
 
-    async detectSchema(): Promise<Schema> {
+    async detectSchema(onProgress?: ProgressCallback): Promise<Schema> {
       console.log(`Schema: Detecting from BigQuery dataset "${dbConfig.dataset}"...`)
+      onProgress?.({ phase: 'detecting', message: 'Discovering tables and views...' })
 
       const dataset = bq.dataset(dbConfig.dataset)
       const [tableList] = await dataset.getTables()
       const tableNames = tableList.map((t: { id?: string }) => t.id!).sort()
       const tableNameSet = new Set(tableNames)
       console.log(`Schema: Found ${tableNames.length} tables/views`)
+      onProgress?.({ phase: 'detecting', message: `Found ${tableNames.length} tables/views — reading metadata...` })
 
       const schemaTables: Schema['tables'] = {}
-      for (const tableName of tableNames) {
+      for (let i = 0; i < tableNames.length; i++) {
+        const tableName = tableNames[i]
+        onProgress?.({ phase: 'sampling', message: `Processing table: ${tableName}`, current: i + 1, total: tableNames.length })
         try {
           const [metadata] = await dataset.table(tableName).getMetadata()
           const isView = metadata.type === 'VIEW'

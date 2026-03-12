@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise'
-import type { Schema, SchemaProvider, MySQLDbConfig, Column } from '../../types.js'
+import type { Schema, SchemaProvider, MySQLDbConfig, Column, ProgressCallback } from '../../types.js'
 
 const SAMPLE_VALUE_LIMIT = 10
 const MAX_ROWS_FOR_SAMPLING = 2_000_000
@@ -30,8 +30,9 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
   return {
     name: 'mysql',
 
-    async detectSchema(): Promise<Schema> {
+    async detectSchema(onProgress?: ProgressCallback): Promise<Schema> {
       console.log(`Schema: Detecting from MySQL database "${dbConfig.database}"...`)
+      onProgress?.({ phase: 'detecting', message: 'Discovering tables and views...' })
 
       const [tableRows] = await pool.query(
         `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = ? AND table_type IN ('BASE TABLE','VIEW') ORDER BY table_name`,
@@ -41,6 +42,7 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
       const tableNames = tableInfos.map((r) => (r.table_name || r.TABLE_NAME) as string)
       const viewSet = new Set(tableInfos.filter((r) => (r.table_type || r.TABLE_TYPE) === 'VIEW').map((r) => (r.table_name || r.TABLE_NAME) as string))
       console.log(`Schema: Found ${tableNames.length} tables/views (${viewSet.size} views)`)
+      onProgress?.({ phase: 'detecting', message: `Found ${tableNames.length} tables/views — fetching metadata...` })
 
       if (tableNames.length === 0) {
         return { database: dbConfig.database, engine: 'mysql', detectedAt: new Date().toISOString(), tables: {} }
@@ -92,7 +94,8 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
       const STRING_TYPES = new Set(['varchar', 'char', 'text', 'tinytext', 'mediumtext', 'longtext', 'enum', 'set'])
 
       const tables: Schema['tables'] = {}
-      for (const tableName of tableNames) {
+      for (let i = 0; i < tableNames.length; i++) {
+        const tableName = tableNames[i]
         const rawCols = colsByTable.get(tableName) || []
         const rowCount = rowCountMap.get(tableName)
 
@@ -110,6 +113,7 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
           }
         })
 
+        onProgress?.({ phase: 'sampling', message: `Processing table: ${tableName}`, current: i + 1, total: tableNames.length })
         const shouldSample = !rowCount || rowCount < MAX_ROWS_FOR_SAMPLING
         if (shouldSample) {
           const sampleTasks = columns

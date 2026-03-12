@@ -1,4 +1,4 @@
-import { api } from './api'
+import { api, API_BASE_URL } from './api'
 import type { DbEngine, DbConfig, LLMConfig, ChartLibrary, ColorConfig } from '../types'
 
 export interface ProjectRow {
@@ -66,11 +66,54 @@ export const projectApi = {
   },
 
   /**
-   * Triggers database schema detection for the project
+   * Triggers database schema detection for the project (non-streaming)
    */
   async detectSchema(projectId: string): Promise<unknown> {
     const { data } = await api.post(`/projects/${projectId}/schema`)
     return data
+  },
+
+  /**
+   * Triggers schema detection and streams progress events via SSE.
+   * Calls onProgress for each event, onComplete on success, onError on failure/timeout.
+   * Returns a cancel function to close the connection early.
+   */
+  detectSchemaWithProgress(
+    projectId: string,
+    onProgress: (event: { phase: string; message: string; current?: number; total?: number }) => void,
+    onComplete: () => void,
+    onError: (message: string) => void,
+  ): () => void {
+    const es = new EventSource(`${API_BASE_URL}/api/projects/${projectId}/schema/detect`, {
+      withCredentials: true,
+    })
+
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data)
+        if (event.phase === 'complete') {
+          onComplete()
+          es.close()
+        } else if (event.phase === 'error') {
+          onError(event.message)
+          es.close()
+        } else {
+          onProgress(event)
+        }
+      } catch {
+        // ignore malformed events
+      }
+    }
+
+    es.onerror = () => {
+      // readyState 2 = CLOSED: connection permanently failed (not a transient reconnect)
+      if (es.readyState === EventSource.CLOSED) {
+        onError('Connection lost during schema detection')
+        es.close()
+      }
+    }
+
+    return () => es.close()
   },
 
   /**

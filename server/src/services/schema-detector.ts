@@ -1,46 +1,60 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import type { Schema, SchemaProvider, Column } from '../types.js'
+import type { Schema, SchemaProvider, Column, ProgressCallback } from '../types.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const SCHEMA_PATH = join(__dirname, '..', '..', 'schema.json')
 
-let cachedSchema: Schema | null = null
+const schemaCache = new Map<string, Schema>()
+
+function schemaPath(projectId: string): string {
+  return join(__dirname, '..', '..', `schema-${projectId}.json`)
+}
 
 /**
  * Detects database schema using the provided schema provider
- * Caches schema to disk and memory for faster subsequent loads
+ * Caches schema to disk and memory (keyed by projectId) for faster subsequent loads
  */
-export async function detectSchema(provider: SchemaProvider, { force = false } = {}): Promise<Schema> {
+export async function detectSchema(
+  provider: SchemaProvider,
+  { force = false, projectId = 'default' } = {},
+  onProgress?: ProgressCallback,
+): Promise<Schema> {
   // Return cached schema if available and not forcing refresh
-  if (cachedSchema && !force) return cachedSchema
+  const cached = schemaCache.get(projectId)
+  if (cached && !force) return cached
+
+  const filePath = schemaPath(projectId)
 
   // Try to load from disk cache first
-  if (!force && existsSync(SCHEMA_PATH)) {
+  if (!force) {
     try {
-      const raw = readFileSync(SCHEMA_PATH, 'utf-8')
-      cachedSchema = JSON.parse(raw)
-      console.log(`Schema: Loaded from ${SCHEMA_PATH} (detected ${cachedSchema!.detectedAt})`)
-      return cachedSchema!
+      const raw = readFileSync(filePath, 'utf-8')
+      const schema = JSON.parse(raw) as Schema
+      schemaCache.set(projectId, schema)
+      console.log(`Schema: Loaded from ${filePath} (detected ${schema.detectedAt})`)
+      return schema
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.warn(`Schema: Failed to read ${SCHEMA_PATH}: ${msg}`)
+      const code = (err as NodeJS.ErrnoException).code
+      if (code !== 'ENOENT') {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.warn(`Schema: Failed to read ${filePath}: ${msg}`)
+      }
     }
   }
 
   // Auto-detect schema from database
   console.log(`Schema: Auto-detecting via ${provider.name} provider...`)
-  const schema = await provider.detectSchema()
-  cachedSchema = schema
+  const schema = await provider.detectSchema(onProgress)
+  schemaCache.set(projectId, schema)
 
   // Save to disk for future loads
   try {
-    writeFileSync(SCHEMA_PATH, JSON.stringify(schema, null, 2))
-    console.log(`Schema: Saved to ${SCHEMA_PATH}`)
+    writeFileSync(filePath, JSON.stringify(schema, null, 2))
+    console.log(`Schema: Saved to ${filePath}`)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.warn(`Schema: Failed to save ${SCHEMA_PATH}: ${msg}`)
+    console.warn(`Schema: Failed to save ${filePath}: ${msg}`)
   }
 
   return schema
@@ -49,8 +63,8 @@ export async function detectSchema(provider: SchemaProvider, { force = false } =
 /**
  * Returns the currently cached schema without re-detection
  */
-export function getSchema(): Schema | null {
-  return cachedSchema
+export function getSchema(projectId = 'default'): Schema | null {
+  return schemaCache.get(projectId) ?? null
 }
 
 function formatColumnLine(c: Column, tableName: string): string {

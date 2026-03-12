@@ -1,5 +1,5 @@
 import pg from 'pg'
-import type { Schema, SchemaProvider, RedshiftDbConfig } from '../../types.js'
+import type { Schema, SchemaProvider, RedshiftDbConfig, ProgressCallback } from '../../types.js'
 
 export function createRedshiftSchemaProvider(dbConfig: RedshiftDbConfig): SchemaProvider {
   const pool = new pg.Pool({
@@ -14,8 +14,9 @@ export function createRedshiftSchemaProvider(dbConfig: RedshiftDbConfig): Schema
   return {
     name: 'redshift',
 
-    async detectSchema(): Promise<Schema> {
+    async detectSchema(onProgress?: ProgressCallback): Promise<Schema> {
       console.log(`Schema: Detecting from Redshift database "${dbConfig.database}"...`)
+      onProgress?.({ phase: 'detecting', message: 'Discovering tables and views...' })
 
       const tableResult = await pool.query(`
         SELECT table_name, table_type
@@ -28,6 +29,7 @@ export function createRedshiftSchemaProvider(dbConfig: RedshiftDbConfig): Schema
       const tableNames = tableInfos.map((r) => r.table_name)
       const viewSet = new Set(tableInfos.filter((r) => r.table_type === 'VIEW').map((r) => r.table_name))
       console.log(`Schema: Found ${tableNames.length} tables/views (${viewSet.size} views)`)
+      onProgress?.({ phase: 'detecting', message: `Found ${tableNames.length} tables/views — fetching metadata...` })
 
       if (tableNames.length === 0) {
         return { database: dbConfig.database, engine: 'redshift', detectedAt: new Date().toISOString(), tables: {} }
@@ -82,7 +84,9 @@ export function createRedshiftSchemaProvider(dbConfig: RedshiftDbConfig): Schema
       } catch { console.log('Schema: FK detection not available') }
 
       const tables: Schema['tables'] = {}
-      for (const tableName of tableNames) {
+      for (let i = 0; i < tableNames.length; i++) {
+        const tableName = tableNames[i]
+        onProgress?.({ phase: 'sampling', message: `Processing table: ${tableName}`, current: i + 1, total: tableNames.length })
         const rawCols = colsByTable.get(tableName) || []
         const rowCount = rowCountMap.get(tableName)
         const columns = rawCols.map((r) => ({
