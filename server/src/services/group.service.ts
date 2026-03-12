@@ -4,6 +4,9 @@ import type { Db } from '../db/index.js'
 
 export function createGroupService(db: Db) {
   return {
+    /**
+     * Fetches all groups for a project with their members
+     */
     async list(projectId: string) {
       const rows = await db.select().from(groups).where(eq(groups.projectId, projectId))
       const result = await Promise.all(
@@ -15,6 +18,9 @@ export function createGroupService(db: Db) {
       return result
     },
 
+    /**
+     * Fetches a specific group with its members
+     */
     async getById(id: string) {
       const rows = await db.select().from(groups).where(eq(groups.id, id))
       if (!rows.length) return null
@@ -22,6 +28,9 @@ export function createGroupService(db: Db) {
       return { ...rows[0], members }
     },
 
+    /**
+     * Creates a new group in a project
+     */
     async create(projectId: string, name: string, description?: string) {
       const rows = await db
         .insert(groups)
@@ -30,6 +39,9 @@ export function createGroupService(db: Db) {
       return { ...rows[0], members: [] }
     },
 
+    /**
+     * Updates group name and description
+     */
     async update(id: string, name: string, description?: string) {
       const rows = await db
         .update(groups)
@@ -39,11 +51,17 @@ export function createGroupService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Deletes a group and all its memberships
+     */
     async remove(id: string) {
       const rows = await db.delete(groups).where(eq(groups.id, id)).returning({ id: groups.id })
       return rows.length > 0
     },
 
+    /**
+     * Adds a user to a group (idempotent)
+     */
     async addMember(groupId: string, userId: string) {
       const rows = await db
         .insert(groupMembers)
@@ -53,6 +71,9 @@ export function createGroupService(db: Db) {
       return rows[0] || null
     },
 
+    /**
+     * Removes a user from a group
+     */
     async removeMember(groupId: string, userId: string) {
       const rows = await db
         .delete(groupMembers)
@@ -61,6 +82,9 @@ export function createGroupService(db: Db) {
       return rows.length > 0
     },
 
+    /**
+     * Fetches all groups that a user belongs to in a project
+     */
     async getGroupsForUser(projectId: string, userId: string) {
       const allGroups = await db.select().from(groups).where(eq(groups.projectId, projectId))
       const userMemberships = await db.select().from(groupMembers).where(eq(groupMembers.userId, userId))

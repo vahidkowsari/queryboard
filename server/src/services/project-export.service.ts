@@ -39,6 +39,9 @@ export interface ProjectExport {
 
 export function createProjectExportService(db: Db) {
   return {
+    /**
+     * Exports a complete project including all dashboards and charts
+     */
     async exportProject(projectId: string): Promise<ProjectExport | null> {
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId))
       if (!project) return null
@@ -93,6 +96,10 @@ export function createProjectExportService(db: Db) {
       }
     },
 
+    /**
+     * Imports a previously exported project with all its dashboards and charts
+     * Returns the new project ID
+     */
     async importProject(data: ProjectExport): Promise<string> {
       return db.transaction(async (tx) => {
         const [project] = await tx

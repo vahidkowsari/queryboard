@@ -7,6 +7,12 @@
         <InfoTooltip v-if="explanation" :text="explanation" />
       </div>
 
+      <!-- View Only Banner -->
+      <div v-if="isViewOnly" class="flex items-center gap-2 p-3 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-sm font-medium">
+        <Eye :size="16" />
+        You have view-only access. Chart creation and editing is restricted to editors and admins.
+      </div>
+
       <!-- Query Input -->
       <div>
         <label class="block text-sm font-medium mb-2">Ask for a chart</label>
@@ -42,11 +48,11 @@
             <X :size="20" />
             Cancel
           </Button>
-          <Button v-else @click="generateChart" :disabled="!userQuery.trim()">
+          <Button v-else @click="generateChart" :disabled="!userQuery.trim() || isViewOnly">
             <Sparkles :size="20" />
             {{ generatedChart ? 'Regenerate Chart' : 'Generate Chart' }}
           </Button>
-          <Button v-if="generatedChart" @click="saveChart" variant="secondary" :disabled="saving">
+          <Button v-if="generatedChart" @click="saveChart" variant="secondary" :disabled="saving || isViewOnly">
             <Save :size="20" />
             {{ saving ? 'Saving...' : editChart ? 'Update Chart' : 'Save Chart' }}
           </Button>
@@ -196,7 +202,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X } from 'lucide-vue-next'
+import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X, Eye } from 'lucide-vue-next'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
 import Card from './ui/card.vue'
@@ -204,6 +210,7 @@ import Button from './ui/button.vue'
 import Textarea from './ui/textarea.vue'
 import { useDashboardStore } from '../stores/dashboard.store'
 import { useToast } from '../composables/useToast'
+import { useRole } from '../composables/useRole'
 import { API_BASE_URL } from '../services/api'
 import type { Chart, ChartType, ChartLibrary, ChartDataRow, ColorConfig, ChartFilter } from '../types'
 import { CHART_TYPE_OPTIONS } from '../utils/chartTransform'
@@ -225,6 +232,8 @@ const emit = defineEmits<{
 
 const dashboardStore = useDashboardStore()
 const toast = useToast()
+const { isEditor } = useRole()
+const isViewOnly = computed(() => !isEditor())
 
 const userQuery = ref(props.editChart?.userQuery || props.editChart?.name || '')
 const loading = ref(false)

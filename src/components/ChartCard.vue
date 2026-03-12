@@ -51,13 +51,13 @@
           <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('refresh', chart)" title="Refresh data">
             <RefreshCw :size="14" />
           </Button>
-          <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('edit', chart)" title="Edit chart">
+          <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('edit', chart)" title="Edit chart">
             <Edit2 :size="14" />
           </Button>
-          <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('move', chart)" title="Move to another dashboard">
+          <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('move', chart)" title="Move to another dashboard">
             <ArrowRightLeft :size="14" />
           </Button>
-          <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('delete', chart)" title="Delete chart">
+          <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('delete', chart)" title="Delete chart">
             <Trash2 :size="14" />
           </Button>
         </div>
@@ -120,6 +120,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft } from 'lucide-vue-next'
+import { useRole } from '../composables/useRole'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
 import Card from './ui/card.vue'
@@ -134,6 +135,7 @@ interface Props {
   colorConfig?: ColorConfig
 }
 
+const { isEditor } = useRole()
 const chartRendererRef = ref<InstanceType<typeof ChartRenderer> | null>(null)
 const showExportMenu = ref(false)
 

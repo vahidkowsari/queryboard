@@ -90,7 +90,7 @@ async function startServer() {
   app.use('/api/projects/:projectId/conversations', verifySession(), createConversationPermissionRoutes(db))
   app.use('/api/projects/:projectId/groups', verifySession(), createGroupRoutes(db))
   app.use('/api/projects/:projectId/dashboards', verifySession(), createPermissionRoutes(db))
-  app.use('/api/admin', verifySession(), requireRole(ROLES.ADMIN), createAdminRoutes())
+  app.use('/api/admin', verifySession(), requireRole(ROLES.ADMIN), createAdminRoutes(db))
 
   // --- Public shared dashboard route (no auth required) ---
   const sharedDashboardService = createDashboardService(db)

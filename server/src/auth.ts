@@ -8,6 +8,10 @@ import { config } from './config.js'
 export const ROLES = { ADMIN: 'admin', EDITOR: 'editor', VIEWER: 'viewer' } as const
 export type AppRole = (typeof ROLES)[keyof typeof ROLES]
 
+/**
+ * Initializes SuperTokens authentication with email/password and OAuth providers
+ * Configures role-based access control and email domain restrictions
+ */
 export function initSuperTokens() {
   supertokens.init({
     framework: 'express',
@@ -172,6 +176,10 @@ export function initSuperTokens() {
   })
 }
 
+/**
+ * Creates role definitions and backfills roles for existing users
+ * First user gets admin role, others get viewer role
+ */
 export async function seedRoles() {
   for (const role of Object.values(ROLES)) {
     await UserRoles.createNewRoleOrAddPermissions(role, [])
@@ -189,6 +197,10 @@ export async function seedRoles() {
   }
 }
 
+/**
+ * Assigns default role to a new user
+ * First user becomes admin, subsequent users become viewers
+ */
 async function assignDefaultRole(userId: string) {
   const users = await supertokens.getUsersNewestFirst({ tenantId: 'public', limit: 2 })
   const isFirstUser = users.users.length <= 1
@@ -197,6 +209,10 @@ async function assignDefaultRole(userId: string) {
   console.log(`Assigned role "${role}" to user ${userId}`)
 }
 
+/**
+ * Creates an initial admin user from environment variables if configured
+ * Validates email domain and upgrades existing users to admin if needed
+ */
 export async function createInitialAdmin() {
   if (!config.supertokens.adminEmail || !config.supertokens.adminPassword) {
     console.log('No ADMIN_EMAIL/ADMIN_PASSWORD configured, skipping initial admin creation')

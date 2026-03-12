@@ -6,6 +6,9 @@ import { getSecretJson } from './services/secrets.service.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: join(__dirname, '..', '..', '.env.local') })
 
+/**
+ * Gets environment variable or returns fallback value
+ */
 function optional(key: string, fallback: string): string {
   return process.env[key] ?? fallback
 }
@@ -25,6 +28,10 @@ interface SecretsManagerConfig {
 
 let secretsCache: SecretsManagerConfig | null = null
 
+/**
+ * Loads sensitive configuration from AWS Secrets Manager with caching
+ * Falls back to environment variables if Secrets Manager is unavailable
+ */
 async function loadSecretsFromManager(): Promise<SecretsManagerConfig> {
   if (secretsCache) {
     return secretsCache
@@ -48,6 +55,10 @@ async function loadSecretsFromManager(): Promise<SecretsManagerConfig> {
   }
 }
 
+/**
+ * Loads application configuration from environment variables and AWS Secrets Manager
+ * Returns configuration for database, authentication, and LLM providers
+ */
 export async function loadConfig() {
   const secrets = await loadSecretsFromManager()
 

@@ -13,6 +13,10 @@ const POSTGRES_RULES = `POSTGRESQL SQL RULES:
 - Arrays: use ANY(), array_agg(), unnest().
 - JSON: use ->, ->>, jsonb_extract_path_text().`
 
+/**
+ * Creates a query executor for PostgreSQL with connection pooling
+ * Includes SQL rules for PostgreSQL-specific syntax and features
+ */
 export function createPostgresExecutor(dbConfig: PostgresDbConfig): QueryExecutor {
   const pool = new pg.Pool({
     host: dbConfig.host,

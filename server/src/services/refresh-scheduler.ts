@@ -7,19 +7,30 @@ import type { DbEngine, DbConfig } from '../types.js'
 
 const activeTasks = new Map<string, ScheduledTask>()
 
+/**
+ * Creates a dashboard refresh scheduler that runs queries on cron schedules
+ */
 export function createRefreshScheduler(db: Db) {
+  /**
+   * Refreshes all charts in a dashboard by re-executing their queries
+   */
   async function refreshDashboard(dashboardId: string) {
+    // Load dashboard and validate it exists
     const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId))
     if (!dashboard) return
 
+    // Load project to get database connection config
     const [project] = await db.select().from(projects).where(eq(projects.id, dashboard.projectId))
     if (!project) return
 
+    // Load all charts in dashboard
     const dashboardCharts = await db.select().from(charts).where(eq(charts.dashboardId, dashboardId))
     if (dashboardCharts.length === 0) return
 
+    // Create query executor for the project's database
     const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
 
+    // Re-execute each chart's query and update data
     for (const chart of dashboardCharts) {
       if (!chart.query) continue
       try {
@@ -33,6 +44,7 @@ export function createRefreshScheduler(db: Db) {
       }
     }
 
+    // Update dashboard's last refreshed timestamp
     await db
       .update(dashboards)
       .set({ lastRefreshedAt: new Date(), updatedAt: new Date() })
@@ -41,19 +53,25 @@ export function createRefreshScheduler(db: Db) {
     console.log(`[CronRefresh] Refreshed dashboard "${dashboard.name}" (${dashboardCharts.length} charts)`)
   }
 
+  /**
+   * Schedules a dashboard to refresh on a cron schedule
+   * Validates cron expression and stops any existing schedule
+   */
   function scheduleDashboard(dashboardId: string, cronExpr: string) {
-    // Stop existing task if any
+    // Stop existing task if any to avoid duplicates
     const existing = activeTasks.get(dashboardId)
     if (existing) {
       existing.stop()
       activeTasks.delete(dashboardId)
     }
 
+    // Validate cron expression before scheduling
     if (!cron.validate(cronExpr)) {
       console.error(`[CronRefresh] Invalid cron expression for dashboard ${dashboardId}: ${cronExpr}`)
       return
     }
 
+    // Create and start cron task
     const task = cron.schedule(cronExpr, () => {
       refreshDashboard(dashboardId).catch((err) =>
         console.error(`[CronRefresh] Error refreshing dashboard ${dashboardId}:`, err.message),
@@ -63,6 +81,9 @@ export function createRefreshScheduler(db: Db) {
     console.log(`[CronRefresh] Scheduled dashboard ${dashboardId} with cron "${cronExpr}"`)
   }
 
+  /**
+   * Stops the scheduled refresh for a dashboard
+   */
   function unscheduleDashboard(dashboardId: string) {
     const existing = activeTasks.get(dashboardId)
     if (existing) {
@@ -72,6 +93,9 @@ export function createRefreshScheduler(db: Db) {
     }
   }
 
+  /**
+   * Loads and activates all dashboard refresh schedules from the database
+   */
   async function loadAllSchedules() {
     const rows = await db
       .select({ id: dashboards.id, refreshCron: dashboards.refreshCron })

@@ -17,6 +17,10 @@ interface ProjectSeed {
   dbConfig: DbConfig
 }
 
+/**
+ * Seeds initial projects from a projects.config.json file if no projects exist
+ * Useful for demo/development environments
+ */
 export async function seedProjectsFromConfig(db: Db): Promise<void> {
   const projectService = createProjectService(db)
   const existing = await projectService.list()
