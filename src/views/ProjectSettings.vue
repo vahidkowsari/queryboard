@@ -149,7 +149,12 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Model</label>
-                  <Input v-model="llmForm.model" :placeholder="defaultModels[llmForm.vendor]" />
+                  <select
+                    v-model="llmForm.model"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option v-for="m in vendorModels[llmForm.vendor]" :key="m.value" :value="m.value">{{ m.label }}</option>
+                  </select>
                 </div>
               </div>
               <div>
@@ -337,7 +342,11 @@ const form = ref({ name: '', description: '' })
 const dbForm = ref({ database: '', workgroup: '', region: '', profile: '' })
 const rdbmsForm = ref({ host: 'localhost', port: '5432', database: '', user: '', password: '' })
 const bqForm = ref({ projectId: '', dataset: '' })
-const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: '', apiKey: '' })
+const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '' })
+
+watch(() => llmForm.value.vendor, (vendor) => {
+  llmForm.value.model = defaultModels[vendor]
+})
 const chartLibForm = ref({ library: 'vega-lite' as ChartLibrary })
 const colorForm = ref({ palette: [] as string[], background: '', textColor: '' })
 const activeTab = ref('general')
@@ -366,6 +375,26 @@ const defaultModels: Record<LLMVendor, string> = {
   anthropic: 'claude-sonnet-4-20250514',
   openai: 'gpt-4o',
   google: 'gemini-2.0-flash',
+}
+
+const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
+  anthropic: [
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (legacy)' },
+  ],
+  openai: [
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'o3', label: 'o3' },
+  ],
+  google: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.0-pro', label: 'Gemini 2.0 Pro' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  ],
 }
 
 onMounted(async () => {
@@ -397,7 +426,12 @@ onMounted(async () => {
     project.value = p
     form.value = { name: p.name, description: p.description || '' }
     if (p.llmConfig) {
-      llmForm.value = { vendor: p.llmConfig.vendor, model: p.llmConfig.model || '', apiKey: p.llmConfig.apiKey || '' }
+      const vendor = p.llmConfig.vendor
+      const savedModel = p.llmConfig.model || ''
+      const validModel = vendorModels[vendor]?.some(m => m.value === savedModel)
+        ? savedModel
+        : defaultModels[vendor]
+      llmForm.value = { vendor, model: validModel, apiKey: p.llmConfig.apiKey || '' }
     }
     if (p.chartLibrary) {
       chartLibForm.value = { library: p.chartLibrary }
