@@ -342,6 +342,12 @@ const form = ref({ name: '', description: '' })
 const dbForm = ref({ database: '', workgroup: '', region: '', profile: '' })
 const rdbmsForm = ref({ host: 'localhost', port: '5432', database: '', user: '', password: '' })
 const bqForm = ref({ projectId: '', dataset: '' })
+const defaultModels: Record<LLMVendor, string> = {
+  anthropic: 'claude-sonnet-4-20250514',
+  openai: 'gpt-4o',
+  google: 'gemini-2.0-flash',
+}
+
 const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '' })
 
 watch(() => llmForm.value.vendor, (vendor) => {
@@ -369,12 +375,6 @@ function addColor() {
 
 function removeColor(index: number) {
   colorForm.value.palette.splice(index, 1)
-}
-
-const defaultModels: Record<LLMVendor, string> = {
-  anthropic: 'claude-sonnet-4-20250514',
-  openai: 'gpt-4o',
-  google: 'gemini-2.0-flash',
 }
 
 const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
