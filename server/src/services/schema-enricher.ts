@@ -2,6 +2,8 @@ import { askLLM } from './claude.service.js'
 import type { Schema, LLMConfig, ProgressCallback } from '../types.js'
 
 const BATCH_SIZE = 10
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 2000
 
 export interface EnrichmentResult {
   schema: Schema
@@ -54,40 +56,54 @@ Return JSON in this exact format (no markdown, no backticks):
 Be concise. Each description should be under 15 words.
 Return ONLY valid JSON.`
 
-    try {
-      const result = await askLLM(prompt, 4096, llmConfig)
-      vendor = result.vendor
-      model = result.model
-      totalUsage.promptTokens += result.usage.promptTokens
-      totalUsage.completionTokens += result.usage.completionTokens
-      totalUsage.totalTokens += result.usage.totalTokens
-
-      const json = result.text
-        .trim()
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim()
-      const descriptions = JSON.parse(json)
-
-      for (const table of batch) {
-        const tableDesc = descriptions[table]
-        if (!tableDesc) continue
-
-        if (tableDesc.description) {
-          schema.tables[table].description = tableDesc.description
+    let lastErr: unknown
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 1) {
+          onProgress?.({ phase: 'enriching', message: `Enriching descriptions: batch ${batchNum}/${totalBatches} (retry ${attempt - 1})`, current: batchNum, total: totalBatches })
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt - 1)))
         }
-        if (tableDesc.columns) {
-          for (const col of schema.tables[table].columns) {
-            if (tableDesc.columns[col.name]) {
-              col.description = tableDesc.columns[col.name]
+
+        const result = await askLLM(prompt, 4096, llmConfig)
+        vendor = result.vendor
+        model = result.model
+        totalUsage.promptTokens += result.usage.promptTokens
+        totalUsage.completionTokens += result.usage.completionTokens
+        totalUsage.totalTokens += result.usage.totalTokens
+
+        const json = result.text
+          .trim()
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim()
+        const descriptions = JSON.parse(json)
+
+        for (const table of batch) {
+          const tableDesc = descriptions[table]
+          if (!tableDesc) continue
+
+          if (tableDesc.description) {
+            schema.tables[table].description = tableDesc.description
+          }
+          if (tableDesc.columns) {
+            for (const col of schema.tables[table].columns) {
+              if (tableDesc.columns[col.name]) {
+                col.description = tableDesc.columns[col.name]
+              }
             }
           }
         }
+        console.log(`Schema enrichment: Batch ${batchNum}/${totalBatches} done`)
+        break
+      } catch (err) {
+        lastErr = err
+        const msg = err instanceof Error ? err.message : String(err)
+        if (attempt < MAX_RETRIES) {
+          console.warn(`Schema enrichment: Batch ${batchNum} attempt ${attempt} failed - ${msg}, retrying...`)
+        } else {
+          console.warn(`Schema enrichment: Batch ${batchNum} failed after ${MAX_RETRIES} attempts - ${msg}`)
+        }
       }
-      console.log(`Schema enrichment: Batch ${batchNum}/${totalBatches} done`)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.warn(`Schema enrichment: Batch failed - ${msg}`)
     }
   }
 
