@@ -13,6 +13,7 @@ install-requirements:
 	@which docker > /dev/null || brew install --cask docker
 	@which terraform > /dev/null || brew install terraform
 	@which aws > /dev/null || brew install awscli
+	@which gum > /dev/null || brew install gum
 	@echo "All requirements installed."
 
 # ── Install ──────────────────────────────────────────────

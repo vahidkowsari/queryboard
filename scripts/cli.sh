@@ -7,6 +7,7 @@ if [ -z "$AWS_PROFILE" ]; then
     echo "Usage: AWS_PROFILE=your-profile $0"
     exit 1
 fi
+
 AWS_REGION="${AWS_REGION:-us-east-1}"
 TF_DIR="$(dirname "$0")/../deploy/terraform"
 PROJECT_NAME="queryboard"
@@ -14,41 +15,21 @@ ENVIRONMENT="prod"
 SERVICE_NAME="${PROJECT_NAME}-${ENVIRONMENT}-backend"
 LOCAL_PORT="5435"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# --- Helpers ---
 
 tf_output() {
     terraform -chdir="$TF_DIR" output -raw "$1" 2>/dev/null
 }
 
-print_header() {
-    echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║          QueryBoard CLI                ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
-    echo ""
-}
-
-print_menu() {
-    echo -e "${YELLOW}Environment: ${GREEN}${ENVIRONMENT}${NC}  |  ${YELLOW}Region: ${GREEN}${AWS_REGION}${NC}"
-    echo ""
-    echo "  1) Tail ECS logs"
-    echo "  2) Port forward DB (localhost:${LOCAL_PORT})"
-    echo "  3) Backup DB"
-    echo "  4) Restore DB"
-    echo "  5) Show Terraform outputs"
-    echo ""
-    echo "  q) Quit"
-    echo ""
-}
+error() { gum style --foreground 1 "✗ $*"; }
+success() { gum style --foreground 2 "✓ $*"; }
+info() { gum style --foreground 4 "→ $*"; }
 
 get_ecs_task() {
-    local cluster=$(tf_output ecs_cluster_name)
+    local cluster
+    cluster=$(tf_output ecs_cluster_name)
     if [ -z "$cluster" ]; then
-        echo -e "${RED}Could not get ECS cluster name from Terraform.${NC}" >&2
+        error "Could not get ECS cluster name from Terraform."
         return 1
     fi
 
@@ -56,247 +37,229 @@ get_ecs_task() {
     task_arn=$(AWS_PROFILE=$AWS_PROFILE aws ecs list-tasks \
         --cluster "$cluster" \
         --service-name "$SERVICE_NAME" \
-        --region $AWS_REGION \
+        --region "$AWS_REGION" \
         --query 'taskArns[0]' \
         --output text 2>&1)
 
     if [ $? -ne 0 ]; then
-        echo -e "${RED}AWS CLI failed. Check credentials.${NC}" >&2
-        echo -e "${YELLOW}Try: aws sso login --profile $AWS_PROFILE${NC}" >&2
+        error "AWS CLI failed. Check credentials."
+        info "Try: aws sso login --profile $AWS_PROFILE"
         return 1
     fi
 
     if [ "$task_arn" == "None" ] || [ -z "$task_arn" ]; then
-        echo -e "${RED}No running tasks found for service '${SERVICE_NAME}'.${NC}" >&2
+        error "No running tasks found for service: ${SERVICE_NAME}"
         return 1
     fi
 
     echo "$task_arn"
 }
 
+# --- Actions ---
+
 tail_logs() {
     local log_group="/ecs/${PROJECT_NAME}-${ENVIRONMENT}/backend"
-
-    echo -e "${YELLOW}Tailing ECS logs...${NC}"
-    echo -e "${GREEN}Log group: $log_group${NC}"
+    info "Log group: $log_group"
+    info "Press Ctrl+C to stop"
     echo ""
-    echo "Press Ctrl+C to stop"
-    echo ""
-
-    AWS_PROFILE=$AWS_PROFILE aws logs tail "$log_group" --follow --since 10m --region $AWS_REGION
+    AWS_PROFILE=$AWS_PROFILE aws logs tail "$log_group" --follow --since 10m --region "$AWS_REGION"
 }
 
 port_forward_db() {
-    echo -e "${YELLOW}Starting port forward to database...${NC}"
+    local task
+    task=$(get_ecs_task) || return 1
 
-    local task=$(get_ecs_task)
-    if [ $? -ne 0 ] || [ -z "$task" ]; then
-        return 1
-    fi
+    local cluster rds_host task_id runtime_id target
+    cluster=$(tf_output ecs_cluster_name)
+    rds_host=$(tf_output rds_endpoint | cut -d: -f1)
+    task_id="${task##*/}"
 
-    local cluster=$(tf_output ecs_cluster_name)
-    local rds_host=$(tf_output rds_endpoint | cut -d: -f1)
-    local task_id="${task##*/}"
-
-    local runtime_id=$(AWS_PROFILE=$AWS_PROFILE aws ecs describe-tasks \
+    runtime_id=$(AWS_PROFILE=$AWS_PROFILE aws ecs describe-tasks \
         --cluster "$cluster" \
         --tasks "$task" \
-        --region $AWS_REGION \
+        --region "$AWS_REGION" \
         --query 'tasks[0].containers[0].runtimeId' \
         --output text)
 
     if [ "$runtime_id" == "None" ] || [ -z "$runtime_id" ]; then
-        echo -e "${RED}SSM agent not ready. Wait a moment and try again.${NC}"
+        error "SSM agent not ready. Wait a moment and try again."
         return 1
     fi
 
-    local target="ecs:${cluster}_${task_id}_${runtime_id}"
+    target="ecs:${cluster}_${task_id}_${runtime_id}"
 
-    echo -e "${GREEN}Cluster:  $cluster${NC}"
-    echo -e "${GREEN}Task:     $task_id${NC}"
-    echo -e "${GREEN}RDS Host: $rds_host${NC}"
+    info "Cluster:  $cluster"
+    info "Task:     $task_id"
+    info "RDS Host: $rds_host"
     echo ""
-    echo -e "${GREEN}Port forward starting on localhost:${LOCAL_PORT}${NC}"
-    echo -e "${YELLOW}Connect: psql -h localhost -p ${LOCAL_PORT} -U postgres -d queryboard${NC}"
+    success "Port forward active on localhost:${LOCAL_PORT}"
+    info "Connect: psql -h localhost -p ${LOCAL_PORT} -U queryboard -d queryboard"
     echo ""
-    echo "Press Ctrl+C to stop"
+    info "Press Ctrl+C to stop"
     echo ""
 
     AWS_PROFILE=$AWS_PROFILE aws ssm start-session \
         --target "$target" \
         --document-name AWS-StartPortForwardingSessionToRemoteHost \
         --parameters "{\"host\":[\"$rds_host\"],\"portNumber\":[\"5432\"],\"localPortNumber\":[\"${LOCAL_PORT}\"]}" \
-        --region $AWS_REGION
+        --region "$AWS_REGION"
 }
 
 backup_db() {
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_dir="$(dirname "$0")/../backups"
-    local backup_file="${backup_dir}/queryboard_${timestamp}.sql"
+    local timestamp backup_dir backup_file
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    backup_dir="$(dirname "$0")/../backups"
+    backup_file="${backup_dir}/queryboard_${timestamp}.sql"
+    local rds_host
+    rds_host=$(tf_output rds_endpoint | cut -d: -f1)
 
-    mkdir -p "$backup_dir"
-
-    echo -e "${YELLOW}Backing up database...${NC}"
-
-    local rds_host=$(tf_output rds_endpoint | cut -d: -f1)
-
-    echo -e "${GREEN}RDS Host:    $rds_host${NC}"
-    echo -e "${GREEN}Backup file: $backup_file${NC}"
     echo ""
+    gum style --bold "Backup destination:"
+    info "$backup_file"
+    info "RDS Host: $rds_host"
+    echo ""
+    gum confirm "Start backup?" || return 0
 
-    # Start tunnel
-    local task=$(get_ecs_task)
-    if [ $? -ne 0 ] || [ -z "$task" ]; then
-        return 1
-    fi
+    local task
+    task=$(get_ecs_task) || return 1
 
-    local cluster=$(tf_output ecs_cluster_name)
-    local task_id="${task##*/}"
-    local runtime_id=$(AWS_PROFILE=$AWS_PROFILE aws ecs describe-tasks \
+    local cluster task_id runtime_id target
+    cluster=$(tf_output ecs_cluster_name)
+    task_id="${task##*/}"
+    runtime_id=$(AWS_PROFILE=$AWS_PROFILE aws ecs describe-tasks \
         --cluster "$cluster" \
         --tasks "$task" \
-        --region $AWS_REGION \
+        --region "$AWS_REGION" \
         --query 'tasks[0].containers[0].runtimeId' \
         --output text)
 
     if [ "$runtime_id" == "None" ] || [ -z "$runtime_id" ]; then
-        echo -e "${RED}SSM agent not ready.${NC}"
+        error "SSM agent not ready."
         return 1
     fi
 
-    local target="ecs:${cluster}_${task_id}_${runtime_id}"
+    target="ecs:${cluster}_${task_id}_${runtime_id}"
+    mkdir -p "$backup_dir"
 
     AWS_PROFILE=$AWS_PROFILE aws ssm start-session \
         --target "$target" \
         --document-name AWS-StartPortForwardingSessionToRemoteHost \
         --parameters "{\"host\":[\"$rds_host\"],\"portNumber\":[\"5432\"],\"localPortNumber\":[\"${LOCAL_PORT}\"]}" \
-        --region $AWS_REGION &
+        --region "$AWS_REGION" &
     local tunnel_pid=$!
 
-    echo "Waiting for tunnel to establish..."
-    sleep 5
+    gum spin --spinner dot --title "Establishing tunnel..." -- sleep 5
 
-    echo -e "${YELLOW}Running pg_dump...${NC}"
-    PGPASSWORD="${DB_PASSWORD}" pg_dump -h localhost -p $LOCAL_PORT -U postgres -d queryboard -F c -f "$backup_file"
+    gum spin --spinner dot --title "Running pg_dump..." -- \
+        bash -c "PGPASSWORD='${DB_PASSWORD}' pg_dump -h localhost -p $LOCAL_PORT -U queryboard -d queryboard -F c -f '$backup_file'"
 
     kill $tunnel_pid 2>/dev/null || true
 
     if [ -f "$backup_file" ]; then
-        local size=$(ls -lh "$backup_file" | awk '{print $5}')
+        local size
+        size=$(ls -lh "$backup_file" | awk '{print $5}')
         echo ""
-        echo -e "${GREEN}Backup complete!${NC}"
-        echo -e "${GREEN}File: $backup_file ($size)${NC}"
+        success "Backup complete: $(basename "$backup_file") ($size)"
     else
-        echo -e "${RED}Backup failed${NC}"
+        error "Backup failed."
         return 1
     fi
 }
 
 restore_db() {
-    local backup_dir="$(dirname "$0")/../backups"
+    local backup_dir
+    backup_dir="$(dirname "$0")/../backups"
 
-    echo -e "${YELLOW}Available backups:${NC}"
-    echo ""
-
-    local backups=($(ls -1t "$backup_dir"/queryboard_*.sql 2>/dev/null))
+    local backups
+    mapfile -t backups < <(ls -1t "$backup_dir"/queryboard_*.sql 2>/dev/null)
 
     if [ ${#backups[@]} -eq 0 ]; then
-        echo -e "${RED}No backups found${NC}"
+        error "No backups found in: $backup_dir"
         return 1
     fi
 
-    local i=1
+    # Build display list for gum choose
+    local labels=()
     for backup in "${backups[@]}"; do
-        local filename=$(basename "$backup")
-        local size=$(ls -lh "$backup" | awk '{print $5}')
-        echo "  $i) $filename ($size)"
-        ((i++))
+        local filename size
+        filename=$(basename "$backup")
+        size=$(ls -lh "$backup" | awk '{print $5}')
+        labels+=("$filename  ($size)")
     done
-    echo ""
-    echo "  0) Cancel"
-    echo ""
-
-    read -p "Select backup to restore: " choice
-
-    if [ "$choice" == "0" ] || [ -z "$choice" ]; then
-        echo "Cancelled"
-        return 0
-    fi
-
-    local idx=$((choice - 1))
-    if [ $idx -lt 0 ] || [ $idx -ge ${#backups[@]} ]; then
-        echo -e "${RED}Invalid selection${NC}"
-        return 1
-    fi
-
-    local backup_file="${backups[$idx]}"
 
     echo ""
-    echo -e "${RED}WARNING: This will OVERWRITE the database!${NC}"
-    echo -e "${RED}Backup: $(basename $backup_file)${NC}"
+    gum style --bold "Select a backup to restore:"
+    local selected
+    selected=$(printf '%s\n' "${labels[@]}" | gum choose) || return 0
+
+    # Match selection back to file
+    local backup_file=""
+    for backup in "${backups[@]}"; do
+        if [[ "$selected" == "$(basename "$backup")"* ]]; then
+            backup_file="$backup"
+            break
+        fi
+    done
+
     echo ""
-    read -p "Type 'yes' to confirm: " confirm
+    gum style --foreground 1 --bold "WARNING: This will OVERWRITE the production database!"
+    info "Backup: $(basename "$backup_file")"
+    echo ""
+    gum confirm --default=false "Are you absolutely sure?" || return 0
 
-    if [ "$confirm" != "yes" ]; then
-        echo "Cancelled"
-        return 0
-    fi
+    local rds_host
+    rds_host=$(tf_output rds_endpoint | cut -d: -f1)
 
-    echo -e "${YELLOW}Restoring database...${NC}"
+    local task
+    task=$(get_ecs_task) || return 1
 
-    local rds_host=$(tf_output rds_endpoint | cut -d: -f1)
-
-    local task=$(get_ecs_task)
-    if [ $? -ne 0 ] || [ -z "$task" ]; then
-        return 1
-    fi
-
-    local cluster=$(tf_output ecs_cluster_name)
-    local task_id="${task##*/}"
-    local runtime_id=$(AWS_PROFILE=$AWS_PROFILE aws ecs describe-tasks \
+    local cluster task_id runtime_id target
+    cluster=$(tf_output ecs_cluster_name)
+    task_id="${task##*/}"
+    runtime_id=$(AWS_PROFILE=$AWS_PROFILE aws ecs describe-tasks \
         --cluster "$cluster" \
         --tasks "$task" \
-        --region $AWS_REGION \
+        --region "$AWS_REGION" \
         --query 'tasks[0].containers[0].runtimeId' \
         --output text)
 
     if [ "$runtime_id" == "None" ] || [ -z "$runtime_id" ]; then
-        echo -e "${RED}SSM agent not ready.${NC}"
+        error "SSM agent not ready."
         return 1
     fi
 
-    local target="ecs:${cluster}_${task_id}_${runtime_id}"
+    target="ecs:${cluster}_${task_id}_${runtime_id}"
 
     AWS_PROFILE=$AWS_PROFILE aws ssm start-session \
         --target "$target" \
         --document-name AWS-StartPortForwardingSessionToRemoteHost \
         --parameters "{\"host\":[\"$rds_host\"],\"portNumber\":[\"5432\"],\"localPortNumber\":[\"${LOCAL_PORT}\"]}" \
-        --region $AWS_REGION &
+        --region "$AWS_REGION" &
     local tunnel_pid=$!
 
-    echo "Waiting for tunnel to establish..."
-    sleep 5
+    gum spin --spinner dot --title "Establishing tunnel..." -- sleep 5
 
-    echo -e "${YELLOW}Running pg_restore...${NC}"
-    PGPASSWORD="${DB_PASSWORD}" pg_restore -h localhost -p $LOCAL_PORT -U postgres -d queryboard -c --if-exists "$backup_file"
+    gum spin --spinner dot --title "Running pg_restore..." -- \
+        bash -c "PGPASSWORD='${DB_PASSWORD}' pg_restore -h localhost -p $LOCAL_PORT -U queryboard -d queryboard -c --if-exists '$backup_file'"
 
     kill $tunnel_pid 2>/dev/null || true
 
     echo ""
-    echo -e "${GREEN}Restore complete!${NC}"
+    success "Restore complete!"
 }
 
 show_outputs() {
-    echo -e "${YELLOW}Terraform outputs:${NC}"
     echo ""
-    echo -e "  ${GREEN}ECS Cluster:   ${NC}$(tf_output ecs_cluster_name)"
-    echo -e "  ${GREEN}ECR Repo:      ${NC}$(tf_output ecr_repository_url)"
-    echo -e "  ${GREEN}ALB DNS:       ${NC}$(tf_output alb_dns_name)"
-    echo -e "  ${GREEN}CloudFront:    ${NC}$(tf_output cloudfront_domain)"
-    echo -e "  ${GREEN}CF Dist ID:    ${NC}$(tf_output cloudfront_distribution_id)"
-    echo -e "  ${GREEN}Frontend S3:   ${NC}$(tf_output frontend_bucket)"
-    echo -e "  ${GREEN}API Domain:    ${NC}$(tf_output api_domain)"
-    echo -e "  ${GREEN}Web Domain:    ${NC}$(tf_output web_domain)"
+    gum style --bold "Terraform Outputs"
+    echo ""
+    printf "  %-16s %s\n" "ECS Cluster:"   "$(tf_output ecs_cluster_name)"
+    printf "  %-16s %s\n" "ECR Repo:"      "$(tf_output ecr_repository_url)"
+    printf "  %-16s %s\n" "ALB DNS:"       "$(tf_output alb_dns_name)"
+    printf "  %-16s %s\n" "CloudFront:"    "$(tf_output cloudfront_domain)"
+    printf "  %-16s %s\n" "CF Dist ID:"    "$(tf_output cloudfront_distribution_id)"
+    printf "  %-16s %s\n" "Frontend S3:"   "$(tf_output frontend_bucket)"
+    printf "  %-16s %s\n" "API Domain:"    "$(tf_output api_domain)"
+    printf "  %-16s %s\n" "Web Domain:"    "$(tf_output web_domain)"
     echo ""
 }
 
@@ -304,54 +267,71 @@ show_outputs() {
 
 interactive_menu() {
     while true; do
-        print_header
-        print_menu
-        read -p "Select option: " choice
+        echo ""
+        gum style \
+            --border normal --border-foreground 99 \
+            --padding "0 2" --margin "0 1" \
+            --bold "QueryBoard CLI" \
+            "env: ${ENVIRONMENT}  |  region: ${AWS_REGION}"
+        echo ""
 
+        local choice
+        choice=$(gum choose \
+            "Tail ECS logs" \
+            "Port forward DB  (localhost:${LOCAL_PORT})" \
+            "Backup database" \
+            "Restore database" \
+            "Show Terraform outputs" \
+            "Quit") || break
+
+        echo ""
         case $choice in
-            1) tail_logs ;;
-            2) port_forward_db ;;
-            3) backup_db ;;
-            4) restore_db ;;
-            5) show_outputs ;;
-            q|Q) exit 0 ;;
-            *) echo -e "${RED}Invalid option${NC}" ;;
+            "Tail ECS logs")                    tail_logs ;;
+            "Port forward DB"*)                 port_forward_db ;;
+            "Backup database")                  backup_db ;;
+            "Restore database")                 restore_db ;;
+            "Show Terraform outputs")           show_outputs ;;
+            "Quit")                             break ;;
         esac
 
         echo ""
-        read -p "Press Enter to continue..."
+        gum confirm "Return to menu?" || break
     done
+
+    echo ""
 }
 
 # --- CLI entry ---
 
 if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-    echo "QueryBoard CLI"
-    echo ""
-    echo "Usage: $0 [command]"
-    echo ""
-    echo "Interactive mode (no arguments):"
-    echo "  $0"
-    echo ""
-    echo "Direct commands:"
-    echo "  $0 logs              - Tail ECS logs"
-    echo "  $0 tunnel            - Port forward DB to localhost:${LOCAL_PORT}"
-    echo "  $0 backup            - Backup database"
-    echo "  $0 restore           - Restore database"
-    echo "  $0 outputs           - Show Terraform outputs"
-    echo ""
-    echo "Environment variables:"
-    echo "  AWS_PROFILE  (required)"
-    echo "  AWS_REGION   (default: us-east-1)"
-    echo "  DB_PASSWORD  (required for backup/restore)"
+    cat <<EOF
+QueryBoard CLI
+
+Usage: $0 [command]
+
+Interactive mode (no arguments):
+  $0
+
+Direct commands:
+  $0 logs       Tail ECS logs
+  $0 tunnel     Port forward DB to localhost:${LOCAL_PORT}
+  $0 backup     Backup database
+  $0 restore    Restore database
+  $0 outputs    Show Terraform outputs
+
+Environment variables:
+  AWS_PROFILE   (required)
+  AWS_REGION    (default: us-east-1)
+  DB_PASSWORD   (required for backup/restore)
+EOF
     exit 0
 fi
 
 if [ -n "$1" ]; then
     case $1 in
-        logs) tail_logs ;;
-        tunnel) port_forward_db ;;
-        backup) backup_db ;;
+        logs)    tail_logs ;;
+        tunnel)  port_forward_db ;;
+        backup)  backup_db ;;
         restore) restore_db ;;
         outputs) show_outputs ;;
         *) echo "Unknown command: $1"; exit 1 ;;
