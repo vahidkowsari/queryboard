@@ -24,9 +24,18 @@ export interface Schema {
   tables: Record<string, TableInfo>
 }
 
+export interface SchemaProgressEvent {
+  phase: 'detecting' | 'sampling' | 'enriching' | 'saving' | 'complete' | 'error'
+  message: string
+  current?: number
+  total?: number
+}
+
+export type ProgressCallback = (event: SchemaProgressEvent) => void
+
 export interface SchemaProvider {
   name: string
-  detectSchema(): Promise<Schema>
+  detectSchema(onProgress?: ProgressCallback): Promise<Schema>
 }
 
 export type ChartFilterType = 'date' | 'select' | 'multi-select' | 'text' | 'number' | 'boolean'

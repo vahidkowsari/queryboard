@@ -4,7 +4,7 @@ import {
   GetQueryExecutionCommand,
   GetQueryResultsCommand,
 } from '@aws-sdk/client-athena'
-import type { Schema, SchemaProvider } from '../../types.js'
+import type { Schema, SchemaProvider, ProgressCallback } from '../../types.js'
 
 export function createAthenaSchemaProvider(
   athenaClient: AthenaClient,
@@ -44,8 +44,9 @@ export function createAthenaSchemaProvider(
   return {
     name: 'athena',
 
-    async detectSchema(): Promise<Schema> {
+    async detectSchema(onProgress?: ProgressCallback): Promise<Schema> {
       console.log(`Schema: Detecting from Athena database "${database}"...`)
+      onProgress?.({ phase: 'detecting', message: 'Discovering tables and views...' })
 
       const tableRows = await runQuery(`SHOW TABLES IN \`${database}\``)
       const allTableNames = tableRows.map((row) => row[0]).filter(Boolean)
@@ -58,9 +59,12 @@ export function createAthenaSchemaProvider(
       } catch { /* views not supported in this Athena setup */ }
 
       console.log(`Schema: Found ${allTableNames.length} tables/views (${viewSet.size} views)`)
+      onProgress?.({ phase: 'detecting', message: `Found ${allTableNames.length} tables/views — reading metadata...` })
 
       const tables: Schema['tables'] = {}
-      for (const table of allTableNames) {
+      for (let i = 0; i < allTableNames.length; i++) {
+        const table = allTableNames[i]
+        onProgress?.({ phase: 'sampling', message: `Processing table: ${table}`, current: i + 1, total: allTableNames.length })
         try {
           const colRows = await runQuery(
             `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = '${database}' AND table_name = '${table}' ORDER BY ordinal_position`,

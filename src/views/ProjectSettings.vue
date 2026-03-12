@@ -98,6 +98,29 @@
                     </Button>
                   </div>
                 </div>
+
+                <!-- Progress UI -->
+                <div v-if="detectingSchema || schemaError" class="mt-3 space-y-2">
+                  <div v-if="schemaError" class="flex items-start gap-2 text-xs text-destructive">
+                    <XCircle :size="14" class="mt-0.5 shrink-0" />
+                    <span>{{ schemaError }}</span>
+                  </div>
+                  <template v-else>
+                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 :size="13" class="animate-spin shrink-0" />
+                      <span>{{ schemaProgress.message || 'Starting...' }}</span>
+                    </div>
+                    <div v-if="schemaProgress.total" class="w-full bg-muted rounded-full h-1.5">
+                      <div
+                        class="bg-primary h-1.5 rounded-full transition-all duration-300"
+                        :style="{ width: `${Math.round(((schemaProgress.current ?? 0) / schemaProgress.total) * 100)}%` }"
+                      />
+                    </div>
+                    <p v-if="schemaProgress.total" class="text-xs text-muted-foreground">
+                      {{ schemaProgress.current ?? 0 }} / {{ schemaProgress.total }}
+                    </p>
+                  </template>
+                </div>
               </div>
             </div>
           </Card>
@@ -258,9 +281,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Database, RefreshCw, Palette, Plus, X, Plug, CheckCircle2, XCircle } from 'lucide-vue-next'
+import { ArrowLeft, Database, RefreshCw, Palette, Plus, X, Plug, CheckCircle2, XCircle, Loader2 } from 'lucide-vue-next'
 import Tabs from '../components/ui/tabs.vue'
 import { useProjectStore } from '../stores/project.store'
 import { projectApi } from '../services/project.api'
@@ -296,6 +319,9 @@ const projectId = route.params.projectId as string
 const project = ref<Project | null>(null)
 const loading = ref(true)
 const detectingSchema = ref(false)
+const schemaProgress = ref<{ phase?: string; message?: string; current?: number; total?: number }>({})
+const schemaError = ref('')
+let cancelDetection: (() => void) | null = null
 const testingConnection = ref(false)
 const connectionStatus = ref<'idle' | 'success' | 'error'>('idle')
 const connectionError = ref('')
@@ -482,19 +508,41 @@ async function testConnection() {
   }
 }
 
-async function detectSchema() {
+function detectSchema() {
   detectingSchema.value = true
-  try {
-    await projectStore.detectSchema(projectId)
-    const updated = await projectApi.getById(projectId)
-    if (project.value) {
-      project.value.schemaDetectedAt = updated.schemaDetectedAt ? new Date(updated.schemaDetectedAt) : undefined
-    }
-    toast.success('Schema detected successfully')
-  } catch {
-    toast.error('Failed to detect schema')
-  } finally {
-    detectingSchema.value = false
-  }
+  schemaProgress.value = {}
+  schemaError.value = ''
+
+  cancelDetection = projectApi.detectSchemaWithProgress(
+    projectId,
+    (event) => {
+      schemaProgress.value = event
+    },
+    async () => {
+      try {
+        const updated = await projectApi.getById(projectId)
+        if (project.value) {
+          project.value.schemaDetectedAt = updated.schemaDetectedAt ? new Date(updated.schemaDetectedAt) : undefined
+        }
+        toast.success('Schema detected successfully')
+      } catch {
+        toast.error('Schema detected but failed to refresh project')
+      } finally {
+        detectingSchema.value = false
+        schemaProgress.value = {}
+        cancelDetection = null
+      }
+    },
+    (message) => {
+      schemaError.value = message
+      detectingSchema.value = false
+      cancelDetection = null
+      toast.error(message)
+    },
+  )
 }
+
+onUnmounted(() => {
+  cancelDetection?.()
+})
 </script>

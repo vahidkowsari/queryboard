@@ -1,5 +1,5 @@
 import { askLLM } from './claude.service.js'
-import type { Schema, LLMConfig } from '../types.js'
+import type { Schema, LLMConfig, ProgressCallback } from '../types.js'
 
 const BATCH_SIZE = 10
 
@@ -13,8 +13,10 @@ export interface EnrichmentResult {
 export async function enrichSchemaWithDescriptions(
   schema: Schema,
   llmConfig?: LLMConfig | null,
+  onProgress?: ProgressCallback,
 ): Promise<EnrichmentResult> {
   const tableNames = Object.keys(schema.tables)
+  const totalBatches = Math.ceil(tableNames.length / BATCH_SIZE)
   console.log(`Schema enrichment: Generating descriptions for ${tableNames.length} tables...`)
 
   const totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
@@ -22,7 +24,9 @@ export async function enrichSchemaWithDescriptions(
   let model = ''
 
   for (let i = 0; i < tableNames.length; i += BATCH_SIZE) {
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1
     const batch = tableNames.slice(i, i + BATCH_SIZE)
+    onProgress?.({ phase: 'enriching', message: `Enriching descriptions: batch ${batchNum}/${totalBatches}`, current: batchNum, total: totalBatches })
     const batchInfo = batch
       .map((t) => {
         const cols = schema.tables[t].columns.map((c) => `${c.name} (${c.type})`).join(', ')
@@ -80,9 +84,7 @@ Return ONLY valid JSON.`
           }
         }
       }
-      console.log(
-        `Schema enrichment: Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(tableNames.length / BATCH_SIZE)} done`,
-      )
+      console.log(`Schema enrichment: Batch ${batchNum}/${totalBatches} done`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.warn(`Schema enrichment: Batch failed - ${msg}`)

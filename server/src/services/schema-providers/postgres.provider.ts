@@ -1,5 +1,5 @@
 import pg from 'pg'
-import type { Schema, SchemaProvider, PostgresDbConfig, Column } from '../../types.js'
+import type { Schema, SchemaProvider, PostgresDbConfig, Column, ProgressCallback } from '../../types.js'
 
 const SAMPLE_VALUE_LIMIT = 10
 const MAX_ROWS_FOR_SAMPLING = 2_000_000
@@ -34,8 +34,9 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
   return {
     name: 'postgres',
 
-    async detectSchema(): Promise<Schema> {
+    async detectSchema(onProgress?: ProgressCallback): Promise<Schema> {
       console.log(`Schema: Detecting from PostgreSQL database "${dbConfig.database}"...`)
+      onProgress?.({ phase: 'detecting', message: 'Discovering tables and views...' })
 
       // Detect tables and views
       const tableResult = await pool.query(`
@@ -49,6 +50,7 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
       const tableNames = tableInfos.map((r) => r.table_name)
       const viewSet = new Set(tableInfos.filter((r) => r.table_type === 'VIEW').map((r) => r.table_name))
       console.log(`Schema: Found ${tableNames.length} tables/views (${viewSet.size} views)`)
+      onProgress?.({ phase: 'detecting', message: `Found ${tableNames.length} tables/views — fetching metadata...` })
 
       if (tableNames.length === 0) {
         return { database: dbConfig.database, engine: 'postgres', detectedAt: new Date().toISOString(), tables: {} }
@@ -111,7 +113,8 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
       const STRING_TYPES = new Set(['character varying', 'varchar', 'text', 'char', 'character', 'bpchar', 'name', 'citext'])
 
       const tables: Schema['tables'] = {}
-      for (const tableName of tableNames) {
+      for (let i = 0; i < tableNames.length; i++) {
+        const tableName = tableNames[i]
         const rawCols = colsByTable.get(tableName) || []
         const rowCount = rowCountMap.get(tableName)
 
@@ -124,6 +127,7 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
         }))
 
         // Sample values for string columns in reasonably-sized tables
+        onProgress?.({ phase: 'sampling', message: `Processing table: ${tableName}`, current: i + 1, total: tableNames.length })
         const shouldSample = !rowCount || rowCount < MAX_ROWS_FOR_SAMPLING
         if (shouldSample) {
           const sampleTasks = columns
