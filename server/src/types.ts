@@ -2,12 +2,19 @@ export interface Column {
   name: string
   type: string
   description?: string
+  nullable?: boolean
+  isPrimaryKey?: boolean
+  references?: { table: string; column: string }
+  sampleValues?: string[]
+  isPartitionKey?: boolean
 }
 
 export interface TableInfo {
   description?: string
   columns: Column[]
   rowCount?: number
+  isView?: boolean
+  partitionKeys?: string[]
 }
 
 export interface Schema {
