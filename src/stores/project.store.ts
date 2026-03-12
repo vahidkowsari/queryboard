@@ -72,11 +72,6 @@ export const useProjectStore = defineStore('project', () => {
     if (currentProject.value?.id === id) currentProject.value = null
   }
 
-  async function detectSchema(projectId: string): Promise<void> {
-    await projectApi.detectSchema(projectId)
-    await loadProject(projectId)
-  }
-
   async function exportProject(id: string): Promise<void> {
     const data = await projectApi.exportProject(id)
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -107,7 +102,6 @@ export const useProjectStore = defineStore('project', () => {
     createProject,
     updateProject,
     deleteProject,
-    detectSchema,
     exportProject,
     importProject,
   }

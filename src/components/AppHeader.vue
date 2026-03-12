@@ -44,6 +44,14 @@
 
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <span
+          v-if="schemaJobStore.hasRunningJob"
+          class="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+          title="Schema detection running"
+        >
+          <Loader2 :size="13" class="animate-spin" />
+          Detecting schema...
+        </span>
+        <span
           class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium min-w-[70px] justify-center"
           :class="roleBadge.classes"
         >
@@ -74,10 +82,11 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronRight, LogOut, Moon, Sun, Search, Eye } from 'lucide-vue-next'
+import { ChevronRight, LogOut, Moon, Sun, Search, Eye, Loader2 } from 'lucide-vue-next'
 import Session from 'supertokens-web-js/recipe/session'
 import { useProjectStore } from '../stores/project.store'
 import { useDashboardStore } from '../stores/dashboard.store'
+import { useSchemaJobStore } from '../stores/schema-job.store'
 import { useRole } from '../composables/useRole'
 import { useDarkMode } from '../composables/useDarkMode'
 import SearchModal from './SearchModal.vue'
@@ -86,6 +95,7 @@ const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
 const dashboardStore = useDashboardStore()
+const schemaJobStore = useSchemaJobStore()
 const { roles } = useRole()
 
 const primaryRole = computed(() => {

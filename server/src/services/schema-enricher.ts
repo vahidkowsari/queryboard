@@ -71,12 +71,20 @@ Return ONLY valid JSON.`
         totalUsage.completionTokens += result.usage.completionTokens
         totalUsage.totalTokens += result.usage.totalTokens
 
-        const json = result.text
-          .trim()
+        const rawText = result.text.trim()
+        const json = rawText
           .replace(/```json\n?/g, '')
           .replace(/```\n?/g, '')
           .trim()
-        const descriptions = JSON.parse(json)
+
+        let descriptions: Record<string, { description?: string; columns?: Record<string, string> }>
+        try {
+          descriptions = JSON.parse(json)
+        } catch (parseErr) {
+          const preview = json.length > 500 ? `${json.slice(0, 500)}...[truncated, total ${json.length} chars]` : json
+          console.error(`Schema enrichment: Batch ${batchNum} JSON parse failed. Raw response preview:\n${preview}`)
+          throw parseErr
+        }
 
         for (const table of batch) {
           const tableDesc = descriptions[table]
@@ -98,10 +106,11 @@ Return ONLY valid JSON.`
       } catch (err) {
         lastErr = err
         const msg = err instanceof Error ? err.message : String(err)
+        const tables = batch.join(', ')
         if (attempt < MAX_RETRIES) {
-          console.warn(`Schema enrichment: Batch ${batchNum} attempt ${attempt} failed - ${msg}, retrying...`)
+          console.warn(`Schema enrichment: Batch ${batchNum} attempt ${attempt} failed [tables: ${tables}] - ${msg}, retrying...`)
         } else {
-          console.warn(`Schema enrichment: Batch ${batchNum} failed after ${MAX_RETRIES} attempts - ${msg}`)
+          console.warn(`Schema enrichment: Batch ${batchNum} failed after ${MAX_RETRIES} attempts [tables: ${tables}] - ${msg}`)
         }
       }
     }

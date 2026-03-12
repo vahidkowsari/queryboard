@@ -175,3 +175,17 @@ export interface Schema {
   detectedAt: string
   tables: Record<string, SchemaTable>
 }
+
+export interface SchemaJob {
+  id: string
+  projectId: string
+  status: 'pending' | 'running' | 'complete' | 'error'
+  phase: string | null
+  message: string | null
+  current: number | null
+  total: number | null
+  errorMessage: string | null
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string
+}
