@@ -26,7 +26,7 @@ export function createChartService(db: Db) {
     /**
      * Creates a new chart in a dashboard with auto-incremented position
      */
-    async create(dashboardId: string, data: ChartData) {
+    async create(dashboardId: string, data: ChartData, createdBy?: string) {
       const [{ nextPos }] = await db
         .select({
           nextPos: sql<number>`COALESCE(MAX(${charts.position}), -1) + 1`,
@@ -48,6 +48,7 @@ export function createChartService(db: Db) {
           colorConfig: data.colorConfig || null,
           filters: data.filters || null,
           position: nextPos,
+          createdBy: createdBy || null,
         })
         .returning()
 

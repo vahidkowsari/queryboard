@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2 } from 'lucide-vue-next'
+import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2, User } from 'lucide-vue-next'
 import { marked } from 'marked'
 import { API_BASE_URL } from '../services/api'
 import { config } from '../config'
 import { conversationApi, type Conversation, type ConversationMessage } from '../services/conversation.api'
+import { projectApi } from '../services/project.api'
 import { useRole } from '../composables/useRole'
 import Button from './ui/button.vue'
 import ConversationPermissions from './ConversationPermissions.vue'
@@ -45,6 +46,7 @@ const copiedIndex = ref<number | null>(null)
 const panelMode = ref<'float' | 'maximized'>('float')
 const thinkingTexts = ref<string[]>([])
 const showPermissions = ref(false)
+const userEmailMap = ref<Map<string, string>>(new Map())
 const { isAdmin, refreshRoles } = useRole()
 
 async function copyToClipboard(text: string, index: number) {
@@ -69,6 +71,15 @@ async function loadConversations() {
     conversations.value = []
   } finally {
     loadingConversations.value = false
+  }
+}
+
+async function loadProjectUsers() {
+  try {
+    const users = await projectApi.listUsers(props.projectId)
+    userEmailMap.value = new Map(users.map((u) => [u.id, u.email ?? u.id.slice(0, 8)]))
+  } catch {
+    // non-critical
   }
 }
 
@@ -121,6 +132,7 @@ async function deleteConversation(conv: Conversation, e: Event) {
 watch(() => props.show, (val) => {
   if (val) {
     loadConversations()
+    loadProjectUsers()
     nextTick(() => inputRef.value?.focus())
   }
 })
@@ -131,7 +143,10 @@ function onEscape(e: KeyboardEvent) {
 
 onMounted(async () => {
   await refreshRoles()
-  if (props.show) loadConversations()
+  if (props.show) {
+    loadConversations()
+    loadProjectUsers()
+  }
   document.addEventListener('keydown', onEscape)
 })
 
@@ -301,6 +316,9 @@ function formatTime(dateStr: string): string {
                 <div class="flex-1 min-w-0 pointer-events-none">
                   <div class="truncate font-medium">{{ conv.title }}</div>
                   <div class="text-muted-foreground mt-0.5">{{ formatTime(conv.updatedAt) }}</div>
+                  <div v-if="userEmailMap.get(conv.userId)" class="text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                    <User :size="9" />{{ userEmailMap.get(conv.userId) }}
+                  </div>
                 </div>
                 <button
                   @click="deleteConversation(conv, $event)"

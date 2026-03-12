@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import supertokens from 'supertokens-node'
 import { createProjectService } from '../services/project.service.js'
 import { createProjectExportService } from '../services/project-export.service.js'
 import { createQueryExecutor } from '../services/query-executors/index.js'
@@ -7,6 +8,8 @@ import { requireRole } from '../middleware/roles.js'
 import { ROLES } from '../auth.js'
 import type { Db } from '../db/index.js'
 import type { DbEngine, DbConfig, QueryExecutor } from '../types.js'
+import { conversations, charts, dashboards } from '../db/schema.js'
+import { eq } from 'drizzle-orm'
 
 export function createProjectRoutes(db: Db): Router {
   const router = Router()
@@ -115,6 +118,44 @@ export function createProjectRoutes(db: Db): Router {
       const projectId = await exportService.importProject(data)
       const project = await projectService.getById(projectId)
       res.status(201).json(project)
+    }),
+  )
+
+  // Returns {id, email}[] for all users who own conversations or created charts in this project.
+  // Available to all authenticated project users (no admin role required).
+  router.get(
+    '/:id/users',
+    asyncHandler(async (req, res) => {
+      const projectId = req.params.id
+
+      // Collect distinct userIds from conversations
+      const convRows = await db
+        .select({ userId: conversations.userId })
+        .from(conversations)
+        .where(eq(conversations.projectId, projectId))
+
+      // Collect distinct createdBy from charts via dashboards join
+      const chartRows = await db
+        .select({ createdBy: charts.createdBy })
+        .from(charts)
+        .innerJoin(dashboards, eq(charts.dashboardId, dashboards.id))
+        .where(eq(dashboards.projectId, projectId))
+
+      const userIdSet = new Set<string>()
+      for (const r of convRows) userIdSet.add(r.userId)
+      for (const r of chartRows) if (r.createdBy) userIdSet.add(r.createdBy)
+
+      if (userIdSet.size === 0) return void res.json([])
+
+      const userIds = Array.from(userIdSet)
+      const users = await Promise.all(
+        userIds.map(async (id) => {
+          const user = await supertokens.getUser(id)
+          return { id, email: user?.emails?.[0] ?? null }
+        }),
+      )
+
+      res.json(users)
     }),
   )
 

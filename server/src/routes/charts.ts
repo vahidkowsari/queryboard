@@ -21,8 +21,9 @@ export function createChartRoutes(db: Db): Router {
   router.post(
     '/:dashboardId/charts',
     canEdit,
-    asyncHandler(async (req, res) => {
-      const chart = await chartService.create(req.params.dashboardId, req.body)
+    asyncHandler(async (req: SessionRequest, res) => {
+      const createdBy = req.session!.getUserId()
+      const chart = await chartService.create(req.params.dashboardId, req.body, createdBy)
       res.status(201).json(chart)
     }),
   )

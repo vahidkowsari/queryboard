@@ -64,6 +64,7 @@ export interface Chart {
   data?: ChartDataRow[]
   colorConfig?: ColorConfig
   filters?: ChartFilter[]
+  createdBy?: string | null
   createdAt: Date
   updatedAt: Date
 }
