@@ -5,7 +5,7 @@
     <div v-else-if="!dashboard" class="flex items-center justify-center h-screen">
       <div class="text-center">
         <p class="text-muted-foreground">Dashboard not found</p>
-        <Button @click="router.push(`/projects/${projectId}`)" class="mt-4"> Back to Dashboards </Button>
+        <Button @click="router.push({ name: 'project-dashboards', params: { projectId } })" class="mt-4"> Back to Dashboards </Button>
       </div>
     </div>
 
@@ -13,7 +13,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div class="flex items-center gap-3 sm:gap-4">
-            <Button variant="ghost" size="icon" @click="router.push(`/projects/${projectId}`)">
+            <Button variant="ghost" size="icon" @click="router.push({ name: 'project-dashboards', params: { projectId } })">
               <ArrowLeft :size="20" />
             </Button>
             <div>
@@ -89,7 +89,7 @@
             </Button>
             <Button
               v-if="isEditor()"
-              @click="router.push(`/projects/${projectId}/dashboard/${dashboard.id}/charts/new`)"
+              @click="router.push({ name: 'chart-create', params: { projectId, dashboardId: dashboard.id } })"
               title="Add Chart"
             >
               <Plus :size="18" />
@@ -117,7 +117,7 @@
             <p class="text-muted-foreground mb-6">
               {{ isEditor() ? 'Add your first chart using AI' : 'No charts have been added yet. Contact an editor or admin to add charts.' }}
             </p>
-            <Button v-if="isEditor()" @click="router.push(`/projects/${projectId}/dashboard/${dashboard.id}/charts/new`)">
+            <Button v-if="isEditor()" @click="router.push({ name: 'chart-create', params: { projectId, dashboardId: dashboard.id } })">
               Add Chart
             </Button>
           </div>
@@ -406,13 +406,13 @@ async function saveDashboardName(newName: string) {
 
 function editChart(chart: Chart) {
   if (dashboard.value) {
-    router.push(`/projects/${projectId}/dashboard/${dashboard.value.id}/charts/${chart.id}`)
+    router.push({ name: 'chart-edit', params: { projectId, dashboardId: dashboard.value.id, chartId: chart.id } })
   }
 }
 
 function fullscreenChart(chart: Chart) {
   if (dashboard.value) {
-    router.push(`/projects/${projectId}/dashboard/${dashboard.value.id}/charts/${chart.id}/fullscreen`)
+    router.push({ name: 'chart-fullscreen', params: { projectId, dashboardId: dashboard.value.id, chartId: chart.id } })
   }
 }
 

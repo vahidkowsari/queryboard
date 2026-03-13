@@ -32,10 +32,10 @@ const dashboardId = route.params.dashboardId as string
 const { colorConfig, chartLibrary } = useProjectColorConfig(projectId)
 
 function goBack() {
-  router.push(`/projects/${projectId}/dashboard/${dashboardId}`)
+  router.push({ name: 'dashboard', params: { projectId, id: dashboardId } })
 }
 
 function handleChartCreated(chart: any) {
-  router.push(`/projects/${projectId}/dashboard/${dashboardId}/charts/${chart.id}`)
+  router.push({ name: 'chart-edit', params: { projectId, dashboardId, chartId: chart.id } })
 }
 </script>

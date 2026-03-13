@@ -2,7 +2,7 @@
   <div class="min-h-screen">
     <div class="max-w-7xl mx-auto px-8 py-8">
       <div class="flex items-center gap-3 mb-8">
-        <Button variant="ghost" size="icon" @click="router.push(`/projects/${projectId}`)">
+        <Button variant="ghost" size="icon" @click="router.push({ name: 'project-dashboards', params: { projectId } })">
           <ArrowLeft :size="20" />
         </Button>
         <h1 class="text-3xl font-bold">Project Settings</h1>
@@ -12,7 +12,7 @@
 
       <div v-else-if="error" class="text-center py-16">
         <p class="text-destructive">{{ error }}</p>
-        <Button @click="router.push('/')" class="mt-4">Back to Projects</Button>
+        <Button @click="router.push({ name: 'home' })" class="mt-4">Back to Projects</Button>
       </div>
 
       <template v-else-if="project">
@@ -84,7 +84,7 @@
                     <Button
                       v-if="project.schemaDetectedAt"
                       variant="outline"
-                      @click="$router.push(`/projects/${projectId}/schema`)"
+                      @click="$router.push({ name: 'schema', params: { projectId } })"
                     >
                       <Database :size="16" />
                       View Schema
@@ -363,7 +363,7 @@ const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
 }
 
 const defaultModels = Object.fromEntries(
-  Object.entries(vendorModels).map(([vendor, models]) => [vendor, models[0].value])
+  Object.entries(vendorModels).map(([vendor, models]) => [vendor, models[0]?.value ?? ''])
 ) as Record<LLMVendor, string>
 
 const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '' })

@@ -12,7 +12,7 @@ onMounted(async () => {
     const response = await signInAndUp()
 
     if (response.status === 'OK') {
-      router.push('/')
+      router.push({ name: 'home' })
     } else if (response.status === 'NO_EMAIL_GIVEN_BY_PROVIDER') {
       error.value = 'Google did not provide an email. Please use a different account.'
     } else if (response.status === 'SIGN_IN_UP_NOT_ALLOWED') {
@@ -37,7 +37,7 @@ onMounted(async () => {
       </div>
       <button
         class="text-primary font-medium hover:underline text-sm"
-        @click="router.push('/auth')"
+        @click="router.push({ name: 'auth' })"
       >
         Back to Sign In
       </button>

@@ -76,10 +76,10 @@ async function saveChartName(newName: string) {
 }
 
 function goBack() {
-  router.push(`/projects/${projectId}/dashboard/${dashboardId}`)
+  router.push({ name: 'dashboard', params: { projectId, id: dashboardId } })
 }
 
 function handleChartUpdated() {
-  router.push(`/projects/${projectId}/dashboard/${dashboardId}`)
+  router.push({ name: 'dashboard', params: { projectId, id: dashboardId } })
 }
 </script>
