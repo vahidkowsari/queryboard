@@ -47,6 +47,8 @@ services:
         condition: service_started
       supertokens:
         condition: service_healthy
+    env_file:
+      - .env.local
     environment:
       PORT: "3001"
       DB_HOST: postgres
