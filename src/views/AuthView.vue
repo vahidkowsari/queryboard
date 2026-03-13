@@ -70,7 +70,7 @@ async function handleEmailPasswordSignIn() {
     })
 
     if (response.status === 'OK') {
-      router.push('/')
+      router.push({ name: 'home' })
     } else if (response.status === 'WRONG_CREDENTIALS_ERROR') {
       error.value = 'Invalid email or password'
     } else {

@@ -12,7 +12,7 @@
           <ChevronRight :size="14" class="text-muted-foreground/50 shrink-0 hidden sm:block" />
           <nav class="hidden sm:flex items-center gap-1.5 text-sm min-w-0">
             <router-link
-              :to="`/projects/${projectStore.currentProject!.id}`"
+              :to="{ name: 'project-dashboards', params: { projectId: projectStore.currentProject!.id } }"
               class="text-muted-foreground hover:text-foreground transition-colors max-w-[200px] truncate"
             >
               {{ projectStore.currentProject!.name }}

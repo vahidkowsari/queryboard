@@ -2,7 +2,7 @@
   <div class="min-h-screen">
     <div class="max-w-7xl mx-auto px-8 py-8">
       <div class="flex items-center gap-3 mb-8">
-        <Button variant="ghost" size="icon" @click="$router.push(`/projects/${projectId}`)">
+        <Button variant="ghost" size="icon" @click="$router.push({ name: 'project-dashboards', params: { projectId } })">
           <ArrowLeft :size="20" />
         </Button>
         <div>

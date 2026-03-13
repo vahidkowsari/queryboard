@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div class="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="icon" @click="$router.push('/')">
+          <Button variant="ghost" size="icon" @click="$router.push({ name: 'home' })">
             <ArrowLeft :size="20" />
           </Button>
           <div>
@@ -17,7 +17,7 @@
           <Button
             variant="outline"
             size="icon"
-            @click="$router.push(`/projects/${projectId}/settings`)"
+            @click="$router.push({ name: 'project-settings', params: { projectId } })"
             title="Project settings"
           >
             <Settings :size="18" />
@@ -25,7 +25,7 @@
           <Button
             variant="outline"
             size="icon"
-            @click="$router.push(`/projects/${projectId}/stats`)"
+            @click="$router.push({ name: 'project-stats', params: { projectId } })"
             title="Project stats"
           >
             <Activity :size="18" />
@@ -301,7 +301,7 @@ async function createDashboard() {
     newDashboard.value = { name: '', description: '' }
     showCreateModal.value = false
     toast.success('Dashboard created')
-    router.push(`/projects/${projectId}/dashboard/${dashboard.id}`)
+    router.push({ name: 'dashboard', params: { projectId, id: dashboard.id } })
   } catch {
     toast.error('Failed to create dashboard')
   }
@@ -322,7 +322,7 @@ async function duplicateDashboard(id: string) {
       })
     }
     toast.success('Dashboard duplicated')
-    router.push(`/projects/${projectId}/dashboard/${newDash.id}`)
+    router.push({ name: 'dashboard', params: { projectId, id: newDash.id } })
   } catch {
     toast.error('Failed to duplicate dashboard')
   } finally {
@@ -355,7 +355,7 @@ onMounted(() => {
 })
 
 function navigateToProject(id: string) {
-  router.push(`/projects/${projectId}/dashboard/${id}`)
+  router.push({ name: 'dashboard', params: { projectId, id } })
 }
 
 const thumbnailCache = new Map<string, string>()

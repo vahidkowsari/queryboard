@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-8">
         <h1 class="text-3xl font-bold">Projects</h1>
         <div class="flex gap-3">
-          <Button v-if="isAdmin()" variant="outline" @click="router.push('/admin/users')">
+          <Button v-if="isAdmin()" variant="outline" @click="router.push({ name: 'admin-users' })">
             <Shield :size="20" />
             Manage Users
           </Button>
@@ -58,7 +58,7 @@
                   variant="ghost"
                   size="icon"
                   class="h-8 w-8"
-                  @click.stop="router.push(`/projects/${project.id}/settings`)"
+                  @click.stop="router.push({ name: 'project-settings', params: { projectId: project.id } })"
                   title="Project settings"
                 >
                   <Settings :size="15" />
@@ -289,7 +289,7 @@ async function createProject() {
     form.value.name = ''
     form.value.description = ''
     toast.success('Project created')
-    router.push(`/projects/${project.id}`)
+    router.push({ name: 'project-dashboards', params: { projectId: project.id } })
   } catch {
     toast.error('Failed to create project')
   }
@@ -314,7 +314,7 @@ async function deleteProject(id: string) {
 }
 
 function navigateToProject(id: string) {
-  router.push(`/projects/${id}`)
+  router.push({ name: 'project-dashboards', params: { projectId: id } })
 }
 
 async function handleExport(id: string) {
@@ -337,7 +337,7 @@ async function handleImport(event: Event) {
   try {
     const project = await projectStore.importProject(file)
     toast.success('Project imported')
-    router.push(`/projects/${project.id}`)
+    router.push({ name: 'project-dashboards', params: { projectId: project.id } })
   } catch {
     toast.error('Failed to import project – check that the file is a valid export')
   } finally {

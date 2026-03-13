@@ -47,7 +47,7 @@ const chartHeight = ref(500)
 const contentArea = ref<HTMLElement | null>(null)
 
 function goBack() {
-  router.push(`/projects/${projectId}/dashboard/${dashboardId}`)
+  router.push({ name: 'dashboard', params: { projectId, id: dashboardId } })
 }
 
 function onKeydown(e: KeyboardEvent) {
