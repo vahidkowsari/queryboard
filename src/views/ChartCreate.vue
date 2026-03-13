@@ -35,7 +35,7 @@ function goBack() {
   router.push(`/projects/${projectId}/dashboard/${dashboardId}`)
 }
 
-function handleChartCreated() {
-  router.push(`/projects/${projectId}/dashboard/${dashboardId}`)
+function handleChartCreated(chart: any) {
+  router.push(`/projects/${projectId}/dashboard/${dashboardId}/charts/${chart.id}`)
 }
 </script>
