@@ -215,7 +215,7 @@ async function testConnection() {
   try {
     const dbConfig = buildDbConfig(props.dbEngine, props.athena, props.rdbms, props.bigquery)
     
-    const response = await fetch(`${API_BASE_URL}/projects/test-connection`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/test-connection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

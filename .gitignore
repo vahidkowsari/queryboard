@@ -62,3 +62,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 tfplan
+
+# Synthea data and scripts (local only)
+synthea_data/
+load_synthea.sh

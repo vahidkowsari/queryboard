@@ -136,7 +136,11 @@ export const projectApi = {
    * Tests the database connection for a project
    */
   async testConnection(id: string): Promise<{ success: boolean; error?: string }> {
-    const { data } = await api.post(`/projects/${id}/test-connection`)
+    const project = await this.getById(id)
+    const { data } = await api.post('/projects/test-connection', {
+      dbEngine: project.dbEngine,
+      dbConfig: project.dbConfig,
+    })
     return data
   },
 
