@@ -137,6 +137,72 @@
     </div>
   </template>
 
+  <template v-if="dbEngine === 'snowflake'">
+    <div>
+      <label class="block text-sm font-medium mb-1.5">Account</label>
+      <Input
+        :model-value="snowflake.account"
+        @update:model-value="update('snowflake', 'account', $event)"
+        placeholder="orgname-accountname"
+      />
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Username</label>
+        <Input
+          :model-value="snowflake.username"
+          @update:model-value="update('snowflake', 'username', $event)"
+          placeholder="username"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Password</label>
+        <Input
+          :model-value="snowflake.password"
+          @update:model-value="update('snowflake', 'password', $event)"
+          type="password"
+          placeholder="password"
+        />
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Database</label>
+        <Input
+          :model-value="snowflake.database"
+          @update:model-value="update('snowflake', 'database', $event)"
+          placeholder="my_database"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Schema</label>
+        <Input
+          :model-value="snowflake.schema"
+          @update:model-value="update('snowflake', 'schema', $event)"
+          placeholder="public"
+        />
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Warehouse</label>
+        <Input
+          :model-value="snowflake.warehouse"
+          @update:model-value="update('snowflake', 'warehouse', $event)"
+          placeholder="compute_wh"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Role (optional)</label>
+        <Input
+          :model-value="snowflake.role"
+          @update:model-value="update('snowflake', 'role', $event)"
+          placeholder="accountadmin"
+        />
+      </div>
+    </div>
+  </template>
+
   <!-- Test Connection Button -->
   <div v-if="showTestButton" class="pt-4 border-t">
     <Button 
@@ -172,13 +238,14 @@ import { Loader2, CheckCircle2, XCircle } from 'lucide-vue-next'
 import { API_BASE_URL } from '../services/api'
 import { buildDbConfig } from '../utils/buildDbConfig'
 import type { DbEngine } from '../types'
-import type { AthenaFormData, RdbmsFormData, BigQueryFormData } from '../utils/buildDbConfig'
+import type { AthenaFormData, RdbmsFormData, BigQueryFormData, SnowflakeFormData } from '../utils/buildDbConfig'
 
 interface Props {
   dbEngine: DbEngine
   athena: AthenaFormData
   rdbms: RdbmsFormData
   bigquery: BigQueryFormData
+  snowflake: SnowflakeFormData
   layout?: 'grid' | 'stack'
   showTestButton?: boolean
 }
@@ -192,18 +259,21 @@ const emit = defineEmits<{
   'update:athena': [value: AthenaFormData]
   'update:rdbms': [value: RdbmsFormData]
   'update:bigquery': [value: BigQueryFormData]
+  'update:snowflake': [value: SnowflakeFormData]
 }>()
 
 const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 
-function update(group: 'athena' | 'rdbms' | 'bigquery', key: string, value: string | number | boolean) {
+function update(group: 'athena' | 'rdbms' | 'bigquery' | 'snowflake', key: string, value: string | number | boolean) {
   if (group === 'athena') {
     emit('update:athena', { ...props.athena, [key]: value })
   } else if (group === 'rdbms') {
     emit('update:rdbms', { ...props.rdbms, [key]: value })
-  } else {
+  } else if (group === 'bigquery') {
     emit('update:bigquery', { ...props.bigquery, [key]: value })
+  } else {
+    emit('update:snowflake', { ...props.snowflake, [key]: value })
   }
   testResult.value = null
 }
@@ -213,7 +283,7 @@ async function testConnection() {
   testResult.value = null
 
   try {
-    const dbConfig = buildDbConfig(props.dbEngine, props.athena, props.rdbms, props.bigquery)
+    const dbConfig = buildDbConfig(props.dbEngine, props.athena, props.rdbms, props.bigquery, props.snowflake)
     
     const response = await fetch(`${API_BASE_URL}/api/projects/test-connection`, {
       method: 'POST',

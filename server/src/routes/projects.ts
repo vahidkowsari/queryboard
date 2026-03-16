@@ -39,21 +39,30 @@ export function createProjectRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const { dbEngine, dbConfig } = req.body
       
-      const validEngines: DbEngine[] = ['athena', 'postgres', 'mysql', 'bigquery', 'redshift']
+      console.log('Test connection request:', { dbEngine, dbConfig: dbConfig ? '(present)' : '(missing)' })
+      
+      const validEngines: DbEngine[] = ['athena', 'postgres', 'mysql', 'bigquery', 'redshift', 'snowflake']
       if (!dbEngine || !validEngines.includes(dbEngine)) {
+        console.log('Invalid dbEngine:', dbEngine)
         return void res.status(400).json({ error: 'Invalid or missing dbEngine' })
       }
       if (!dbConfig || typeof dbConfig !== 'object') {
+        console.log('Invalid dbConfig:', typeof dbConfig)
         return void res.status(400).json({ error: 'Invalid or missing dbConfig' })
       }
       
       let executor: QueryExecutor | null = null
       try {
+        console.log(`Creating ${dbEngine} executor...`)
         executor = createQueryExecutor(dbEngine, dbConfig as DbConfig)
+        console.log(`Testing ${dbEngine} connection with SELECT 1...`)
         await executor.execute('SELECT 1')
+        console.log(`${dbEngine} connection test successful`)
         res.json({ success: true, message: 'Connection successful!' })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Connection failed'
+        console.error(`${dbEngine} connection test failed:`, message)
+        console.error('Full error:', err)
         res.status(400).json({ success: false, error: message })
       } finally {
         if (executor?.cleanup) {

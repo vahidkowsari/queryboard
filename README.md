@@ -6,7 +6,7 @@ An intelligent dashboard application that uses AI to generate charts from your d
 
 - **Multi-Project** - Create isolated projects with independent DB, LLM, and chart library configs
 - **AI-Powered Charts** - Generate charts from natural language via agentic tool-use
-- **Multi-Database** - Athena, PostgreSQL, MySQL, BigQuery
+- **Multi-Database** - Athena, PostgreSQL, MySQL, BigQuery, Redshift, Snowflake
 - **Multi-LLM** - Anthropic Claude, OpenAI GPT, Google Gemini (via Vercel AI SDK)
 - **Multi-Chart Library** - Vega-Lite, Chart.js, ECharts, Plotly (per-project)
 - **Dashboard Sharing** - Generate public read-only links to share dashboards
@@ -76,7 +76,7 @@ server/                           # Backend (Express + TypeScript)
 │   └── services/                 # Business logic
 │       ├── chart-agent.ts        # Agentic LLM tool-use
 │       ├── dashboard.service.ts  # Dashboard + sharing logic
-│       ├── query-executors/      # Athena, Postgres, MySQL, BigQuery
+│       ├── query-executors/      # Athena, Postgres, MySQL, BigQuery, Redshift, Snowflake
 │       ├── schema-providers/     # Per-engine schema detection
 │       ├── llm-providers/        # Multi-vendor LLM factory
 │       └── chart-libraries/      # Per-library prompt config
@@ -127,7 +127,7 @@ npm run dev
 ### Creating a Project
 
 1. Click **New Project** on the home page
-2. Configure database engine (Athena, PostgreSQL, MySQL, or BigQuery)
+2. Configure database engine (Athena, PostgreSQL, MySQL, BigQuery, Redshift, or Snowflake)
 3. Choose LLM vendor and model
 4. Choose chart library (Vega-Lite, Chart.js, ECharts, or Plotly)
 

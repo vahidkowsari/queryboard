@@ -22,11 +22,22 @@ export interface BigQueryFormData {
   dataset: string
 }
 
+export interface SnowflakeFormData {
+  account: string
+  username: string
+  password: string
+  database: string
+  schema: string
+  warehouse: string
+  role?: string
+}
+
 export function buildDbConfig(
   dbEngine: DbEngine,
   athena: AthenaFormData,
   rdbms: RdbmsFormData,
   bigquery: BigQueryFormData,
+  snowflake: SnowflakeFormData,
 ): DbConfig {
   switch (dbEngine) {
     case 'athena':
@@ -63,5 +74,7 @@ export function buildDbConfig(
       }
     case 'bigquery':
       return { ...bigquery }
+    case 'snowflake':
+      return { ...snowflake }
   }
 }
