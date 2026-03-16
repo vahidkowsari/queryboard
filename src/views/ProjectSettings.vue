@@ -48,11 +48,13 @@
                 :athena="dbForm"
                 :rdbms="rdbmsForm"
                 :bigquery="bqForm"
+                :snowflake="snowflakeForm"
                 layout="grid"
                 :show-test-button="false"
                 @update:athena="dbForm = $event"
                 @update:rdbms="rdbmsForm = $event"
                 @update:bigquery="bqForm = $event"
+                @update:snowflake="snowflakeForm = $event"
               />
 
               <div class="flex gap-2">
@@ -311,6 +313,7 @@ import type {
   PostgresDbConfig,
   MySQLDbConfig,
   BigQueryDbConfig,
+  SnowflakeDbConfig,
   DbEngine,
   DbConfig,
   LLMVendor,
@@ -319,7 +322,7 @@ import type {
 } from '../types'
 import { COLOR_PRESETS } from '../utils/colorPresets'
 import GroupsManager from '../components/GroupsManager.vue'
-import { buildDbConfig } from '../utils/buildDbConfig'
+import { buildDbConfig, type SnowflakeFormData } from '../utils/buildDbConfig'
 
 const route = useRoute()
 const router = useRouter()
@@ -342,6 +345,7 @@ const form = ref({ name: '', description: '' })
 const dbForm = ref({ database: '', workgroup: '', region: '', profile: '' })
 const rdbmsForm = ref({ host: 'localhost', port: '5432', database: '', user: '', password: '' })
 const bqForm = ref({ projectId: '', dataset: '' })
+const snowflakeForm = ref({ account: '', username: '', password: '', database: '', schema: '', warehouse: '', role: undefined } as SnowflakeFormData)
 const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
   anthropic: [
     { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
@@ -456,6 +460,17 @@ onMounted(async () => {
     } else if (p.dbEngine === 'bigquery') {
       const cfg = p.dbConfig as BigQueryDbConfig
       bqForm.value = { projectId: cfg.projectId, dataset: cfg.dataset }
+    } else if (p.dbEngine === 'snowflake') {
+      const cfg = p.dbConfig as SnowflakeDbConfig
+      snowflakeForm.value = {
+        account: cfg.account,
+        username: cfg.username,
+        password: cfg.password,
+        database: cfg.database,
+        schema: cfg.schema,
+        warehouse: cfg.warehouse,
+        role: cfg.role,
+      }
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load project'
@@ -480,7 +495,7 @@ async function saveDbConfig() {
   try {
     await projectStore.updateProject(projectId, {
       dbConfig: project.value
-        ? buildDbConfig(project.value.dbEngine, dbForm.value, rdbmsForm.value, bqForm.value)
+        ? buildDbConfig(project.value.dbEngine, dbForm.value, rdbmsForm.value, bqForm.value, snowflakeForm.value)
         : ({} as DbConfig),
     })
     toast.success('Connection updated')

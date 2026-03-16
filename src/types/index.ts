@@ -89,7 +89,7 @@ export interface ColorConfig {
 }
 
 // Project types
-export type DbEngine = 'athena' | 'postgres' | 'mysql' | 'bigquery' | 'redshift'
+export type DbEngine = 'athena' | 'postgres' | 'mysql' | 'bigquery' | 'redshift' | 'snowflake'
 
 export interface AthenaDbConfig {
   database: string
@@ -134,7 +134,17 @@ export interface RedshiftDbConfig {
   rejectUnauthorized?: boolean
 }
 
-export type DbConfig = AthenaDbConfig | PostgresDbConfig | MySQLDbConfig | BigQueryDbConfig | RedshiftDbConfig
+export interface SnowflakeDbConfig {
+  account: string
+  username: string
+  password: string
+  database: string
+  schema: string
+  warehouse: string
+  role?: string
+}
+
+export type DbConfig = AthenaDbConfig | PostgresDbConfig | MySQLDbConfig | BigQueryDbConfig | RedshiftDbConfig | SnowflakeDbConfig
 
 export interface Project {
   id: string

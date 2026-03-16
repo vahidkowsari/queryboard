@@ -3,6 +3,7 @@ import { createPostgresSchemaProvider } from './postgres.provider.js'
 import { createMySQLSchemaProvider } from './mysql.provider.js'
 import { createBigQuerySchemaProvider } from './bigquery.provider.js'
 import { createRedshiftSchemaProvider } from './redshift.provider.js'
+import { createSnowflakeSchemaProvider } from './snowflake.provider.js'
 import { createAthenaClient } from '../athena.service.js'
 import type {
   DbEngine,
@@ -13,6 +14,7 @@ import type {
   MySQLDbConfig,
   BigQueryDbConfig,
   RedshiftDbConfig,
+  SnowflakeDbConfig,
 } from '../../types.js'
 
 export function createSchemaProvider(engine: DbEngine, config: DbConfig): SchemaProvider {
@@ -30,6 +32,8 @@ export function createSchemaProvider(engine: DbEngine, config: DbConfig): Schema
       return createBigQuerySchemaProvider(config as BigQueryDbConfig)
     case 'redshift':
       return createRedshiftSchemaProvider(config as RedshiftDbConfig)
+    case 'snowflake':
+      return createSnowflakeSchemaProvider(config as SnowflakeDbConfig)
     default:
       throw new Error(`Schema detection not yet supported for engine: ${engine}`)
   }

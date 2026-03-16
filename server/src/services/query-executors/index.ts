@@ -3,6 +3,7 @@ import { createPostgresExecutor } from './postgres.executor.js'
 import { createMySQLExecutor } from './mysql.executor.js'
 import { createBigQueryExecutor } from './bigquery.executor.js'
 import { createRedshiftExecutor } from './redshift.executor.js'
+import { createSnowflakeExecutor } from './snowflake.executor.js'
 import type {
   DbEngine,
   DbConfig,
@@ -12,6 +13,7 @@ import type {
   MySQLDbConfig,
   BigQueryDbConfig,
   RedshiftDbConfig,
+  SnowflakeDbConfig,
 } from '../../types.js'
 
 /**
@@ -30,6 +32,8 @@ export function createQueryExecutor(engine: DbEngine, config: DbConfig): QueryEx
       return createBigQueryExecutor(config as BigQueryDbConfig)
     case 'redshift':
       return createRedshiftExecutor(config as RedshiftDbConfig)
+    case 'snowflake':
+      return createSnowflakeExecutor(config as SnowflakeDbConfig)
     default:
       throw new Error(`Query executor not yet supported for engine: ${engine}`)
   }
