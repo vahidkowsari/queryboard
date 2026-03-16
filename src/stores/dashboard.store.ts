@@ -108,7 +108,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  async function addChartToDashboard(dashboardId: string, chart: Chart): Promise<void> {
+  async function addChartToDashboard(dashboardId: string, chart: Chart): Promise<Chart> {
     const row = await dashboardApi.addChart(projectId.value, dashboardId, {
       name: chart.name,
       userQuery: chart.userQuery,
@@ -119,11 +119,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
       colorConfig: chart.colorConfig,
       filters: chart.filters,
     })
+    const created = rowToChart(row)
     const dashboard = dashboards.value.find((d) => d.id === dashboardId)
     if (dashboard) {
-      dashboard.charts.push(rowToChart(row))
+      dashboard.charts.push(created)
       dashboard.updatedAt = new Date()
     }
+    return created
   }
 
   async function updateChart(dashboardId: string, chartId: string, chart: Partial<Chart>): Promise<void> {
