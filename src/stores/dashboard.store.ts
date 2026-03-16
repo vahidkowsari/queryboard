@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { Dashboard, Chart } from '../types'
 import { dashboardApi } from '../services/dashboard.api'
 import type { DashboardRow, ChartRow } from '../services/dashboard.api'
@@ -42,9 +42,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const loading = ref(false)
   const projectId = ref<string>('')
 
-  const getDashboardById = computed(() => {
-    return (id: string) => dashboards.value.find((d) => d.id === id)
-  })
+  function findDashboard(id: string): Dashboard | undefined {
+    return dashboards.value.find((d) => d.id === id)
+  }
 
   function setProjectId(id: string): void {
     projectId.value = id
@@ -55,6 +55,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     try {
       const rows = await dashboardApi.list(projectId.value)
       dashboards.value = rows.map(rowToDashboard)
+      if (currentDashboard.value) {
+        currentDashboard.value = findDashboard(currentDashboard.value.id) ?? null
+      }
     } catch (err) {
       console.warn('Failed to fetch dashboards from API, using local state')
     } finally {
@@ -71,23 +74,24 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function updateDashboard(id: string, name: string, description?: string): Promise<void> {
     const row = await dashboardApi.update(projectId.value, id, name, description)
-    const index = dashboards.value.findIndex((d) => d.id === id)
-    if (index !== -1) {
+    const dashboard = findDashboard(id)
+    if (dashboard) {
       const updated = rowToDashboard(row)
-      updated.charts = dashboards.value[index]!.charts
+      updated.charts = dashboard.charts
+      const index = dashboards.value.indexOf(dashboard)
       dashboards.value[index] = updated
+      if (currentDashboard.value?.id === id) currentDashboard.value = updated
     }
   }
 
   async function deleteDashboard(id: string): Promise<void> {
     await dashboardApi.remove(projectId.value, id)
-    const index = dashboards.value.findIndex((d) => d.id === id)
-    if (index !== -1) dashboards.value.splice(index, 1)
+    dashboards.value = dashboards.value.filter((d) => d.id !== id)
     if (currentDashboard.value?.id === id) currentDashboard.value = null
   }
 
   function setCurrentDashboard(id: string): void {
-    const dashboard = dashboards.value.find((d) => d.id === id)
+    const dashboard = findDashboard(id)
     if (dashboard) currentDashboard.value = dashboard
   }
 
@@ -120,7 +124,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       filters: chart.filters,
     })
     const created = rowToChart(row)
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (dashboard) {
       dashboard.charts.push(created)
       dashboard.updatedAt = new Date()
@@ -129,19 +133,19 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function updateChart(dashboardId: string, chartId: string, chart: Partial<Chart>): Promise<void> {
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (!dashboard) return
     const existing = dashboard.charts.find((c) => c.id === chartId)
     if (!existing) return
 
     const row = await dashboardApi.updateChart(projectId.value, dashboardId, chartId, {
-      name: chart.name || existing.name,
-      userQuery: chart.userQuery || existing.userQuery,
-      description: chart.description || existing.description,
-      query: chart.query || existing.query,
-      chartType: chart.chartType || existing.chartType,
-      chartSpec: chart.chartSpec || existing.chartSpec,
-      data: chart.data || existing.data,
+      name: chart.name !== undefined ? chart.name : existing.name,
+      userQuery: chart.userQuery !== undefined ? chart.userQuery : existing.userQuery,
+      description: chart.description !== undefined ? chart.description : existing.description,
+      query: chart.query !== undefined ? chart.query : existing.query,
+      chartType: chart.chartType !== undefined ? chart.chartType : existing.chartType,
+      chartSpec: chart.chartSpec !== undefined ? chart.chartSpec : existing.chartSpec,
+      data: chart.data !== undefined ? chart.data : existing.data,
       colorConfig: chart.colorConfig !== undefined ? chart.colorConfig : existing.colorConfig,
       filters: chart.filters !== undefined ? chart.filters : existing.filters,
     })
@@ -153,7 +157,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function reorderCharts(dashboardId: string, charts: Chart[]): Promise<void> {
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (!dashboard) return
     dashboard.charts = charts
     await dashboardApi.reorderCharts(
@@ -165,7 +169,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function refreshChart(dashboardId: string, chartId: string): Promise<void> {
     const row = await dashboardApi.refreshChart(projectId.value, dashboardId, chartId)
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (dashboard) {
       const chartIndex = dashboard.charts.findIndex((c) => c.id === chartId)
       if (chartIndex !== -1) {
@@ -177,7 +181,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function deleteChart(dashboardId: string, chartId: string): Promise<void> {
     await dashboardApi.removeChart(projectId.value, dashboardId, chartId)
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (dashboard) {
       dashboard.charts = dashboard.charts.filter((c) => c.id !== chartId)
       dashboard.updatedAt = new Date()
@@ -186,22 +190,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function createShareLink(dashboardId: string): Promise<string> {
     const { shareToken } = await dashboardApi.createShareLink(projectId.value, dashboardId)
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (dashboard) dashboard.shareToken = shareToken
-    if (currentDashboard.value?.id === dashboardId) currentDashboard.value.shareToken = shareToken
     return shareToken
   }
 
   async function revokeShareLink(dashboardId: string): Promise<void> {
     await dashboardApi.revokeShareLink(projectId.value, dashboardId)
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (dashboard) dashboard.shareToken = null
-    if (currentDashboard.value?.id === dashboardId) currentDashboard.value.shareToken = null
   }
 
   async function refreshFiltered(dashboardId: string, filterValues: Record<string, string>): Promise<void> {
     const { charts: updatedRows } = await dashboardApi.refreshFiltered(projectId.value, dashboardId, filterValues)
-    const dashboard = dashboards.value.find((d) => d.id === dashboardId)
+    const dashboard = findDashboard(dashboardId)
     if (!dashboard) return
     for (const row of updatedRows) {
       if ('error' in row) continue
@@ -217,7 +219,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     currentDashboard,
     loading,
     projectId,
-    getDashboardById,
     setProjectId,
     fetchDashboards,
     createDashboard,
