@@ -10,8 +10,8 @@
         <p class="text-xs font-medium text-muted-foreground truncate">{{ chart.name }}</p>
       </div>
 
-      <div v-if="chart.chartSpec">
-        <ChartRenderer :spec="chart.chartSpec" :colorConfig="effectiveColorConfig" />
+      <div v-if="hasRenderableSpec">
+        <ChartRenderer :spec="chart.chartSpec!" :colorConfig="effectiveColorConfig" />
       </div>
       <div v-else-if="tableData.length > 0" class="overflow-auto max-h-80 border rounded-lg">
         <table class="w-full text-sm">
@@ -56,6 +56,14 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const hasRenderableSpec = computed(() => {
+  const spec = props.chart.chartSpec as Record<string, unknown> | undefined
+  if (!spec) return false
+  if ((spec as any).error) return false
+  const keys = Object.keys(spec).filter(k => k !== 'data')
+  return keys.length > 0
+})
 
 const effectiveColorConfig = computed<ColorConfig | undefined>(() => {
   if (props.chart.colorConfig?.palette?.length) return props.chart.colorConfig

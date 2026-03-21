@@ -14,13 +14,15 @@ export function useChartLoader() {
   const chart = ref<Chart | null>(null)
 
   onMounted(async () => {
-    dashboardStore.setProjectId(projectId)
-    await dashboardStore.loadDashboard(dashboardId)
-    const dashboard = dashboardStore.dashboards.find((d) => d.id === dashboardId)
-    if (dashboard) {
-      chart.value = dashboard.charts.find((c) => c.id === chartId) || null
+    try {
+      dashboardStore.setProjectId(projectId)
+      const dashboard = await dashboardStore.loadDashboard(dashboardId)
+      if (dashboard) {
+        chart.value = dashboard.charts.find((c) => c.id === chartId) || null
+      }
+    } finally {
+      loading.value = false
     }
-    loading.value = false
   })
 
   return { projectId, dashboardId, chartId, loading, chart }

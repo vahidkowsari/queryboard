@@ -413,9 +413,9 @@ async function saveChart() {
       toast.success('Chart updated')
       emit('chartUpdated')
     } else {
-      await dashboardStore.addChartToDashboard(props.dashboardId, chart)
+      const created = await dashboardStore.addChartToDashboard(props.dashboardId, chart)
       toast.success('Chart saved')
-      emit('chartCreated', chart)
+      emit('chartCreated', created)
     }
 
     userQuery.value = ''
