@@ -174,7 +174,8 @@ const hasRenderableSpec = computed(() => {
   const spec = props.chart.chartSpec as Record<string, unknown> | undefined
   if (!spec) return false
   if (spec.error) return false
-  return Object.keys(spec).length > 0
+  const keys = Object.keys(spec).filter(k => k !== 'data')
+  return keys.length > 0
 })
 
 const effectiveColorConfig = computed<ColorConfig | undefined>(() => {

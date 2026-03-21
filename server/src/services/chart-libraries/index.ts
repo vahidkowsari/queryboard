@@ -19,6 +19,7 @@ const VEGA_LITE: ChartLibraryConfig = {
 - For KPIs (single number), use {"mark": {"type": "text", "fontSize": 64, "fontWeight": "bold"}}.
 - For pie/donut, use arc mark with theta encoding.
 - For bar charts with many categories (>10), show top N only.
+- FOR TABLE CHARTS: Return an empty object {} as the chart_spec. The frontend will render the data as an HTML table automatically. Do NOT create a Vega-Lite spec with marks or axes for tables.
 - FOR GEO/MAP CHARTS (choropleth):
   Use a LAYERED spec with TWO layers: (1) borders layer for all states, (2) data layer with color encoding.
   COMPLETE WORKING EXAMPLE (follow this pattern exactly):
@@ -66,7 +67,8 @@ const CHARTJS: ChartLibraryConfig = {
 - All data values are returned as strings — convert numeric values with parseFloat() in your data arrays.
 - For KPIs, use a single doughnut chart with center text plugin or a simple display object.
 - Use appealing color palettes from Chart.js defaults.
-- Set "options.responsive" to true and "options.maintainAspectRatio" to false.`,
+- Set "options.responsive" to true and "options.maintainAspectRatio" to false.
+- FOR TABLE CHARTS: Return an empty object {} as the chart_spec. The frontend will render the data as an HTML table automatically. Do NOT create a Chart.js configuration for tables.`,
   specDescription: 'Complete Chart.js configuration object with type, data (inline), and options.',
 }
 
@@ -83,7 +85,8 @@ const ECHARTS: ChartLibraryConfig = {
 - For KPIs, use a gauge chart or a simple text display.
 - Set "tooltip.trigger" appropriately ("axis" for bar/line, "item" for pie/scatter).
 - Use "legend" to show series labels.
-- For pie charts, use series[].type = "pie" with data as [{name, value}] arrays.`,
+- For pie charts, use series[].type = "pie" with data as [{name, value}] arrays.
+- FOR TABLE CHARTS: Return an empty object {} as the chart_spec. The frontend will render the data as an HTML table automatically. Do NOT create an ECharts configuration for tables.`,
   specDescription: 'Complete ECharts option object with series, axes, and inline data.',
 }
 
@@ -99,7 +102,8 @@ const PLOTLY: ChartLibraryConfig = {
 - All data values are returned as strings — convert numeric values to numbers in trace arrays.
 - For KPIs, use an indicator trace with "mode": "number".
 - Set "layout.autosize" to true.
-- For pie charts, use "labels" and "values" in the trace.`,
+- For pie charts, use "labels" and "values" in the trace.
+- FOR TABLE CHARTS: Return an empty object {} as the chart_spec. The frontend will render the data as an HTML table automatically. Do NOT create a Plotly configuration for tables.`,
   specDescription: 'Complete Plotly figure with data (traces array) and layout object.',
 }
 
