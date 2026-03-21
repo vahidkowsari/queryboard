@@ -55,6 +55,7 @@ export interface ChartData {
   name: string
   userQuery?: string
   description?: string
+  summary?: string
   query: string
   chartType?: string
   chartSpec?: object
