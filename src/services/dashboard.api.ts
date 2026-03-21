@@ -19,6 +19,7 @@ export interface ChartRow {
   name: string
   userQuery: string | null
   description: string | null
+  summary: string | null
   query: string
   chartType: string | null
   chartSpec: Record<string, unknown> | null
@@ -33,6 +34,7 @@ export interface ChartPayload {
   name: string
   userQuery?: string
   description?: string
+  summary?: string
   query: string
   chartType?: string
   chartSpec?: Record<string, unknown>

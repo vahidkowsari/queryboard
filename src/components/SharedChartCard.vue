@@ -38,12 +38,26 @@
       <div v-else class="flex items-center justify-center h-64 bg-muted rounded-lg">
         <p class="text-muted-foreground">No chart data available</p>
       </div>
+
+      <!-- Summary Section -->
+      <div v-if="chart.summary && !compact" class="mt-4 pt-4 border-t">
+        <button
+          @click="showSummary = !showSummary"
+          class="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground font-medium transition-colors mb-2"
+        >
+          <MessageSquare :size="16" />
+          <span>AI Summary</span>
+          <ChevronDown :size="14" :class="['transition-transform ml-auto', showSummary ? 'rotate-180' : '']" />
+        </button>
+        <p v-if="showSummary" class="text-sm text-muted-foreground leading-relaxed">{{ chart.summary }}</p>
+      </div>
     </div>
   </Card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { MessageSquare, ChevronDown } from 'lucide-vue-next'
 import ChartRenderer from './ChartRenderer.vue'
 import Card from './ui/card.vue'
 import type { ChartRow } from '../services/dashboard.api'
@@ -56,6 +70,15 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const showSummary = ref(true)
+
+const hasRenderableSpec = computed(() => {
+  const spec = props.chart.chartSpec as Record<string, unknown> | undefined
+  if (!spec) return false
+  if ((spec as any).error) return false
+  const keys = Object.keys(spec).filter(k => k !== 'data')
+  return keys.length > 0
+})
 
 const hasRenderableSpec = computed(() => {
   const spec = props.chart.chartSpec as Record<string, unknown> | undefined
