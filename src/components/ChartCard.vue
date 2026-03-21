@@ -92,9 +92,6 @@
           :colorConfig="effectiveColorConfig"
         />
       </div>
-      <div v-else-if="chart.chartSpec && !hasRenderableSpec" class="flex items-center justify-center h-64 bg-muted/30 rounded-lg border">
-        <p class="text-red-500 text-sm">Chart has no data. Try regenerating it.</p>
-      </div>
       <div v-else-if="tableData.length > 0" class="overflow-auto max-h-80 border rounded-lg">
         <table class="w-full text-sm">
           <thead class="bg-muted sticky top-0">
