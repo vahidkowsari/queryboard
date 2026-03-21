@@ -208,6 +208,15 @@
             <p class="text-muted-foreground">No chart data available</p>
           </div>
 
+          <!-- Summary Section -->
+          <div v-if="summary" class="mt-4 pt-4 border-t">
+            <div class="flex items-center gap-2 mb-2">
+              <MessageSquare :size="16" class="text-primary" />
+              <h5 class="text-sm font-semibold text-foreground">AI Summary</h5>
+            </div>
+            <p class="text-sm text-muted-foreground leading-relaxed">{{ summary }}</p>
+          </div>
+
           <!-- SQL Toggle -->
           <div v-if="sqlQuery" class="mt-4 pt-4 border-t">
             <button
@@ -227,7 +236,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X, Eye } from 'lucide-vue-next'
+import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X, Eye, MessageSquare } from 'lucide-vue-next'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
 import Card from './ui/card.vue'
@@ -267,6 +276,7 @@ const status = ref('')
 const error = ref<string | null>(null)
 const sqlQuery = ref<string | null>(props.editChart?.query || null)
 const explanation = ref<string | null>(props.editChart?.description || null)
+const summary = ref<string | null>(props.editChart?.summary || null)
 const generatedChart = ref<Record<string, unknown> | null>(props.editChart?.chartSpec || null)
 const chartData = ref<ChartDataRow[] | null>(props.editChart?.data || null)
 const selectedChartType = ref<ChartType>(props.editChart?.chartType || 'auto')
@@ -392,6 +402,7 @@ async function generateChart() {
             generatedTitle.value = data.title || null
             sqlQuery.value = data.sql
             explanation.value = data.description
+            summary.value = data.summary || null
             generatedChart.value = data.chartSpec
             chartData.value = data.data || null
             chartFilters.value = data.filters?.length ? data.filters : null
@@ -445,6 +456,7 @@ async function saveChart() {
       name: props.chartNameOverride || generatedTitle.value || userQuery.value.substring(0, 50),
       userQuery: userQuery.value,
       description: explanation.value || undefined,
+      summary: summary.value || undefined,
       query: sqlQuery.value,
       chartType: selectedChartType.value,
       chartSpec: JSON.parse(JSON.stringify(generatedChart.value)),
@@ -469,6 +481,7 @@ async function saveChart() {
     generatedChart.value = null
     sqlQuery.value = null
     explanation.value = null
+    summary.value = null
     chartData.value = null
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to save chart'

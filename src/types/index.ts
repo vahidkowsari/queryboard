@@ -58,6 +58,7 @@ export interface Chart {
   name: string
   userQuery: string
   description?: string
+  summary?: string
   query: string
   chartType?: ChartType
   chartSpec?: Record<string, unknown>

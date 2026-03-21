@@ -105,6 +105,7 @@ export function createAgentRoutes(db: Db): Router {
             chartType: result.chartType,
             sql: result.sql,
             description: result.description,
+            summary: result.summary,
             chartSpec: result.chartSpec,
             data: result.data,
             columns: result.columns,

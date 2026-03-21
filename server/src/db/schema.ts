@@ -53,6 +53,7 @@ export const charts = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     userQuery: text('user_query'),
     description: text('description'),
+    summary: text('summary'),
     query: text('query').notNull(),
     chartType: varchar('chart_type', { length: 50 }).default('auto'),
     chartSpec: jsonb('chart_spec'),

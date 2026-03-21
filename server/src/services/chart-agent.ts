@@ -22,6 +22,7 @@ export interface ChartAgentResult {
   chartType: string
   sql: string
   description: string
+  summary: string
   chartSpec: object
   data: Record<string, string>[]
   columns: string[]
@@ -55,6 +56,7 @@ function createChartTools(ctx: ToolHandlerContext, log: LogFn, chartSpecDescript
         chart_type?: string
         sql: string
         description: string
+        summary: string
         chart_spec: string
         filters?: string
       }>({
@@ -64,10 +66,11 @@ function createChartTools(ctx: ToolHandlerContext, log: LogFn, chartSpecDescript
           chart_type: { type: 'string', description: 'Chart type: bar, line, area, pie, scatter, kpi, table, map' },
           sql: { type: 'string', description: 'The final SQL query used. If the user asked for filters, use {{placeholder_name}} syntax for filter values in the SQL.' },
           description: { type: 'string', description: 'Brief explanation of the chart' },
+          summary: { type: 'string', description: 'A concise 2-3 sentence AI-generated summary that highlights key trends, patterns, outliers, or insights from the data. Mention the most significant data points and provide actionable insights when relevant. Use clear, non-technical language.' },
           chart_spec: { type: 'string', description: `${chartSpecDescription} Return as a JSON string.` },
           filters: { type: 'string', description: 'Optional JSON array of filter definitions when the user requests filtering. Each filter: {"placeholder":"name","label":"Display Name","type":"date|select|multi-select|text|number|boolean","column":"db_column","defaultValue":"value","options":["a","b"]}. The placeholder must match a {{placeholder}} in the SQL.' },
         },
-        required: ['title', 'sql', 'description', 'chart_spec'],
+        required: ['title', 'sql', 'description', 'summary', 'chart_spec'],
       }),
     }),
   }
@@ -193,7 +196,7 @@ export async function runChartAgent(
     if (createChartCall) {
       const input = (
         createChartCall as unknown as {
-          input: { title: string; chart_type?: string; sql: string; description: string; chart_spec: string; filters?: string }
+          input: { title: string; chart_type?: string; sql: string; description: string; summary: string; chart_spec: string; filters?: string }
         }
       ).input
       log(`Creating chart: "${input.title}"`)
@@ -235,6 +238,7 @@ export async function runChartAgent(
         chartType: input.chart_type || 'auto',
         sql: input.sql,
         description: input.description,
+        summary: input.summary,
         chartSpec,
         data,
         columns,
