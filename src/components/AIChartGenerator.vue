@@ -179,8 +179,33 @@
             </div>
           </div>
 
-          <div class="rounded-lg border bg-background p-2">
+          <div v-if="hasRenderableSpec" class="rounded-lg border bg-background p-2">
             <ChartRenderer :spec="generatedChart!" :chartLibrary="chartLibrary" :colorConfig="activeColorConfig" />
+          </div>
+          <div v-else-if="tableData.length > 0" class="overflow-auto max-h-80 border rounded-lg">
+            <table class="w-full text-xs">
+              <thead class="bg-muted sticky top-0">
+                <tr>
+                  <th
+                    v-for="col in tableColumns"
+                    :key="col"
+                    class="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap"
+                  >
+                    {{ col }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in tableData" :key="i" class="border-t hover:bg-muted/50">
+                  <td v-for="col in tableColumns" :key="col" class="px-2 py-1 whitespace-nowrap">
+                    {{ row[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="flex items-center justify-center h-64 bg-muted rounded-lg">
+            <p class="text-muted-foreground">No chart data available</p>
           </div>
 
           <!-- SQL Toggle -->
@@ -256,6 +281,28 @@ const activeColorPalette = ref<string[]>(props.editChart?.colorConfig?.palette |
 const customColor = ref('#4e79a7')
 const abortController = ref<AbortController | null>(null)
 const chartFilters = ref<ChartFilter[] | null>(props.editChart?.filters || null)
+
+const hasRenderableSpec = computed(() => {
+  const spec = generatedChart.value as Record<string, unknown> | undefined
+  if (!spec) return false
+  if (spec.error) return false
+  const keys = Object.keys(spec).filter(k => k !== 'data')
+  return keys.length > 0
+})
+
+const tableData = computed<ChartDataRow[]>(() => {
+  if (!chartData.value?.length && !generatedChart.value) return []
+  if (chartData.value?.length) return chartData.value
+  const spec = generatedChart.value as { data?: { values?: ChartDataRow[] } } | undefined
+  if (spec?.data?.values) return spec.data.values
+  return []
+})
+
+const tableColumns = computed<string[]>(() => {
+  const first = tableData.value[0]
+  if (!first) return []
+  return Object.keys(first)
+})
 
 function cancelGeneration() {
   abortController.value?.abort()
