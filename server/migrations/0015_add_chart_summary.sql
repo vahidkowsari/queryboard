@@ -1,1 +1,1 @@
-ALTER TABLE charts ADD COLUMN summary TEXT;
+ALTER TABLE "charts" ADD COLUMN "summary" text;
