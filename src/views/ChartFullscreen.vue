@@ -19,13 +19,13 @@
           <ChartRenderer :spec="chart.chartSpec!" :chart-height="chartHeight" />
         </div>
         <div v-else-if="tableData.length > 0" class="overflow-auto border rounded-lg">
-          <table class="w-full text-sm">
+          <table class="w-full text-xs">
             <thead class="bg-muted sticky top-0">
               <tr>
                 <th
                   v-for="col in tableColumns"
                   :key="col"
-                  class="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap"
+                  class="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap"
                 >
                   {{ col }}
                 </th>
@@ -33,7 +33,7 @@
             </thead>
             <tbody>
               <tr v-for="(row, i) in tableData" :key="i" class="border-t hover:bg-muted/50">
-                <td v-for="col in tableColumns" :key="col" class="px-3 py-1.5 whitespace-nowrap">
+                <td v-for="col in tableColumns" :key="col" class="px-2 py-1 whitespace-nowrap">
                   {{ row[col] }}
                 </td>
               </tr>
