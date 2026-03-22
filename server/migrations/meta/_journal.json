@@ -120,6 +120,13 @@
       "when": 1773600000000,
       "tag": "0016_add_chart_refresh_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1773700000000,
+      "tag": "0017_add_audit_log",
+      "breakpoints": true
     }
   ]
 }

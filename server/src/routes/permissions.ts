@@ -4,11 +4,14 @@ import { createConversationService } from '../services/conversation.service.js'
 import { asyncHandler } from '../middleware/error.js'
 import { requireRole } from '../middleware/roles.js'
 import { ROLES } from '../auth.js'
+import { createAuditLogService } from '../services/audit-log.service.js'
+import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
 import type { Db } from '../db/index.js'
 
 export function createPermissionRoutes(db: Db): Router {
   const router = Router({ mergeParams: true })
   const permissionService = createPermissionService(db)
+  const auditLog = createAuditLogService(db)
 
   // GET /api/projects/:projectId/dashboards/:dashboardId/permissions
   router.get(
@@ -33,6 +36,8 @@ export function createPermissionRoutes(db: Db): Router {
         return void res.status(400).json({ error: 'userId or groupId required' })
       }
       const perm = await permissionService.setPermission(req.params.dashboardId, permission, userId, groupId)
+      const actorId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId: actorId, action: 'permission_granted', entityType: 'permission', entityId: req.params.dashboardId, details: { targetUserId: userId, targetGroupId: groupId, permission } })
       res.status(201).json(perm)
     }),
   )
@@ -44,6 +49,8 @@ export function createPermissionRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const deleted = await permissionService.removePermission(req.params.permId)
       if (!deleted) return void res.status(404).json({ error: 'Permission not found' })
+      const actorId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId: actorId, action: 'permission_revoked', entityType: 'permission', entityId: req.params.dashboardId, details: { permissionId: req.params.permId } })
       res.json({ deleted: true })
     }),
   )
@@ -55,6 +62,7 @@ export function createConversationPermissionRoutes(db: Db): Router {
   const router = Router({ mergeParams: true })
   const permissionService = createPermissionService(db)
   const conversationService = createConversationService(db)
+  const auditLog = createAuditLogService(db)
 
   // GET /api/projects/:projectId/conversations/:conversationId/permissions
   router.get(
@@ -91,6 +99,8 @@ export function createConversationPermissionRoutes(db: Db): Router {
       }
       
       const perm = await permissionService.setConversationPermission(conversationId, permission, userId, groupId)
+      const actorId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId, userId: actorId, action: 'permission_granted', entityType: 'permission', entityId: conversationId, details: { targetUserId: userId, targetGroupId: groupId, permission, target: 'conversation' } })
       res.status(201).json(perm)
     }),
   )
@@ -102,6 +112,8 @@ export function createConversationPermissionRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const deleted = await permissionService.removeConversationPermission(req.params.permId)
       if (!deleted) return void res.status(404).json({ error: 'Permission not found' })
+      const actorId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId: actorId, action: 'permission_revoked', entityType: 'permission', entityId: req.params.conversationId, details: { permissionId: req.params.permId, target: 'conversation' } })
       res.json({ deleted: true })
     }),
   )

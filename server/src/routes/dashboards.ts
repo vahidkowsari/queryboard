@@ -6,6 +6,7 @@ import { requireRole } from '../middleware/roles.js'
 import { requireDashboardAccess } from '../middleware/dashboard-access.js'
 import { ROLES } from '../auth.js'
 import { createPermissionService } from '../services/permission.service.js'
+import { createAuditLogService } from '../services/audit-log.service.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
 import type { Db } from '../db/index.js'
 import type { RefreshScheduler } from '../services/refresh-scheduler.js'
@@ -14,6 +15,7 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
   const router = Router({ mergeParams: true })
   const dashboardService = createDashboardService(db)
   const permissionService = createPermissionService(db)
+  const auditLog = createAuditLogService(db)
   const canView = requireDashboardAccess(db, 'view')
   const canEdit = requireDashboardAccess(db, 'edit')
 
@@ -56,6 +58,8 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
       const { projectId } = req.params
       const { name, description } = req.body
       const dashboard = await dashboardService.create(projectId, name, description)
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId, userId, action: 'created', entityType: 'dashboard', entityId: dashboard.id, entityName: name })
       res.status(201).json(dashboard)
     }),
   )
@@ -67,6 +71,8 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
       const { name, description } = req.body
       const dashboard = await dashboardService.update(req.params.id, name, description)
       if (!dashboard) return void res.status(404).json({ error: 'Dashboard not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'updated', entityType: 'dashboard', entityId: dashboard.id, entityName: name })
       res.json(dashboard)
     }),
   )
@@ -77,6 +83,8 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
     asyncHandler(async (req, res) => {
       const deleted = await dashboardService.remove(req.params.id)
       if (!deleted) return void res.status(404).json({ error: 'Dashboard not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'deleted', entityType: 'dashboard', entityId: req.params.id })
       res.json({ deleted: true })
     }),
   )
@@ -87,6 +95,8 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
     asyncHandler(async (req, res) => {
       const dashboard = await dashboardService.createShareToken(req.params.id)
       if (!dashboard) return void res.status(404).json({ error: 'Dashboard not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'shared', entityType: 'dashboard', entityId: req.params.id })
       res.json({ shareToken: dashboard.shareToken })
     }),
   )
@@ -97,6 +107,8 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
     asyncHandler(async (req, res) => {
       const dashboard = await dashboardService.revokeShareToken(req.params.id)
       if (!dashboard) return void res.status(404).json({ error: 'Dashboard not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'unshared', entityType: 'dashboard', entityId: req.params.id })
       res.json({ shareToken: null })
     }),
   )

@@ -6,6 +6,7 @@ import { asyncHandler } from '../middleware/error.js'
 import { requireDashboardAccess } from '../middleware/dashboard-access.js'
 import { createPermissionService } from '../services/permission.service.js'
 import { createRefreshHistoryService } from '../services/refresh-history.service.js'
+import { createAuditLogService } from '../services/audit-log.service.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
 import type { Db } from '../db/index.js'
 import type { DbEngine, DbConfig, ChartFilter } from '../types.js'
@@ -17,6 +18,7 @@ export function createChartRoutes(db: Db): Router {
   const projectService = createProjectService(db)
   const permissionService = createPermissionService(db)
   const refreshHistoryService = createRefreshHistoryService(db)
+  const auditLog = createAuditLogService(db)
   const canView = requireDashboardAccess(db, 'view')
   const canEdit = requireDashboardAccess(db, 'edit')
 
@@ -26,6 +28,7 @@ export function createChartRoutes(db: Db): Router {
     asyncHandler(async (req: SessionRequest, res) => {
       const createdBy = req.session!.getUserId()
       const chart = await chartService.create(req.params.dashboardId, req.body, createdBy)
+      await auditLog.log({ projectId: req.params.projectId, userId: createdBy, action: 'created', entityType: 'chart', entityId: chart.id, entityName: chart.name })
       res.status(201).json(chart)
     }),
   )
@@ -56,6 +59,8 @@ export function createChartRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const chart = await chartService.update(req.params.dashboardId, req.params.chartId, req.body)
       if (!chart) return void res.status(404).json({ error: 'Chart not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'updated', entityType: 'chart', entityId: chart.id, entityName: chart.name, details: { fields: Object.keys(req.body) } })
       res.json(chart)
     }),
   )
@@ -229,6 +234,7 @@ export function createChartRoutes(db: Db): Router {
 
       const chart = await chartService.move(req.params.chartId, req.params.dashboardId, targetDashboardId)
       if (!chart) return void res.status(404).json({ error: 'Chart not found' })
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'moved', entityType: 'chart', entityId: req.params.chartId, details: { fromDashboard: req.params.dashboardId, toDashboard: targetDashboardId } })
       res.json(chart)
     }),
   )
@@ -251,6 +257,8 @@ export function createChartRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const deleted = await chartService.remove(req.params.dashboardId, req.params.chartId)
       if (!deleted) return void res.status(404).json({ error: 'Chart not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'deleted', entityType: 'chart', entityId: req.params.chartId })
       res.json({ deleted: true })
     }),
   )

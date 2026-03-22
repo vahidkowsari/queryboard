@@ -19,6 +19,7 @@ import { createTokenUsageRoutes } from './routes/token-usage.js'
 import { createConversationRoutes } from './routes/conversations.js'
 import { createGroupRoutes } from './routes/groups.js'
 import { createPermissionRoutes, createConversationPermissionRoutes } from './routes/permissions.js'
+import { createAuditLogRoutes } from './routes/audit-log.js'
 import { createDashboardService } from './services/dashboard.service.js'
 import { createDb } from './db/index.js'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
@@ -90,6 +91,7 @@ async function startServer() {
   app.use('/api/projects/:projectId/conversations', verifySession(), createConversationPermissionRoutes(db))
   app.use('/api/projects/:projectId/groups', verifySession(), createGroupRoutes(db))
   app.use('/api/projects/:projectId/dashboards', verifySession(), createPermissionRoutes(db))
+  app.use('/api/projects/:projectId/audit-log', verifySession(), createAuditLogRoutes(db))
   app.use('/api/admin', verifySession(), requireRole(ROLES.ADMIN), createAdminRoutes(db))
 
   // --- Public shared dashboard route (no auth required) ---

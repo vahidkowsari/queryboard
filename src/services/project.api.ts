@@ -167,4 +167,27 @@ export const projectApi = {
     const { data } = await api.get(`/projects/${projectId}/users`)
     return data
   },
+
+  /**
+   * Fetches the audit log for a project with optional filters
+   */
+  async getAuditLog(
+    projectId: string,
+    filter?: { action?: string; entityType?: string; userId?: string; from?: string; to?: string; limit?: number; offset?: number },
+  ): Promise<{ rows: AuditLogRow[]; total: number }> {
+    const { data } = await api.get(`/projects/${projectId}/audit-log`, { params: filter })
+    return data
+  },
+}
+
+export interface AuditLogRow {
+  id: string
+  projectId: string
+  userId: string | null
+  action: string
+  entityType: string
+  entityId: string | null
+  entityName: string | null
+  details: Record<string, unknown> | null
+  createdAt: string
 }

@@ -10,6 +10,7 @@ import { ROLES } from '../auth.js'
 import { createTokenUsageService } from '../services/token-usage.service.js'
 import { createConversationService } from '../services/conversation.service.js'
 import { createPermissionService } from '../services/permission.service.js'
+import { createAuditLogService } from '../services/audit-log.service.js'
 import type { Db } from '../db/index.js'
 import type { Schema } from '../types.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
@@ -18,6 +19,7 @@ export function createAgentRoutes(db: Db): Router {
   const router = Router({ mergeParams: true })
   const tokenUsageService = createTokenUsageService(db)
   const conversationService = createConversationService(db)
+  const auditLog = createAuditLogService(db)
   router.use(loadProject(db))
   router.use(requireRole(ROLES.ADMIN, ROLES.EDITOR))
 
@@ -103,6 +105,8 @@ export function createAgentRoutes(db: Db): Router {
             operation: 'chart-generate',
           })
         }
+
+        await auditLog.log({ projectId: project.id, userId, action: 'generated', entityType: 'chart', entityName: result.title, details: { userQuery: userQuery?.substring(0, 200), chartType: result.chartType } })
 
         res.write(
           `event: result\ndata: ${JSON.stringify({

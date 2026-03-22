@@ -217,6 +217,30 @@ export const conversationPermissions = pgTable(
   ],
 )
 
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id', { length: 128 }),
+    action: varchar('action', { length: 50 }).notNull(),
+    entityType: varchar('entity_type', { length: 50 }).notNull(),
+    entityId: uuid('entity_id'),
+    entityName: varchar('entity_name', { length: 255 }),
+    details: jsonb('details'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_audit_logs_project_id').on(table.projectId),
+    index('idx_audit_logs_user_id').on(table.userId),
+    index('idx_audit_logs_action').on(table.action),
+    index('idx_audit_logs_entity_type').on(table.entityType),
+    index('idx_audit_logs_created_at').on(table.createdAt),
+  ],
+)
+
 export const refreshHistory = pgTable(
   'refresh_history',
   {
