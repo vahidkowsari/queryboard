@@ -68,6 +68,11 @@ export function createAgentRoutes(db: Db): Router {
       const ac = new AbortController()
       req.on('close', () => ac.abort())
 
+      // Send periodic heartbeats to keep CloudFront from timing out
+      const heartbeat = setInterval(() => {
+        if (!res.writableEnded) res.write(`: heartbeat\n\n`)
+      }, 15_000)
+
       try {
         const result = await runChartAgent(
           userQuery,
@@ -120,6 +125,8 @@ export function createAgentRoutes(db: Db): Router {
           const msg = err instanceof Error ? err.message : 'Chart generation failed'
           if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
         }
+      } finally {
+        clearInterval(heartbeat)
       }
       if (!res.writableEnded) res.end()
     }),

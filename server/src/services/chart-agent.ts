@@ -200,7 +200,6 @@ export async function runChartAgent(
         }
       ).input
       log(`Creating chart: "${input.title}"`)
-      log(`Summary from LLM: ${input.summary ? `"${input.summary.substring(0, 100)}..."` : 'MISSING'}`)
 
       // Parse and validate chart specification JSON from LLM
       let chartSpec: object

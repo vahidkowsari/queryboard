@@ -168,6 +168,12 @@ deploy-backend: ecr-login ecr-push
 		--cluster $$(terraform -chdir=$(TF_DIR) output -raw ecs_cluster_name) \
 		--service $(PROJECT_NAME)-$(ENVIRONMENT)-backend \
 		--force-new-deployment
+	@echo "Waiting for deployment to stabilize..."
+	aws ecs wait services-stable \
+		--region $(AWS_REGION) \
+		--cluster $$(terraform -chdir=$(TF_DIR) output -raw ecs_cluster_name) \
+		--services $(PROJECT_NAME)-$(ENVIRONMENT)-backend
+	@echo "✅ Backend deployment complete and stable."
 
 deploy-frontend:
 	VITE_API_DOMAIN=$$(terraform -chdir=$(TF_DIR) output -raw api_domain) \
