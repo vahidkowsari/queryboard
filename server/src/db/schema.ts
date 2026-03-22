@@ -62,6 +62,7 @@ export const charts = pgTable(
     filters: jsonb('filters'),
     position: integer('position').notNull().default(0),
     createdBy: varchar('created_by', { length: 128 }),
+    lastRefreshedAt: timestamp('last_refreshed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -213,5 +214,30 @@ export const conversationPermissions = pgTable(
     index('idx_conversation_permissions_conversation_id').on(table.conversationId),
     index('idx_conversation_permissions_user_id').on(table.userId),
     index('idx_conversation_permissions_group_id').on(table.groupId),
+  ],
+)
+
+export const refreshHistory = pgTable(
+  'refresh_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    chartId: uuid('chart_id')
+      .notNull()
+      .references(() => charts.id, { onDelete: 'cascade' }),
+    dashboardId: uuid('dashboard_id')
+      .notNull()
+      .references(() => dashboards.id, { onDelete: 'cascade' }),
+    triggeredBy: varchar('triggered_by', { length: 128 }),
+    triggerType: varchar('trigger_type', { length: 20 }).notNull(),
+    status: varchar('status', { length: 20 }).notNull(),
+    executionTimeMs: integer('execution_time_ms'),
+    rowCount: integer('row_count'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_refresh_history_chart_id').on(table.chartId),
+    index('idx_refresh_history_dashboard_id').on(table.dashboardId),
+    index('idx_refresh_history_created_at').on(table.createdAt),
   ],
 )

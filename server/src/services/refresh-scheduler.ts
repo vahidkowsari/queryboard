@@ -2,6 +2,7 @@ import cron, { type ScheduledTask } from 'node-cron'
 import { eq, isNotNull } from 'drizzle-orm'
 import { dashboards, charts, projects } from '../db/schema.js'
 import { createQueryExecutor } from './query-executors/index.js'
+import { createRefreshHistoryService } from './refresh-history.service.js'
 import type { Db } from '../db/index.js'
 import type { DbEngine, DbConfig } from '../types.js'
 
@@ -12,6 +13,8 @@ const refreshing = new Set<string>()
  * Creates a dashboard refresh scheduler that runs queries on cron schedules
  */
 export function createRefreshScheduler(db: Db) {
+  const refreshHistoryService = createRefreshHistoryService(db)
+
   /**
    * Refreshes all charts in a dashboard by re-executing their queries
    */
@@ -39,14 +42,37 @@ export function createRefreshScheduler(db: Db) {
       // Re-execute each chart's query and update data
       for (const chart of dashboardCharts) {
         if (!chart.query) continue
+        const startTime = Date.now()
         try {
           const result = await executor.execute(chart.query)
+          const executionTimeMs = Date.now() - startTime
           await db
             .update(charts)
-            .set({ data: result.rows, updatedAt: new Date() })
+            .set({ data: result.rows, lastRefreshedAt: new Date(), updatedAt: new Date() })
             .where(eq(charts.id, chart.id))
+          
+          await refreshHistoryService.recordRefresh({
+            chartId: chart.id,
+            dashboardId,
+            triggerType: 'scheduled',
+            status: 'success',
+            executionTimeMs,
+            rowCount: result.rows.length,
+          })
         } catch (err) {
-          console.error(`[CronRefresh] Failed to refresh chart "${chart.name}" (${chart.id}):`, (err as Error).message)
+          const executionTimeMs = Date.now() - startTime
+          const errorMessage = (err as Error).message
+          
+          await refreshHistoryService.recordRefresh({
+            chartId: chart.id,
+            dashboardId,
+            triggerType: 'scheduled',
+            status: 'error',
+            executionTimeMs,
+            errorMessage,
+          })
+          
+          console.error(`[CronRefresh] Failed to refresh chart "${chart.name}" (${chart.id}):`, errorMessage)
         }
       }
 

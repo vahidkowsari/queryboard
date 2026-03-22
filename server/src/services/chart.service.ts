@@ -101,6 +101,24 @@ export function createChartService(db: Db) {
     },
 
     /**
+     * Updates chart data and lastRefreshedAt timestamp (used for tracked refresh operations)
+     */
+    async updateDataWithRefresh(dashboardId: string, chartId: string, data: unknown) {
+      const rows = await db
+        .update(charts)
+        .set({
+          data: data || null,
+          lastRefreshedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(charts.id, chartId), eq(charts.dashboardId, dashboardId)))
+        .returning()
+
+      if (rows[0]) await touchDashboard(dashboardId)
+      return rows[0] || null
+    },
+
+    /**
      * Reorders charts within a dashboard based on provided chart ID array
      */
     async reorder(dashboardId: string, chartIds: string[]) {

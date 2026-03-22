@@ -192,3 +192,19 @@ export interface ProjectRow {
   createdAt: Date
   updatedAt: Date
 }
+
+export type RefreshTriggerType = 'manual' | 'scheduled' | 'filter'
+export type RefreshStatus = 'success' | 'error'
+
+export interface RefreshHistory {
+  id: string
+  chartId: string
+  dashboardId: string
+  triggeredBy?: string
+  triggerType: RefreshTriggerType
+  status: RefreshStatus
+  executionTimeMs?: number
+  rowCount?: number
+  errorMessage?: string
+  createdAt: Date
+}

@@ -15,6 +15,9 @@
             <p v-if="ownerEmail" class="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
               <User :size="11" />{{ ownerEmail }}
             </p>
+            <p v-if="chart.lastRefreshedAt" class="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Clock :size="11" />Last refreshed {{ formatRelativeTime(chart.lastRefreshedAt) }}
+            </p>
           </div>
         </div>
         <div class="flex gap-1 ml-2 sm:ml-4">
@@ -136,7 +139,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft, User, MessageSquare, ChevronDown } from 'lucide-vue-next'
+import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft, User, MessageSquare, ChevronDown, Clock } from 'lucide-vue-next'
 import { useRole } from '../composables/useRole'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
@@ -155,8 +158,26 @@ interface Props {
 
 const { isEditor } = useRole()
 const chartRendererRef = ref<InstanceType<typeof ChartRenderer> | null>(null)
-const showExportMenu = ref(false)
 const showSummary = ref(true)
+const showExportMenu = ref(false)
+
+const formatRelativeTime = (date: Date | string | null | undefined) => {
+  if (!date) return 'never'
+  const now = new Date()
+  const then = new Date(date)
+  if (isNaN(then.getTime())) return 'never'
+  const diffMs = now.getTime() - then.getTime()
+  const diffSecs = Math.floor(diffMs / 1000)
+  const diffMins = Math.floor(diffSecs / 60)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffSecs < 60) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return then.toLocaleDateString()
+}
 
 function handleExport(type: 'png' | 'csv' | 'excel') {
   showExportMenu.value = false
