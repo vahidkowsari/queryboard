@@ -153,6 +153,7 @@
             <option value="bigquery">BigQuery</option>
             <option value="redshift">Amazon Redshift</option>
             <option value="snowflake">Snowflake</option>
+            <option value="databricks">Databricks</option>
           </select>
         </div>
 
@@ -162,11 +163,13 @@
           :rdbms="form.rdbms"
           :bigquery="form.bigquery"
           :snowflake="form.snowflake"
+          :databricks="form.databricks"
           layout="grid"
           @update:athena="form.athena = $event"
           @update:rdbms="form.rdbms = $event"
           @update:bigquery="form.bigquery = $event"
           @update:snowflake="form.snowflake = $event"
+          @update:databricks="form.databricks = $event"
         />
       </div>
 
@@ -249,7 +252,7 @@ import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { useRole } from '../composables/useRole'
 import type { DbEngine, LLMVendor, ChartLibrary } from '../types'
-import { buildDbConfig, type SnowflakeFormData } from '../utils/buildDbConfig'
+import { buildDbConfig, type SnowflakeFormData, type DatabricksFormData } from '../utils/buildDbConfig'
 
 const router = useRouter()
 const projectStore = useProjectStore()
@@ -269,6 +272,7 @@ const form = ref({
   rdbms: { host: 'localhost', port: '5432', database: '', user: '', password: '' },
   bigquery: { projectId: '', dataset: '' },
   snowflake: { account: '', username: '', password: '', database: '', schema: '', warehouse: '' } as SnowflakeFormData,
+  databricks: { host: '', port: '443', httpPath: '', token: '', catalog: '', schema: '' } as DatabricksFormData,
   llmVendor: 'anthropic' as LLMVendor,
   chartLibrary: 'vega-lite' as ChartLibrary,
 })
@@ -285,7 +289,7 @@ async function createProject() {
       name: form.value.name,
       description: form.value.description || undefined,
       dbEngine: form.value.dbEngine,
-      dbConfig: buildDbConfig(form.value.dbEngine, form.value.athena, form.value.rdbms, form.value.bigquery, form.value.snowflake),
+      dbConfig: buildDbConfig(form.value.dbEngine, form.value.athena, form.value.rdbms, form.value.bigquery, form.value.snowflake, form.value.databricks),
       llmConfig: { vendor: form.value.llmVendor },
       chartLibrary: form.value.chartLibrary,
     })

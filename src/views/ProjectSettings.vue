@@ -49,12 +49,14 @@
                 :rdbms="rdbmsForm"
                 :bigquery="bqForm"
                 :snowflake="snowflakeForm"
+                :databricks="databricksForm"
                 layout="grid"
                 :show-test-button="false"
                 @update:athena="dbForm = $event"
                 @update:rdbms="rdbmsForm = $event"
                 @update:bigquery="bqForm = $event"
                 @update:snowflake="snowflakeForm = $event"
+                @update:databricks="databricksForm = $event"
               />
 
               <div class="flex gap-2">
@@ -314,6 +316,7 @@ import type {
   MySQLDbConfig,
   BigQueryDbConfig,
   SnowflakeDbConfig,
+  DatabricksDbConfig,
   DbEngine,
   DbConfig,
   LLMVendor,
@@ -322,7 +325,7 @@ import type {
 } from '../types'
 import { COLOR_PRESETS } from '../utils/colorPresets'
 import GroupsManager from '../components/GroupsManager.vue'
-import { buildDbConfig, type SnowflakeFormData } from '../utils/buildDbConfig'
+import { buildDbConfig, type SnowflakeFormData, type DatabricksFormData } from '../utils/buildDbConfig'
 
 const route = useRoute()
 const router = useRouter()
@@ -346,6 +349,7 @@ const dbForm = ref({ database: '', workgroup: '', region: '', profile: '' })
 const rdbmsForm = ref({ host: 'localhost', port: '5432', database: '', user: '', password: '' })
 const bqForm = ref({ projectId: '', dataset: '' })
 const snowflakeForm = ref({ account: '', username: '', password: '', database: '', schema: '', warehouse: '', role: undefined } as SnowflakeFormData)
+const databricksForm = ref({ host: '', port: '443', httpPath: '', token: '', catalog: '', schema: '' } as DatabricksFormData)
 const vendorModels: Record<LLMVendor, { value: string; label: string }[]> = {
   anthropic: [
     { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
@@ -471,6 +475,16 @@ onMounted(async () => {
         warehouse: cfg.warehouse,
         role: cfg.role,
       }
+    } else if (p.dbEngine === 'databricks') {
+      const cfg = p.dbConfig as DatabricksDbConfig
+      databricksForm.value = {
+        host: cfg.host,
+        port: String(cfg.port),
+        httpPath: cfg.httpPath,
+        token: cfg.token,
+        catalog: cfg.catalog,
+        schema: cfg.schema,
+      }
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load project'
@@ -495,7 +509,7 @@ async function saveDbConfig() {
   try {
     await projectStore.updateProject(projectId, {
       dbConfig: project.value
-        ? buildDbConfig(project.value.dbEngine, dbForm.value, rdbmsForm.value, bqForm.value, snowflakeForm.value)
+        ? buildDbConfig(project.value.dbEngine, dbForm.value, rdbmsForm.value, bqForm.value, snowflakeForm.value, databricksForm.value)
         : ({} as DbConfig),
     })
     toast.success('Connection updated')

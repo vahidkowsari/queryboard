@@ -32,12 +32,22 @@ export interface SnowflakeFormData {
   role?: string
 }
 
+export interface DatabricksFormData {
+  host: string
+  port: string
+  httpPath: string
+  token: string
+  catalog: string
+  schema: string
+}
+
 export function buildDbConfig(
   dbEngine: DbEngine,
   athena: AthenaFormData,
   rdbms: RdbmsFormData,
   bigquery: BigQueryFormData,
   snowflake: SnowflakeFormData,
+  databricks?: DatabricksFormData,
 ): DbConfig {
   switch (dbEngine) {
     case 'athena':
@@ -76,5 +86,14 @@ export function buildDbConfig(
       return { ...bigquery }
     case 'snowflake':
       return { ...snowflake }
+    case 'databricks':
+      return {
+        host: databricks!.host,
+        port: parseInt(databricks!.port, 10) || 443,
+        httpPath: databricks!.httpPath,
+        token: databricks!.token,
+        catalog: databricks!.catalog,
+        schema: databricks!.schema,
+      }
   }
 }

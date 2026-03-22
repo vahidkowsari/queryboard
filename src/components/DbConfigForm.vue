@@ -203,6 +203,63 @@
     </div>
   </template>
 
+  <template v-if="dbEngine === 'databricks'">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Host</label>
+        <Input
+          :model-value="databricks.host"
+          @update:model-value="update('databricks', 'host', $event)"
+          placeholder="dbc-xxxxx.cloud.databricks.com"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Port</label>
+        <Input
+          :model-value="databricks.port"
+          @update:model-value="update('databricks', 'port', $event)"
+          type="number"
+          placeholder="443"
+        />
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1.5">HTTP Path</label>
+      <Input
+        :model-value="databricks.httpPath"
+        @update:model-value="update('databricks', 'httpPath', $event)"
+        placeholder="/sql/1.0/warehouses/xxxxx"
+      />
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1.5">Access Token</label>
+      <Input
+        :model-value="databricks.token"
+        @update:model-value="update('databricks', 'token', $event)"
+        type="password"
+        placeholder="dapi..."
+      />
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Catalog</label>
+        <Input
+          :model-value="databricks.catalog"
+          @update:model-value="update('databricks', 'catalog', $event)"
+          placeholder="samples"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Schema</label>
+        <Input
+          :model-value="databricks.schema"
+          @update:model-value="update('databricks', 'schema', $event)"
+          placeholder="nyctaxi"
+        />
+      </div>
+    </div>
+  </template>
+
   <!-- Test Connection Button -->
   <div v-if="showTestButton" class="pt-4 border-t">
     <Button 
@@ -238,7 +295,7 @@ import { Loader2, CheckCircle2, XCircle } from 'lucide-vue-next'
 import { API_BASE_URL } from '../services/api'
 import { buildDbConfig } from '../utils/buildDbConfig'
 import type { DbEngine } from '../types'
-import type { AthenaFormData, RdbmsFormData, BigQueryFormData, SnowflakeFormData } from '../utils/buildDbConfig'
+import type { AthenaFormData, RdbmsFormData, BigQueryFormData, SnowflakeFormData, DatabricksFormData } from '../utils/buildDbConfig'
 
 interface Props {
   dbEngine: DbEngine
@@ -246,6 +303,7 @@ interface Props {
   rdbms: RdbmsFormData
   bigquery: BigQueryFormData
   snowflake: SnowflakeFormData
+  databricks?: DatabricksFormData
   layout?: 'grid' | 'stack'
   showTestButton?: boolean
 }
@@ -253,6 +311,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   layout: 'stack',
   showTestButton: true,
+  databricks: () => ({ host: '', port: '443', httpPath: '', token: '', catalog: '', schema: '' }),
 })
 
 const emit = defineEmits<{
@@ -260,20 +319,23 @@ const emit = defineEmits<{
   'update:rdbms': [value: RdbmsFormData]
   'update:bigquery': [value: BigQueryFormData]
   'update:snowflake': [value: SnowflakeFormData]
+  'update:databricks': [value: DatabricksFormData]
 }>()
 
 const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 
-function update(group: 'athena' | 'rdbms' | 'bigquery' | 'snowflake', key: string, value: string | number | boolean) {
+function update(group: 'athena' | 'rdbms' | 'bigquery' | 'snowflake' | 'databricks', key: string, value: string | number | boolean) {
   if (group === 'athena') {
     emit('update:athena', { ...props.athena, [key]: value })
   } else if (group === 'rdbms') {
     emit('update:rdbms', { ...props.rdbms, [key]: value })
   } else if (group === 'bigquery') {
     emit('update:bigquery', { ...props.bigquery, [key]: value })
-  } else {
+  } else if (group === 'snowflake') {
     emit('update:snowflake', { ...props.snowflake, [key]: value })
+  } else {
+    emit('update:databricks', { ...props.databricks!, [key]: value })
   }
   testResult.value = null
 }
@@ -283,7 +345,7 @@ async function testConnection() {
   testResult.value = null
 
   try {
-    const dbConfig = buildDbConfig(props.dbEngine, props.athena, props.rdbms, props.bigquery, props.snowflake)
+    const dbConfig = buildDbConfig(props.dbEngine, props.athena, props.rdbms, props.bigquery, props.snowflake, props.databricks)
     
     const response = await fetch(`${API_BASE_URL}/api/projects/test-connection`, {
       method: 'POST',
