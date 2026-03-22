@@ -66,6 +66,7 @@ export interface Chart {
   colorConfig?: ColorConfig
   filters?: ChartFilter[]
   createdBy?: string | null
+  lastRefreshedAt?: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -200,4 +201,20 @@ export interface SchemaJob {
   startedAt: string | null
   completedAt: string | null
   createdAt: string
+}
+
+export type RefreshTriggerType = 'manual' | 'scheduled' | 'filter'
+export type RefreshStatus = 'success' | 'error'
+
+export interface RefreshHistory {
+  id: string
+  chartId: string
+  dashboardId: string
+  triggeredBy?: string
+  triggerType: RefreshTriggerType
+  status: RefreshStatus
+  executionTimeMs?: number
+  rowCount?: number
+  errorMessage?: string
+  createdAt: Date
 }

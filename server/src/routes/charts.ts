@@ -5,6 +5,7 @@ import { createQueryExecutor } from '../services/query-executors/index.js'
 import { asyncHandler } from '../middleware/error.js'
 import { requireDashboardAccess } from '../middleware/dashboard-access.js'
 import { createPermissionService } from '../services/permission.service.js'
+import { createRefreshHistoryService } from '../services/refresh-history.service.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
 import type { Db } from '../db/index.js'
 import type { DbEngine, DbConfig, ChartFilter } from '../types.js'
@@ -15,6 +16,7 @@ export function createChartRoutes(db: Db): Router {
   const chartService = createChartService(db)
   const projectService = createProjectService(db)
   const permissionService = createPermissionService(db)
+  const refreshHistoryService = createRefreshHistoryService(db)
   const canView = requireDashboardAccess(db, 'view')
   const canEdit = requireDashboardAccess(db, 'edit')
 
@@ -61,9 +63,10 @@ export function createChartRoutes(db: Db): Router {
   router.post(
     '/:dashboardId/charts/:chartId/refresh',
     canView,
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req: SessionRequest, res) => {
       const { projectId, dashboardId, chartId } = req.params
       const filterValues: Record<string, string> = req.body?.filterValues || {}
+      const userId = req.session?.getUserId()
       const chart = await chartService.getById(dashboardId, chartId)
       if (!chart) return void res.status(404).json({ error: 'Chart not found' })
       if (!chart.query) return void res.status(400).json({ error: 'Chart has no SQL query to refresh' })
@@ -73,24 +76,66 @@ export function createChartRoutes(db: Db): Router {
 
       const filters = (chart.filters as ChartFilter[] | null) || []
       let sql = chart.query
-      if (filters.length > 0 && hasFilterPlaceholders(sql)) {
+      const hasFilters = filters.length > 0 && hasFilterPlaceholders(sql)
+      if (hasFilters) {
         sql = substituteFilters(sql, filters, filterValues)
       }
 
       const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
-      const result = await executor.execute(sql)
+      const startTime = Date.now()
+      let status: 'success' | 'error' = 'success'
+      let errorMessage: string | undefined
+      let rowCount: number | undefined
 
-      const updated = await chartService.updateData(dashboardId, chartId, result.rows)
-      res.json(updated)
+      try {
+        const result = await executor.execute(sql)
+        rowCount = result.rows.length
+        const executionTimeMs = Date.now() - startTime
+
+        const updated = await chartService.updateDataWithRefresh(dashboardId, chartId, result.rows)
+
+        await refreshHistoryService.recordRefresh({
+          chartId,
+          dashboardId,
+          triggeredBy: userId,
+          triggerType: hasFilters ? 'filter' : 'manual',
+          status,
+          executionTimeMs,
+          rowCount,
+        })
+
+        res.json(updated)
+      } catch (err) {
+        status = 'error'
+        errorMessage = err instanceof Error ? err.message : 'Refresh failed'
+        const executionTimeMs = Date.now() - startTime
+
+        try {
+          await refreshHistoryService.recordRefresh({
+            chartId,
+            dashboardId,
+            triggeredBy: userId,
+            triggerType: hasFilters ? 'filter' : 'manual',
+            status,
+            executionTimeMs,
+            errorMessage,
+          })
+        } catch (historyErr) {
+          console.error('Failed to record refresh history:', historyErr)
+        }
+
+        throw err
+      }
     }),
   )
 
   router.post(
     '/:dashboardId/refresh-filtered',
     canView,
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req: SessionRequest, res) => {
       const { projectId, dashboardId } = req.params
       const filterValues: Record<string, string> = req.body?.filterValues || {}
+      const userId = req.session?.getUserId()
 
       const project = await projectService.getById(projectId)
       if (!project) return void res.status(404).json({ error: 'Project not found' })
@@ -117,13 +162,47 @@ export function createChartRoutes(db: Db): Router {
           continue
         }
 
+        const startTime = Date.now()
         try {
           const result = await executor.execute(sql)
-          const updated = await chartService.updateData(dashboardId, chart.id, result.rows)
+          const executionTimeMs = Date.now() - startTime
+          const updated = await chartService.updateDataWithRefresh(dashboardId, chart.id, result.rows)
+          
+          try {
+            await refreshHistoryService.recordRefresh({
+              chartId: chart.id,
+              dashboardId,
+              triggeredBy: userId,
+              triggerType: 'filter',
+              status: 'success',
+              executionTimeMs,
+              rowCount: result.rows.length,
+            })
+          } catch (historyErr) {
+            console.error('Failed to record refresh history:', historyErr)
+          }
+          
           results.push(updated!)
         } catch (err) {
+          const executionTimeMs = Date.now() - startTime
+          const errorMessage = err instanceof Error ? err.message : 'Refresh failed'
+          
+          try {
+            await refreshHistoryService.recordRefresh({
+              chartId: chart.id,
+              dashboardId,
+              triggeredBy: userId,
+              triggerType: 'filter',
+              status: 'error',
+              executionTimeMs,
+              errorMessage,
+            })
+          } catch (historyErr) {
+            console.error('Failed to record refresh history:', historyErr)
+          }
+          
           console.error(`Failed to refresh chart ${chart.id}:`, err)
-          results.push({ id: chart.id, error: err instanceof Error ? err.message : 'Refresh failed' })
+          results.push({ id: chart.id, error: errorMessage })
         }
       }
 
@@ -151,6 +230,18 @@ export function createChartRoutes(db: Db): Router {
       const chart = await chartService.move(req.params.chartId, req.params.dashboardId, targetDashboardId)
       if (!chart) return void res.status(404).json({ error: 'Chart not found' })
       res.json(chart)
+    }),
+  )
+
+  router.get(
+    '/:dashboardId/charts/:chartId/refresh-history',
+    canView,
+    asyncHandler(async (req, res) => {
+      const { chartId } = req.params
+      const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50
+      const limit = Math.max(1, Math.min(rawLimit, 1000))
+      const history = await refreshHistoryService.getChartHistory(chartId, limit)
+      res.json(history)
     }),
   )
 
