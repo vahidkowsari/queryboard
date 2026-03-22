@@ -20,6 +20,7 @@
     "@aws-sdk/client-secrets-manager": "^3.478.0",
     "@aws-sdk/credential-provider-ini": "^3.478.0",
     "@aws-sdk/credential-provider-sso": "^3.478.0",
+    "@databricks/sql": "^1.13.0",
     "@google-cloud/bigquery": "^8.1.1",
     "ai": "^6.0.116",
     "cors": "^2.8.5",

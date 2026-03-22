@@ -205,9 +205,24 @@ export async function runChartAgent(
       let chartSpec: object
       try {
         chartSpec = JSON.parse(input.chart_spec)
+        
+        // Validate that chartSpec is not empty unless it's a table chart
+        const isTableChart = input.chart_type === 'table'
+        const specKeys = Object.keys(chartSpec).filter(k => k !== 'data')
+        if (!isTableChart && specKeys.length === 0) {
+          throw new Error(
+            `LLM returned an empty chart specification for a ${input.chart_type || 'non-table'} chart. ` +
+            `Empty specs are only allowed for table charts. The LLM may have misunderstood the instructions. ` +
+            `Chart type: ${input.chart_type}, Spec keys: ${Object.keys(chartSpec).join(', ')}`
+          )
+        }
+        
         // Fix LLM tendency to return numbers as strings
         coerceNumbersInSpec(chartSpec as Record<string, unknown>)
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('empty chart specification')) {
+          throw err
+        }
         throw new Error(`Failed to parse chart spec JSON. The LLM returned invalid JSON (possibly truncated). Raw start: ${input.chart_spec?.substring(0, 200)}...`)
       }
 

@@ -91,7 +91,7 @@ export interface ColorConfig {
 }
 
 // Project types
-export type DbEngine = 'athena' | 'postgres' | 'mysql' | 'bigquery' | 'redshift' | 'snowflake'
+export type DbEngine = 'athena' | 'postgres' | 'mysql' | 'bigquery' | 'redshift' | 'snowflake' | 'databricks'
 
 export interface AthenaDbConfig {
   database: string
@@ -146,7 +146,16 @@ export interface SnowflakeDbConfig {
   role?: string
 }
 
-export type DbConfig = AthenaDbConfig | PostgresDbConfig | MySQLDbConfig | BigQueryDbConfig | RedshiftDbConfig | SnowflakeDbConfig
+export interface DatabricksDbConfig {
+  host: string
+  port: number
+  httpPath: string
+  token: string
+  catalog: string
+  schema: string
+}
+
+export type DbConfig = AthenaDbConfig | PostgresDbConfig | MySQLDbConfig | BigQueryDbConfig | RedshiftDbConfig | SnowflakeDbConfig | DatabricksDbConfig
 
 export interface Project {
   id: string
