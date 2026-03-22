@@ -2,6 +2,22 @@
   <div class="vega-chart-container">
     <div v-if="isKpi" class="flex flex-col items-center justify-center h-48 bg-muted/30 rounded-lg border">
       <div class="text-5xl font-bold text-primary">{{ kpiValue }}</div>
+      <div v-if="kpiChange !== null" class="flex items-center gap-1.5 mt-2">
+        <span
+          :class="[
+            'inline-flex items-center gap-0.5 text-sm font-semibold px-2 py-0.5 rounded-full',
+            kpiChange.direction === 'up' ? 'text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950' :
+            kpiChange.direction === 'down' ? 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-950' :
+            'text-muted-foreground bg-muted'
+          ]"
+        >
+          <span v-if="kpiChange.direction === 'up'">&#9650;</span>
+          <span v-else-if="kpiChange.direction === 'down'">&#9660;</span>
+          <span v-else>&mdash;</span>
+          {{ kpiChange.label }}
+        </span>
+        <span v-if="kpiChange.periodLabel" class="text-xs text-muted-foreground">{{ kpiChange.periodLabel }}</span>
+      </div>
       <div v-if="kpiLabel" class="text-sm text-muted-foreground mt-2">{{ kpiLabel }}</div>
     </div>
     <template v-else>
@@ -56,14 +72,98 @@ const isKpi = computed(() => {
   return false
 })
 
+const CHANGE_PCT_KEYS = ['change_pct', 'change_percent', 'pct_change', 'percent_change', 'growth', 'growth_pct', 'growth_rate', 'yoy', 'mom', 'wow', 'qoq', 'delta_pct']
+const PREVIOUS_KEYS = ['previous', 'previous_value', 'prev', 'prior', 'last_period', 'comparison', 'baseline', 'prior_value', 'prev_value']
+const CHANGE_ABS_KEYS = ['change', 'delta', 'diff', 'difference', 'absolute_change']
+const PERIOD_KEYS = ['period', 'period_label', 'comparison_period', 'vs', 'compared_to']
+
+function findField(row: Record<string, unknown>, candidates: string[]): { key: string; value: unknown } | null {
+  const lowerMap = new Map(Object.entries(row).map(([k, v]) => [k.toLowerCase(), { key: k, value: v }]))
+  for (const c of candidates) {
+    const match = lowerMap.get(c)
+    if (match !== undefined) return match
+  }
+  for (const [lower, entry] of lowerMap) {
+    for (const c of candidates) {
+      if (lower.includes(c)) return entry
+    }
+  }
+  return null
+}
+
 const kpiValue = computed(() => {
   const values = specAsVega.value?.data?.values
   if (!values?.length) return ''
-  const row = values[0]
+  const row = values[0] as Record<string, unknown> | undefined
   if (!row) return ''
-  const vals = Object.values(row)
-  const numVal = vals.find((v) => !isNaN(Number(v)))
-  return numVal ? Number(numVal).toLocaleString() : vals[0]
+  const excludeKeys = [...CHANGE_PCT_KEYS, ...PREVIOUS_KEYS, ...CHANGE_ABS_KEYS, ...PERIOD_KEYS]
+  const entries = Object.entries(row).filter(([k]) => {
+    const lower = k.toLowerCase()
+    return !excludeKeys.some((ex: string) => lower.includes(ex))
+  })
+  const numEntry = entries.find(([, v]) => !isNaN(Number(v)) && String(v).trim() !== '')
+  return numEntry ? Number(numEntry[1]).toLocaleString() : entries[0]?.[1] ?? ''
+})
+
+interface KpiChangeInfo {
+  direction: 'up' | 'down' | 'neutral'
+  label: string
+  periodLabel?: string
+}
+
+const kpiChange = computed<KpiChangeInfo | null>(() => {
+  const values = specAsVega.value?.data?.values
+  if (!values?.length) return null
+  const row = values[0] as Record<string, unknown>
+  if (!row) return null
+
+  let changePct: number | null = null
+  let changeAbs: number | null = null
+  let periodLabel: string | undefined
+
+  const pctField = findField(row, CHANGE_PCT_KEYS)
+  if (pctField && !isNaN(Number(pctField.value))) {
+    changePct = Number(pctField.value)
+  }
+
+  const absField = findField(row, CHANGE_ABS_KEYS)
+  if (absField && !isNaN(Number(absField.value))) {
+    changeAbs = Number(absField.value)
+  }
+
+  if (changePct === null && changeAbs === null) {
+    const prevField = findField(row, PREVIOUS_KEYS)
+    if (prevField && !isNaN(Number(prevField.value))) {
+      const prev = Number(prevField.value)
+      const excludeKeys = [...CHANGE_PCT_KEYS, ...PREVIOUS_KEYS, ...CHANGE_ABS_KEYS, ...PERIOD_KEYS]
+      const currentEntry = Object.entries(row).find(([k, v]) => {
+        const lower = k.toLowerCase()
+        return !excludeKeys.some((ex: string) => lower.includes(ex)) && !isNaN(Number(v)) && String(v).trim() !== ''
+      })
+      if (currentEntry) {
+        const current = Number(currentEntry[1])
+        changeAbs = current - prev
+        if (prev !== 0) changePct = ((current - prev) / Math.abs(prev)) * 100
+      }
+    }
+  }
+
+  if (changePct === null && changeAbs === null) return null
+
+  const periodField = findField(row, PERIOD_KEYS)
+  if (periodField) periodLabel = String(periodField.value)
+
+  const direction: 'up' | 'down' | 'neutral' =
+    (changePct ?? changeAbs ?? 0) > 0 ? 'up' : (changePct ?? changeAbs ?? 0) < 0 ? 'down' : 'neutral'
+
+  let label: string
+  if (changePct !== null) {
+    label = `${Math.abs(changePct).toFixed(1)}%`
+  } else {
+    label = Math.abs(changeAbs!).toLocaleString()
+  }
+
+  return { direction, label, periodLabel }
 })
 
 const kpiLabel = computed(() => {
