@@ -9,6 +9,10 @@
       </div>
 
       <TokenUsageCard :projectId="projectId" />
+
+      <div class="mt-6">
+        <AuditLogCard :projectId="projectId" />
+      </div>
     </div>
   </div>
 </template>
@@ -18,6 +22,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import Button from '../components/ui/button.vue'
 import TokenUsageCard from '../components/TokenUsageCard.vue'
+import AuditLogCard from '../components/AuditLogCard.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -6,15 +6,18 @@ import { createQueryExecutor } from '../services/query-executors/index.js'
 import { asyncHandler } from '../middleware/error.js'
 import { requireRole } from '../middleware/roles.js'
 import { ROLES } from '../auth.js'
+import { createAuditLogService } from '../services/audit-log.service.js'
 import type { Db } from '../db/index.js'
 import type { DbEngine, DbConfig, QueryExecutor } from '../types.js'
 import { conversations, charts, dashboards } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
+import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
 
 export function createProjectRoutes(db: Db): Router {
   const router = Router()
   const projectService = createProjectService(db)
   const exportService = createProjectExportService(db)
+  const auditLog = createAuditLogService(db)
 
   router.get(
     '/',
@@ -81,6 +84,8 @@ export function createProjectRoutes(db: Db): Router {
         return void res.status(400).json({ error: 'name, dbEngine, and dbConfig are required' })
       }
       const project = await projectService.create(name, dbEngine, dbConfig, description, llmConfig, chartLibrary)
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: project.id, userId, action: 'created', entityType: 'project', entityId: project.id, entityName: name })
       res.status(201).json(project)
     }),
   )
@@ -91,6 +96,8 @@ export function createProjectRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const project = await projectService.update(req.params.id, req.body)
       if (!project) return void res.status(404).json({ error: 'Project not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: project.id, userId, action: 'updated', entityType: 'project', entityId: project.id, entityName: project.name, details: { fields: Object.keys(req.body) } })
       res.json(project)
     }),
   )
@@ -101,6 +108,10 @@ export function createProjectRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const deleted = await projectService.remove(req.params.id)
       if (!deleted) return void res.status(404).json({ error: 'Project not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      // Note: project is already deleted (cascade removes audit_logs FK), so this log
+      // cannot reference the deleted projectId. Log without projectId constraint.
+      console.log(`Project ${req.params.id} deleted by user ${userId}`)
       res.json({ deleted: true })
     }),
   )
@@ -110,6 +121,8 @@ export function createProjectRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const data = await exportService.exportProject(req.params.id)
       if (!data) return void res.status(404).json({ error: 'Project not found' })
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId: req.params.id, userId, action: 'exported', entityType: 'project', entityId: req.params.id, entityName: data.project.name })
       const filename = `${data.project.name.replace(/[^a-zA-Z0-9-_]/g, '_')}.json`
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
       res.json(data)
@@ -126,6 +139,8 @@ export function createProjectRoutes(db: Db): Router {
       }
       const projectId = await exportService.importProject(data)
       const project = await projectService.getById(projectId)
+      const userId = (req as SessionRequest).session?.getUserId()
+      await auditLog.log({ projectId, userId, action: 'imported', entityType: 'project', entityId: projectId, entityName: data.project.name })
       res.status(201).json(project)
     }),
   )
