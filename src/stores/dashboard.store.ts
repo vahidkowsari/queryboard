@@ -25,6 +25,7 @@ function rowToChart(row: ChartRow): Chart {
     name: row.name,
     userQuery: row.userQuery || '',
     description: row.description || undefined,
+    summary: row.summary || undefined,
     query: row.query,
     chartType: (row.chartType as Chart['chartType']) || 'auto',
     chartSpec: row.chartSpec ?? undefined,
