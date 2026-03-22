@@ -17,6 +17,13 @@ const VEGA_LITE: ChartLibraryConfig = {
 - Include data inline: "data": {"values": [...]} with ALL rows.
 - Do NOT use "rank" or "dense_rank" window transforms — use sort encoding instead.
 - For KPIs (single number), use {"mark": {"type": "text", "fontSize": 64, "fontWeight": "bold"}}.
+- FOR KPIs WITH CHANGE INDICATORS: When the user asks for a KPI with trend/change/comparison (e.g. "show total revenue vs last month"), the SQL should return a SINGLE ROW with these columns:
+  * The primary metric (e.g. "total_revenue")
+  * "previous_value" — the comparison period value
+  * "change_pct" — percentage change ((current - previous) / ABS(previous) * 100)
+  * "period_label" — a human-readable comparison label (e.g. "vs last month", "vs last year")
+  Example SQL: WITH current AS (SELECT SUM(amount) AS total FROM orders WHERE date >= '2024-01-01'), prior AS (SELECT SUM(amount) AS total FROM orders WHERE date BETWEEN '2023-01-01' AND '2023-12-31') SELECT current.total AS total_revenue, prior.total AS previous_value, ROUND((current.total - prior.total) / ABS(prior.total) * 100, 1) AS change_pct, 'vs last year' AS period_label FROM current, prior
+  The frontend automatically renders change_pct as a colored up/down arrow badge. Field names are flexible — any of these work: change_pct, pct_change, growth, yoy, mom, qoq, delta_pct for percentages; change, delta, diff for absolute changes; previous, prior, baseline for previous values; period_label, vs, compared_to for the comparison label.
 - For pie/donut, use arc mark with theta encoding.
 - For bar charts with many categories (>10), show top N only.
 - FOR TABLE CHARTS: Return an empty object {} as the chart_spec. The frontend will render the data as an HTML table automatically. Do NOT create a Vega-Lite spec with marks or axes for tables.
