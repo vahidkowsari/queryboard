@@ -139,10 +139,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = var.domain_name == ""
-    acm_certificate_arn            = var.acm_certificate_arn != "" ? var.acm_certificate_arn : null
-    ssl_support_method             = var.domain_name != "" ? "sni-only" : null
-    minimum_protocol_version       = var.domain_name != "" ? "TLSv1.2_2021" : null
+    cloudfront_default_certificate = var.domain_name == "" ? true : false
+    acm_certificate_arn            = var.domain_name != "" && var.acm_certificate_arn != "" ? var.acm_certificate_arn : null
+    ssl_support_method             = var.domain_name != "" && var.acm_certificate_arn != "" ? "sni-only" : null
+    minimum_protocol_version       = var.domain_name != "" ? "TLSv1.2_2021" : "TLSv1"
   }
 
   aliases = var.domain_name != "" ? [var.domain_name] : []

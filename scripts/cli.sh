@@ -8,10 +8,10 @@ if [ -z "$AWS_PROFILE" ]; then
     exit 1
 fi
 
-AWS_REGION="${AWS_REGION:-us-east-1}"
+AWS_REGION="${AWS_REGION:-us-west-2}"
 TF_DIR="$(dirname "$0")/../deploy/terraform"
 PROJECT_NAME="queryboard"
-ENVIRONMENT="prod"
+ENVIRONMENT="prod-west"
 SERVICE_NAME="${PROJECT_NAME}-${ENVIRONMENT}-backend"
 LOCAL_PORT="5435"
 
@@ -19,6 +19,21 @@ LOCAL_PORT="5435"
 
 tf_output() {
     terraform -chdir="$TF_DIR" output -raw "$1" 2>/dev/null
+}
+
+get_db_password() {
+    local secret_name
+    secret_name=$(tf_output secrets_manager_name)
+    if [ -z "$secret_name" ]; then
+        error "Could not get secrets manager name from Terraform."
+        return 1
+    fi
+    
+    AWS_PROFILE=$AWS_PROFILE aws secretsmanager get-secret-value \
+        --secret-id "$secret_name" \
+        --region "$AWS_REGION" \
+        --query 'SecretString' \
+        --output text 2>/dev/null | jq -r '.dbPassword'
 }
 
 error() { gum style --foreground 1 "✗ $*"; }
@@ -106,6 +121,18 @@ port_forward_db() {
 }
 
 backup_db() {
+    local db_password
+    if [ -n "$DB_PASSWORD" ]; then
+        db_password="$DB_PASSWORD"
+    else
+        db_password=$(get_db_password)
+        if [ -z "$db_password" ] || [ "$db_password" == "null" ]; then
+            error "Could not retrieve database password from Secrets Manager."
+            info "Alternatively, set DB_PASSWORD environment variable."
+            return 1
+        fi
+    fi
+
     local timestamp backup_dir backup_file
     timestamp=$(date +%Y%m%d_%H%M%S)
     backup_dir="$(dirname "$0")/../backups"
@@ -151,7 +178,7 @@ backup_db() {
     gum spin --spinner dot --title "Establishing tunnel..." -- sleep 5
 
     gum spin --spinner dot --title "Running pg_dump..." -- \
-        bash -c "PGPASSWORD='${DB_PASSWORD}' pg_dump -h localhost -p $LOCAL_PORT -U queryboard -d queryboard -F c -f '$backup_file'"
+        bash -c "PGPASSWORD='${db_password}' pg_dump -h localhost -p $LOCAL_PORT -U queryboard -d queryboard -F c -f '$backup_file'"
 
     kill $tunnel_pid 2>/dev/null || true
 
@@ -167,11 +194,25 @@ backup_db() {
 }
 
 restore_db() {
+    local db_password
+    if [ -n "$DB_PASSWORD" ]; then
+        db_password="$DB_PASSWORD"
+    else
+        db_password=$(get_db_password)
+        if [ -z "$db_password" ] || [ "$db_password" == "null" ]; then
+            error "Could not retrieve database password from Secrets Manager."
+            info "Alternatively, set DB_PASSWORD environment variable."
+            return 1
+        fi
+    fi
+
     local backup_dir
     backup_dir="$(dirname "$0")/../backups"
 
-    local backups
-    mapfile -t backups < <(ls -1t "$backup_dir"/queryboard_*.sql 2>/dev/null)
+    local backups=()
+    while IFS= read -r line; do
+        backups+=("$line")
+    done < <(ls -1t "$backup_dir"/queryboard_*.sql 2>/dev/null)
 
     if [ ${#backups[@]} -eq 0 ]; then
         error "No backups found in: $backup_dir"
@@ -240,7 +281,7 @@ restore_db() {
     gum spin --spinner dot --title "Establishing tunnel..." -- sleep 5
 
     gum spin --spinner dot --title "Running pg_restore..." -- \
-        bash -c "PGPASSWORD='${DB_PASSWORD}' pg_restore -h localhost -p $LOCAL_PORT -U queryboard -d queryboard -c --if-exists '$backup_file'"
+        bash -c "PGPASSWORD='${db_password}' pg_restore -h localhost -p $LOCAL_PORT -U queryboard -d queryboard -c --if-exists '$backup_file'"
 
     kill $tunnel_pid 2>/dev/null || true
 
@@ -321,7 +362,7 @@ Direct commands:
 
 Environment variables:
   AWS_PROFILE   (required)
-  AWS_REGION    (default: us-east-1)
+  AWS_REGION    (default: us-west-2)
   DB_PASSWORD   (required for backup/restore)
 EOF
     exit 0

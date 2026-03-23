@@ -135,9 +135,9 @@ prod-backup:
 
 # ── Terraform (AWS) ─────────────────────────────────────
 TF_DIR        = deploy/terraform
-AWS_REGION    = us-east-1
+AWS_REGION    = us-west-2
 PROJECT_NAME  = queryboard
-ENVIRONMENT   = prod
+ENVIRONMENT   = prod-west
 
 tf-init:
 	terraform -chdir=$(TF_DIR) init

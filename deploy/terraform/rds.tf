@@ -26,7 +26,7 @@ resource "aws_rds_cluster" "main" {
   backup_retention_period = 7
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 
   tags = { Name = "${local.name_prefix}-db" }

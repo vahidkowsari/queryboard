@@ -16,7 +16,7 @@ let client: SecretsManagerClient | null = null
 function getClient(): SecretsManagerClient {
   if (!client) {
     client = new SecretsManagerClient({
-      region: process.env.AWS_REGION || 'us-east-1',
+      region: process.env.AWS_REGION ,
     })
   }
   return client
