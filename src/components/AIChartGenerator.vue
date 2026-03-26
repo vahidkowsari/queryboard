@@ -73,10 +73,10 @@
         </div>
         <template v-for="(step, i) in agentSteps" :key="i">
           <div
-            v-if="showReasoning && thinkingTexts[i]"
+            v-if="showReasoning && stepToThinkingMap[i] !== undefined && thinkingTexts[stepToThinkingMap[i]]"
             class="ml-6 p-2 bg-primary/10 rounded text-xs text-primary italic whitespace-pre-wrap"
           >
-            {{ thinkingTexts[i] }}
+            {{ thinkingTexts[stepToThinkingMap[i]!] }}
           </div>
           <div class="flex items-start gap-2 text-sm">
             <Check v-if="!loading || i < agentSteps.length - 1" :size="16" class="text-green-600 mt-0.5 shrink-0" />
@@ -88,10 +88,10 @@
           </div>
         </template>
         <div
-          v-if="showReasoning && thinkingTexts[agentSteps.length]"
+          v-if="showReasoning && thinkingTexts[totalStepsReceived]"
           class="ml-6 p-2 bg-primary/10 rounded text-xs text-primary italic whitespace-pre-wrap"
         >
-          {{ thinkingTexts[agentSteps.length] }}
+          {{ thinkingTexts[totalStepsReceived] }}
         </div>
       </div>
 
@@ -256,6 +256,7 @@ interface Props {
   chartNameOverride?: string
   colorConfig?: ColorConfig
   chartLibrary?: ChartLibrary
+  showLlmDetails?: boolean
 }
 
 const props = defineProps<Props>()
@@ -283,7 +284,9 @@ const selectedChartType = ref<ChartType>(props.editChart?.chartType || 'auto')
 const showSql = ref(false)
 const agentSteps = ref<string[]>([])
 const thinkingTexts = ref<string[]>([])
+const stepToThinkingMap = ref<number[]>([])
 const showReasoning = ref(false)
+const totalStepsReceived = ref(0)
 const generatedTitle = ref<string | null>(null)
 const lastQuery = ref<string | null>(props.editChart?.userQuery || null)
 const showColorPicker = ref(false)
@@ -345,6 +348,8 @@ async function generateChart() {
   status.value = ''
   agentSteps.value = []
   thinkingTexts.value = []
+  stepToThinkingMap.value = []
+  totalStepsReceived.value = 0
 
   const controller = new AbortController()
   abortController.value = controller
@@ -392,11 +397,17 @@ async function generateChart() {
         } else if (line.startsWith('data: ')) {
           const data = JSON.parse(line.slice(6))
           if (eventType === 'step') {
-            agentSteps.value.push(data.step)
-            status.value = data.step
+            // Filter out model/vendor information from UI display unless showLlmDetails is enabled
+            const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
+            if (shouldShow) {
+              agentSteps.value.push(data.step)
+              stepToThinkingMap.value.push(totalStepsReceived.value)
+              status.value = data.step
+            }
+            totalStepsReceived.value++
           } else if (eventType === 'thinking') {
-            // Store thinking text at the current step index (before the next step)
-            const idx = agentSteps.value.length
+            // Store thinking text at the current total step index (including filtered steps)
+            const idx = totalStepsReceived.value
             thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
           } else if (eventType === 'result') {
             generatedTitle.value = data.title || null

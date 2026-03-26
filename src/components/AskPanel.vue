@@ -16,7 +16,7 @@ function renderMarkdown(text: string): string {
   return marked.parse(text) as string
 }
 
-const props = defineProps<{ projectId: string; show: boolean }>()
+const props = defineProps<{ projectId: string; show: boolean; showLlmDetails?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 interface Message {
@@ -36,6 +36,7 @@ const question = ref('')
 const loading = ref(false)
 const loadingConversations = ref(false)
 const agentSteps = ref<string[]>([])
+const totalStepsReceived = ref(0)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const messagesRef = ref<HTMLElement | null>(null)
 const expandedSql = ref<number | null>(null)
@@ -164,6 +165,7 @@ async function ask() {
   loading.value = true
   agentSteps.value = []
   thinkingTexts.value = []
+  totalStepsReceived.value = 0
   scrollToBottom()
 
   try {
@@ -208,11 +210,16 @@ async function ask() {
               activeConversationId.value = data.conversationId
               loadConversations()
             } else if (eventType === 'step') {
-              agentSteps.value.push(data.step)
-              thinkingTexts.value.push('')
-              scrollToBottom()
+              // Filter out model/vendor information from UI display unless showLlmDetails is enabled
+              const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
+              if (shouldShow) {
+                agentSteps.value.push(data.step)
+                thinkingTexts.value.push('')
+                scrollToBottom()
+              }
+              totalStepsReceived.value++
             } else if (eventType === 'thinking') {
-              const idx = agentSteps.value.length - 1
+              const idx = totalStepsReceived.value - 1
               if (idx >= 0) {
                 thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
               }

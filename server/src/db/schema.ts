@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, jsonb, integer, timestamp, index, numeric, unique, customType } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, text, jsonb, integer, timestamp, index, numeric, unique, customType, boolean } from 'drizzle-orm/pg-core'
 
 const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
   dataType() {
@@ -15,6 +15,7 @@ export const projects = pgTable('projects', {
   llmConfig: jsonb('llm_config'),
   chartLibrary: varchar('chart_library', { length: 50 }).default('vega-lite'),
   colorConfig: jsonb('color_config'),
+  showLlmDetails: boolean('show_llm_details').default(false),
   schemaCache: jsonb('schema_cache'),
   schemaDetectedAt: timestamp('schema_detected_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

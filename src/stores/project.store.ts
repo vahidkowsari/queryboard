@@ -14,6 +14,7 @@ function rowToProject(row: ProjectRow): Project {
     llmConfig: row.llmConfig || undefined,
     chartLibrary: row.chartLibrary || undefined,
     colorConfig: row.colorConfig || undefined,
+    showLlmDetails: row.showLlmDetails ?? false,
     schemaDetectedAt: row.schemaDetectedAt ? new Date(row.schemaDetectedAt) : undefined,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),

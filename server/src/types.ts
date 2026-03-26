@@ -188,6 +188,7 @@ export interface ProjectRow {
   llmConfig: LLMConfig | null
   chartLibrary: ChartLibrary | null
   colorConfig: ColorConfig | null
+  showLlmDetails: boolean | null
   schemaCache: Schema | null
   schemaDetectedAt: Date | null
   createdAt: Date
