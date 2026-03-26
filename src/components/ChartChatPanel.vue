@@ -100,7 +100,7 @@ watch(() => props.show, (val) => {
     if (!conversationId.value) loadHistory()
     nextTick(() => inputRef.value?.focus())
   }
-})
+}, { immediate: true })
 
 watch(() => props.chart.id, () => {
   // Reset when chart changes
@@ -108,6 +108,7 @@ watch(() => props.chart.id, () => {
   conversationId.value = null
   agentSteps.value = []
   question.value = ''
+  if (props.show) loadHistory()
 })
 
 async function sendMessage(messageText?: string) {

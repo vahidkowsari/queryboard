@@ -1,4 +1,4 @@
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc, and, isNull } from 'drizzle-orm'
 import { conversations, conversationMessages } from '../db/schema.js'
 import type { Db } from '../db/index.js'
 
@@ -32,7 +32,7 @@ export function createConversationService(db: Db) {
     return db
       .select()
       .from(conversations)
-      .where(eq(conversations.projectId, projectId))
+      .where(and(eq(conversations.projectId, projectId), isNull(conversations.chartId)))
       .orderBy(desc(conversations.updatedAt))
   }
 
