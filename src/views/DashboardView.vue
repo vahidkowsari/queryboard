@@ -222,6 +222,7 @@
               @refresh="refreshChart"
               @fullscreen="fullscreenChart"
               @move="openMoveModal"
+              @chat="openChartChat"
             />
           </VueDraggable>
         </div>
@@ -295,6 +296,15 @@
     </Modal>
 
     <AskPanel :projectId="projectId" :show="showAskPanel" @close="showAskPanel = false" />
+
+    <ChartChatPanel
+      v-if="chattingChart && dashboard"
+      :projectId="projectId"
+      :dashboardId="dashboard.id"
+      :chart="chattingChart"
+      :show="!!chattingChart"
+      @close="chattingChart = null"
+    />
   </div>
 </template>
 
@@ -340,6 +350,7 @@ import { formatDate } from '../utils/formatDate'
 import { useProjectColorConfig } from '../composables/useProjectColorConfig'
 import { useRole } from '../composables/useRole'
 import AskPanel from '../components/AskPanel.vue'
+import ChartChatPanel from '../components/ChartChatPanel.vue'
 import DashboardFilterBar from '../components/DashboardFilterBar.vue'
 import { exportDashboardPdf } from '../utils/exportDashboardPdf'
 import { exportCsv, exportExcel } from '../utils/exportData'
@@ -367,6 +378,7 @@ const otherDashboards = ref<{ id: string; name: string }[]>([])
 const { colorConfig, chartLibrary } = useProjectColorConfig(projectId)
 const { isEditor } = useRole()
 const showAskPanel = ref(false)
+const chattingChart = ref<Chart | null>(null)
 
 const sortedCharts = ref<Chart[]>([])
 const userEmailMap = ref<Map<string, string>>(new Map())
@@ -431,6 +443,10 @@ async function deleteChart(chart: Chart) {
       toast.error('Failed to delete chart')
     }
   }
+}
+
+function openChartChat(chart: Chart) {
+  chattingChart.value = chart
 }
 
 async function refreshChart(chart: Chart) {

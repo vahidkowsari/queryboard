@@ -61,6 +61,9 @@
           <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('refresh', chart)" title="Refresh data">
             <RefreshCw :size="14" />
           </Button>
+          <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('chat', chart)" title="Chat with chart">
+            <MessageSquare :size="14" />
+          </Button>
           <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('edit', chart)" title="Edit chart">
             <Edit2 :size="14" />
           </Button>
@@ -200,6 +203,7 @@ defineEmits<{
   refresh: [chart: Chart]
   fullscreen: [chart: Chart]
   move: [chart: Chart]
+  chat: [chart: Chart]
 }>()
 
 const hasRenderableSpec = computed(() => {

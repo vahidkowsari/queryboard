@@ -156,7 +156,7 @@ export interface SnowflakeDbConfig {
 
 export type DbConfig = AthenaDbConfig | PostgresDbConfig | MySQLDbConfig | BigQueryDbConfig | RedshiftDbConfig | SnowflakeDbConfig
 
-export type TokenUsageOperation = 'chart-generate' | 'schema-enrich' | 'llm-generate' | 'qa-ask'
+export type TokenUsageOperation = 'chart-generate' | 'schema-enrich' | 'llm-generate' | 'qa-ask' | 'chart-chat'
 
 export interface TokenUsageRecord {
   projectId: string
