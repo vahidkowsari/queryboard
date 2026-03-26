@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2, User } from 'lucide-vue-next'
+import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2, User, Users } from 'lucide-vue-next'
 import { marked } from 'marked'
+import Session from 'supertokens-web-js/recipe/session'
 import { API_BASE_URL } from '../services/api'
 import { config } from '../config'
 import { conversationApi, type Conversation, type ConversationMessage } from '../services/conversation.api'
@@ -50,6 +51,15 @@ const showPermissions = ref(false)
 const userEmailMap = ref<Map<string, string>>(new Map())
 const hasMultipleOwners = computed(() => new Set(conversations.value.map((c) => c.userId)).size > 1)
 const { isAdmin, refreshRoles } = useRole()
+const currentUserId = ref<string | null>(null)
+const showOnlyMyConversations = ref(false)
+
+const filteredConversations = computed(() => {
+  if (!showOnlyMyConversations.value || !currentUserId.value) {
+    return conversations.value
+  }
+  return conversations.value.filter((c) => c.userId === currentUserId.value)
+})
 
 async function copyToClipboard(text: string, index: number) {
   await navigator.clipboard.writeText(text)
@@ -82,6 +92,15 @@ async function loadProjectUsers() {
     userEmailMap.value = new Map(users.map((u) => [u.id, u.email ?? u.id.slice(0, 8)]))
   } catch {
     // non-critical
+  }
+}
+
+async function loadCurrentUserId() {
+  try {
+    const payload = await Session.getAccessTokenPayloadSecurely()
+    currentUserId.value = payload?.sub ?? null
+  } catch {
+    currentUserId.value = null
   }
 }
 
@@ -135,6 +154,7 @@ watch(() => props.show, (val) => {
   if (val) {
     loadConversations()
     loadProjectUsers()
+    loadCurrentUserId()
     nextTick(() => inputRef.value?.focus())
   }
 })
@@ -148,6 +168,7 @@ onMounted(async () => {
   if (props.show) {
     loadConversations()
     loadProjectUsers()
+    loadCurrentUserId()
   }
   document.addEventListener('keydown', onEscape)
 })
@@ -295,21 +316,45 @@ function formatTime(dateStr: string): string {
                 <PanelLeftClose :size="16" />
               </button>
             </div>
-            <div class="px-3 py-2">
+            <div class="px-3 py-2 space-y-2">
               <Button variant="outline" size="sm" class="w-full text-xs" @click="startNewConversation">
                 <Plus :size="14" />
                 New conversation
               </Button>
+              <div v-if="hasMultipleOwners" class="flex gap-1">
+                <button
+                  @click="showOnlyMyConversations = false"
+                  :class="[
+                    'flex-1 px-2 py-1.5 text-xs rounded-md transition-colors flex items-center justify-center gap-1',
+                    !showOnlyMyConversations ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  ]"
+                  title="Show all conversations"
+                >
+                  <Users :size="12" />
+                  All
+                </button>
+                <button
+                  @click="showOnlyMyConversations = true"
+                  :class="[
+                    'flex-1 px-2 py-1.5 text-xs rounded-md transition-colors flex items-center justify-center gap-1',
+                    showOnlyMyConversations ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  ]"
+                  title="Show only my conversations"
+                >
+                  <User :size="12" />
+                  Mine
+                </button>
+              </div>
             </div>
             <div class="flex-1 overflow-y-auto px-1">
               <div v-if="loadingConversations" class="flex justify-center py-4">
                 <Loader2 :size="14" class="animate-spin text-muted-foreground" />
               </div>
-              <div v-else-if="conversations.length === 0" class="px-3 py-6 text-xs text-muted-foreground text-center">
-                No conversations yet
+              <div v-else-if="filteredConversations.length === 0" class="px-3 py-6 text-xs text-muted-foreground text-center">
+                {{ showOnlyMyConversations ? 'No conversations yet' : 'No conversations yet' }}
               </div>
               <div
-                v-for="conv in conversations"
+                v-for="conv in filteredConversations"
                 :key="conv.id"
                 :class="[
                   'w-full text-left px-3 py-2.5 text-xs group hover:bg-muted/60 transition-colors flex items-start gap-1 rounded-lg mx-auto relative',
