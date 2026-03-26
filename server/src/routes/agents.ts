@@ -300,8 +300,14 @@ export function createAgentRoutes(db: Db): Router {
           return void res.status(404).json({ error: 'Conversation not found' })
         }
       } else {
-        const conv = await conversationService.create(project.id, userId, `Chat: ${chart.name}`)
-        convId = conv.id
+        // Try to resume existing conversation for this chart
+        const existing = await conversationService.getByChartId(project.id, chartId, userId)
+        if (existing) {
+          convId = existing.id
+        } else {
+          const conv = await conversationService.create(project.id, userId, `Chat: ${chart.name}`, chartId)
+          convId = conv.id
+        }
       }
 
       // Fetch conversation history BEFORE saving current message
@@ -389,6 +395,40 @@ export function createAgentRoutes(db: Db): Router {
         clearInterval(heartbeat)
       }
       if (!res.writableEnded) res.end()
+    }),
+  )
+
+  // GET /api/projects/:projectId/agents/chart-chat/history
+  router.get(
+    '/chart-chat/history',
+    asyncHandler(async (req: SessionRequest, res) => {
+      const project = req.project!
+      const chartId = req.query.chartId as string
+      if (!chartId) {
+        return void res.status(400).json({ error: 'chartId query parameter is required' })
+      }
+
+      const userId = req.session?.getUserId() ?? ''
+      if (!userId) {
+        return void res.status(401).json({ error: 'Unauthorized' })
+      }
+
+      const conv = await conversationService.getByChartId(project.id, chartId, userId)
+      if (!conv) {
+        return void res.json({ conversationId: null, messages: [] })
+      }
+
+      const msgs = await conversationService.getMessages(conv.id)
+      res.json({
+        conversationId: conv.id,
+        messages: msgs.map((m) => ({
+          role: m.role,
+          content: m.content,
+          sql: m.sql,
+          data: m.data,
+          columns: m.columns,
+        })),
+      })
     }),
   )
 

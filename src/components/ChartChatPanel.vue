@@ -36,6 +36,7 @@ interface ChatMessage {
 const messages = ref<ChatMessage[]>([])
 const question = ref('')
 const loading = ref(false)
+const loadingHistory = ref(false)
 const conversationId = ref<string | null>(null)
 const agentSteps = ref<string[]>([])
 const totalStepsReceived = ref(0)
@@ -66,8 +67,37 @@ async function copyToClipboard(text: string, index: number) {
   setTimeout(() => { copiedIndex.value = null }, config.copyFeedbackMs)
 }
 
+async function loadHistory() {
+  loadingHistory.value = true
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/projects/${props.projectId}/agents/chart-chat/history?chartId=${props.chart.id}`,
+      { credentials: 'include' },
+    )
+    if (res.ok) {
+      const data = await res.json()
+      if (data.conversationId) {
+        conversationId.value = data.conversationId
+        messages.value = (data.messages || []).map((m: ChatMessage) => ({
+          role: m.role,
+          content: m.content,
+          sql: m.sql || undefined,
+          data: m.data || undefined,
+          columns: m.columns || undefined,
+        }))
+        scrollToBottom()
+      }
+    }
+  } catch {
+    // Silently fail — user can still start a new conversation
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
 watch(() => props.show, (val) => {
   if (val) {
+    if (!conversationId.value) loadHistory()
     nextTick(() => inputRef.value?.focus())
   }
 })
@@ -204,8 +234,14 @@ function onKeydown(e: KeyboardEvent) {
           <div ref="messagesRef" class="flex-1 overflow-y-auto">
             <div class="max-w-xl mx-auto px-5 py-5 space-y-4">
 
+              <!-- Loading history -->
+              <div v-if="loadingHistory" class="text-center py-12 text-muted-foreground">
+                <Loader2 :size="24" class="animate-spin mx-auto mb-3 text-primary" />
+                <p class="text-sm">Loading conversation...</p>
+              </div>
+
               <!-- Empty state -->
-              <div v-if="messages.length === 0" class="text-center py-12 text-muted-foreground">
+              <div v-else-if="messages.length === 0" class="text-center py-12 text-muted-foreground">
                 <div class="flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 mx-auto mb-3">
                   <Sparkles :size="20" class="text-primary" />
                 </div>

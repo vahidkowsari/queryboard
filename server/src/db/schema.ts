@@ -132,6 +132,7 @@ export const conversations = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
     userId: varchar('user_id', { length: 128 }).notNull(),
+    chartId: uuid('chart_id').references(() => charts.id, { onDelete: 'cascade' }),
     title: varchar('title', { length: 255 }).notNull().default('New conversation'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -139,6 +140,7 @@ export const conversations = pgTable(
   (table) => [
     index('idx_conversations_project_id').on(table.projectId),
     index('idx_conversations_user_id').on(table.userId),
+    index('idx_conversations_chart_id').on(table.chartId),
   ],
 )
 
