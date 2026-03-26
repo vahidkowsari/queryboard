@@ -400,6 +400,7 @@ async function onDragEnd() {
   if (!dashboard.value) return
   try {
     await dashboardStore.reorderCharts(dashboard.value.id, sortedCharts.value)
+    scheduleThumbnailUpdate()
   } catch {
     toast.error('Failed to save chart order')
   }
@@ -567,6 +568,7 @@ async function handleApplyFilters(filterValues: Record<string, string>) {
     await dashboardStore.refreshFiltered(dashboard.value.id, filterValues)
     if (dashboard.value?.charts) sortedCharts.value = [...dashboard.value.charts]
     toast.success('Filters applied')
+    scheduleThumbnailUpdate()
   } catch {
     toast.error('Failed to apply filters')
   } finally {
@@ -633,6 +635,15 @@ watch(
   () => dashboard.value?.charts.length,
   (newLength, oldLength) => {
     if (newLength && newLength > 0 && newLength !== oldLength) {
+      scheduleThumbnailUpdate()
+    }
+  },
+)
+
+watch(
+  () => dashboard.value?.charts.map((c) => c.updatedAt ?? c.id).join(','),
+  (newVal, oldVal) => {
+    if (newVal && oldVal && newVal !== oldVal) {
       scheduleThumbnailUpdate()
     }
   },
