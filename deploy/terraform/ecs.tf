@@ -175,7 +175,7 @@ resource "aws_ecs_task_definition" "supertokens" {
       },
       {
         name  = "ACCESS_TOKEN_VALIDITY"
-        value = "900"
+        value = "3600"
       },
       {
         name  = "REFRESH_TOKEN_VALIDITY"

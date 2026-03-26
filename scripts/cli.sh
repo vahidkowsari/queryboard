@@ -8,10 +8,10 @@ if [ -z "$AWS_PROFILE" ]; then
     exit 1
 fi
 
-AWS_REGION="${AWS_REGION:-us-east-1}"
+AWS_REGION="${AWS_REGION:-us-west-2}"
 TF_DIR="$(dirname "$0")/../deploy/terraform"
 PROJECT_NAME="queryboard"
-ENVIRONMENT="prod"
+ENVIRONMENT="prod-west"
 SERVICE_NAME="${PROJECT_NAME}-${ENVIRONMENT}-backend"
 LOCAL_PORT="5435"
 
@@ -21,9 +21,9 @@ tf_output() {
     terraform -chdir="$TF_DIR" output -raw "$1" 2>/dev/null
 }
 
-error() { gum style --foreground 1 "✗ $*"; }
-success() { gum style --foreground 2 "✓ $*"; }
-info() { gum style --foreground 4 "→ $*"; }
+error() { gum style --foreground 1 "✗ $*" >&2; }
+success() { gum style --foreground 2 "✓ $*" >&2; }
+info() { gum style --foreground 4 "→ $*" >&2; }
 
 get_ecs_task() {
     local cluster
@@ -286,11 +286,11 @@ interactive_menu() {
 
         echo ""
         case $choice in
-            "Tail ECS logs")                    tail_logs ;;
-            "Port forward DB"*)                 port_forward_db ;;
-            "Backup database")                  backup_db ;;
-            "Restore database")                 restore_db ;;
-            "Show Terraform outputs")           show_outputs ;;
+            "Tail ECS logs")                    tail_logs || true ;;
+            "Port forward DB"*)                 port_forward_db || true ;;
+            "Backup database")                  backup_db || true ;;
+            "Restore database")                 restore_db || true ;;
+            "Show Terraform outputs")           show_outputs || true ;;
             "Quit")                             break ;;
         esac
 
@@ -321,7 +321,7 @@ Direct commands:
 
 Environment variables:
   AWS_PROFILE   (required)
-  AWS_REGION    (default: us-east-1)
+  AWS_REGION    (default: us-west-2)
   DB_PASSWORD   (required for backup/restore)
 EOF
     exit 0

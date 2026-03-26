@@ -117,20 +117,6 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1773600000000,
-      "tag": "0016_add_chart_refresh_tracking",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1773700000000,
-      "tag": "0017_add_audit_log",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
       "when": 1774558390485,
       "tag": "0018_bent_magma",
       "breakpoints": true

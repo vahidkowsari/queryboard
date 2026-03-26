@@ -30,6 +30,20 @@ import { createRefreshScheduler } from './services/refresh-scheduler.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+async function waitForSuperTokens(maxRetries = 30, delayMs = 2000) {
+  for (let i = 1; i <= maxRetries; i++) {
+    try {
+      await supertokens.getUserCount()
+      console.log('SuperTokens core is ready')
+      return
+    } catch {
+      console.log(`Waiting for SuperTokens core... (${i}/${maxRetries})`)
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+  throw new Error('SuperTokens core not available after retries')
+}
+
 async function startServer() {
   const config = await loadConfig()
   setConfig(config) // Make config available globally
@@ -58,6 +72,7 @@ async function startServer() {
   await migrate(db, { migrationsFolder: join(__dirname, '..', 'migrations') })
   console.log('Migrations applied')
   await seedProjectsFromConfig(db)
+  await waitForSuperTokens()
   await seedRoles()
   console.log('Roles seeded')
   await createInitialAdmin()

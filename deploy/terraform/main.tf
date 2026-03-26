@@ -10,7 +10,7 @@ terraform {
 
   backend "s3" {
     bucket         = "scienzahealth-queryboard-state"
-    key            = "queryboard/terraform.tfstate"
+    key            = "queryboard-us-west-2/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "scienzahealth-queryboard-locks"
     encrypt        = true

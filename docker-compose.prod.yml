@@ -19,7 +19,7 @@ services:
       - postgres
     environment:
       POSTGRESQL_CONNECTION_URI: postgresql://${DB_USER:-charting}:${DB_PASSWORD:-charting_dev}@postgres:5432/${DB_NAME:-charting}
-      ACCESS_TOKEN_VALIDITY: 900 # 15 minutes (seconds)
+      ACCESS_TOKEN_VALIDITY: 3600 # 1 hour (seconds)
       REFRESH_TOKEN_VALIDITY: 10080 # 7 days (minutes)
     restart: unless-stopped
 

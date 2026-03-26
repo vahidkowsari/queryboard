@@ -135,9 +135,9 @@ prod-backup:
 
 # ── Terraform (AWS) ─────────────────────────────────────
 TF_DIR        = deploy/terraform
-AWS_REGION    = us-east-1
+AWS_REGION    = us-west-2
 PROJECT_NAME  = queryboard
-ENVIRONMENT   = prod
+ENVIRONMENT   = prod-west
 
 tf-init:
 	terraform -chdir=$(TF_DIR) init
@@ -155,31 +155,31 @@ tf-output:
 	terraform -chdir=$(TF_DIR) output
 
 ecr-login:
-	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $$(terraform -chdir=$(TF_DIR) output -raw ecr_registry)
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com
 
 ecr-push:
 	docker build --platform linux/amd64 -t queryboard-backend -f server/Dockerfile ./server
-	docker tag queryboard-backend:latest $$(terraform -chdir=$(TF_DIR) output -raw ecr_repository_url):latest
-	docker push $$(terraform -chdir=$(TF_DIR) output -raw ecr_repository_url):latest
+	docker tag queryboard-backend:latest $$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-$(ENVIRONMENT)-backend:latest
+	docker push $$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-$(ENVIRONMENT)-backend:latest
 
 deploy-backend: ecr-login ecr-push
 	aws ecs update-service \
 		--region $(AWS_REGION) \
-		--cluster $$(terraform -chdir=$(TF_DIR) output -raw ecs_cluster_name) \
+		--cluster $(PROJECT_NAME)-$(ENVIRONMENT)-cluster \
 		--service $(PROJECT_NAME)-$(ENVIRONMENT)-backend \
 		--force-new-deployment
 	@echo "Waiting for deployment to stabilize..."
 	aws ecs wait services-stable \
 		--region $(AWS_REGION) \
-		--cluster $$(terraform -chdir=$(TF_DIR) output -raw ecs_cluster_name) \
+		--cluster $(PROJECT_NAME)-$(ENVIRONMENT)-cluster \
 		--services $(PROJECT_NAME)-$(ENVIRONMENT)-backend
 	@echo "✅ Backend deployment complete and stable."
 
 deploy-frontend:
-	VITE_API_DOMAIN=$$(terraform -chdir=$(TF_DIR) output -raw api_domain) \
-	VITE_API_URL=$$(terraform -chdir=$(TF_DIR) output -raw api_domain) \
+	VITE_API_DOMAIN=https://$$(grep 'domain_name' deploy/terraform/terraform.tfvars | head -1 | sed 's/.*= *"//;s/".*//') \
+	VITE_API_URL=https://$$(grep 'domain_name' deploy/terraform/terraform.tfvars | head -1 | sed 's/.*= *"//;s/".*//') \
 	npm run build
-	aws s3 sync dist/ s3://$$(terraform -chdir=$(TF_DIR) output -raw frontend_bucket) --delete
+	aws s3 sync dist/ s3://$(PROJECT_NAME)-$(ENVIRONMENT)-frontend --delete
 	aws cloudfront create-invalidation \
-		--distribution-id $$(terraform -chdir=$(TF_DIR) output -raw cloudfront_distribution_id) \
+		--distribution-id $$(aws cloudfront list-distributions --query 'DistributionList.Items[?Origins[0].Id==`$(PROJECT_NAME)-$(ENVIRONMENT)-frontend-origin`].Id' --output text || aws cloudfront list-distributions --query 'DistributionList.Items[?contains(to_string(Origins[*].DomainName), `$(PROJECT_NAME)-$(ENVIRONMENT)-frontend`)].Id' --output text) \
 		--paths "/*"

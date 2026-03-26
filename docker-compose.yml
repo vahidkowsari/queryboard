@@ -27,7 +27,7 @@ services:
         condition: service_healthy
     environment:
       POSTGRESQL_CONNECTION_URI: 'postgresql://charting:charting_dev@postgres:5432/charting'
-      ACCESS_TOKEN_VALIDITY: 900 # 15 minutes (seconds)
+      ACCESS_TOKEN_VALIDITY: 3600 # 1 hour (seconds)
       REFRESH_TOKEN_VALIDITY: 10080 # 7 days (minutes)
     ports:
       - '3567:3567'
