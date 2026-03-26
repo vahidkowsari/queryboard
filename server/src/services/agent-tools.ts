@@ -260,7 +260,7 @@ export function createDataTools(ctx: ToolHandlerContext, log: LogFn) {
           return text
         } catch (err) {
           const errMsg = err instanceof Error ? err.message : String(err)
-          log(`Query error: ${errMsg}`)
+          log(`Correcting query: ${errMsg}`)
           const isColumnError = /column.*not found|cannot be resolved|unknown column|does not exist/i.test(errMsg)
           if (isColumnError) {
             const hint = getColumnHintFromSql(sql, ctx.schema)
