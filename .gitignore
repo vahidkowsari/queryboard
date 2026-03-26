@@ -66,3 +66,6 @@ tfplan
 # Synthea data and scripts (local only)
 synthea_data/
 load_synthea.sh
+
+# Backups
+backups/

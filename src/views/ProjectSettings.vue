@@ -166,6 +166,24 @@
                   Leave blank to use the server-level API key from environment variables.
                 </p>
               </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">Temperature: {{ llmForm.temperature }}</label>
+                <input
+                  v-model.number="llmForm.temperature"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  class="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                />
+                <div class="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>More Deterministic (0.0)</span>
+                  <span>More Creative (1.0)</span>
+                </div>
+                <p class="text-xs text-muted-foreground mt-1">
+                  Lower values make responses more focused and consistent. Higher values increase creativity and variation.
+                </p>
+              </div>
               <Button @click="saveLLMConfig">Save AI Model</Button>
             </div>
           </Card>
@@ -370,7 +388,7 @@ const defaultModels = Object.fromEntries(
   Object.entries(vendorModels).map(([vendor, models]) => [vendor, models[0]?.value ?? ''])
 ) as Record<LLMVendor, string>
 
-const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '' })
+const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '', temperature: 0.3 })
 
 watch(() => llmForm.value.vendor, (vendor) => {
   llmForm.value.model = defaultModels[vendor]
@@ -433,7 +451,7 @@ onMounted(async () => {
       const validModel = vendorModels[vendor]?.some(m => m.value === savedModel)
         ? savedModel
         : defaultModels[vendor]
-      llmForm.value = { vendor, model: validModel, apiKey: p.llmConfig.apiKey || '' }
+      llmForm.value = { vendor, model: validModel, apiKey: p.llmConfig.apiKey || '', temperature: p.llmConfig.temperature ?? 0.3 }
     }
     if (p.chartLibrary) {
       chartLibForm.value = { library: p.chartLibrary }
@@ -511,6 +529,7 @@ async function saveLLMConfig() {
         vendor: llmForm.value.vendor,
         model: llmForm.value.model || undefined,
         apiKey: llmForm.value.apiKey || undefined,
+        temperature: llmForm.value.temperature,
       },
     })
     toast.success('AI model updated')

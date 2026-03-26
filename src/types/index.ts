@@ -78,6 +78,7 @@ export interface LLMConfig {
   vendor: LLMVendor
   model?: string
   apiKey?: string
+  temperature?: number
 }
 
 // Chart library types

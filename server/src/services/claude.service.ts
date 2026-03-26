@@ -14,8 +14,10 @@ export interface LLMResult {
  */
 export async function askLLM(prompt: string, maxTokens = 2048, llmConfig?: LLMConfig | null): Promise<LLMResult> {
   const { model, vendor, modelId } = createLLMModel(llmConfig)
+  const temperature = llmConfig?.temperature ?? 0.3
   const result = await generateText({
     model,
+    temperature,
     maxOutputTokens: maxTokens,
     messages: [{ role: 'user', content: prompt }],
   })

@@ -132,6 +132,7 @@ export async function runChartAgent(
 
   // Initialize LLM model and chart library configuration
   const { model, vendor, modelId } = createLLMModel(llmConfig)
+  const temperature = llmConfig?.temperature ?? 0.3
   const libConfig = getChartLibraryConfig(chartLibrary)
   log(`Using ${vendor}/${modelId}, chart library: ${libConfig.name}`)
 
@@ -172,6 +173,7 @@ export async function runChartAgent(
     // Call LLM with tools - it will decide which tool to use or create the chart
     const result = await generateText({
       model,
+      temperature,
       system: systemPrompt,
       messages,
       tools: agentTools,
