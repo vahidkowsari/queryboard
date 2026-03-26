@@ -52,13 +52,14 @@ const userEmailMap = ref<Map<string, string>>(new Map())
 const hasMultipleOwners = computed(() => new Set(conversations.value.map((c) => c.userId)).size > 1)
 const { isAdmin, refreshRoles } = useRole()
 const currentUserId = ref<string | null>(null)
-const showOnlyMyConversations = ref(false)
+const showOnlyMyConversations = ref(true)
 
 const filteredConversations = computed(() => {
-  if (!showOnlyMyConversations.value || !currentUserId.value) {
-    return conversations.value
+  if (!currentUserId.value) return conversations.value
+  if (showOnlyMyConversations.value) {
+    return conversations.value.filter((c) => c.userId === currentUserId.value)
   }
-  return conversations.value.filter((c) => c.userId === currentUserId.value)
+  return conversations.value.filter((c) => c.userId !== currentUserId.value)
 })
 
 async function copyToClipboard(text: string, index: number) {
@@ -328,10 +329,10 @@ function formatTime(dateStr: string): string {
                     'flex-1 px-2 py-1.5 text-xs rounded-md transition-colors flex items-center justify-center gap-1',
                     !showOnlyMyConversations ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
                   ]"
-                  title="Show all conversations"
+                  title="Show others' conversations"
                 >
                   <Users :size="12" />
-                  All
+                  Others
                 </button>
                 <button
                   @click="showOnlyMyConversations = true"
@@ -351,7 +352,7 @@ function formatTime(dateStr: string): string {
                 <Loader2 :size="14" class="animate-spin text-muted-foreground" />
               </div>
               <div v-else-if="filteredConversations.length === 0" class="px-3 py-6 text-xs text-muted-foreground text-center">
-                {{ showOnlyMyConversations ? 'No conversations yet' : 'No conversations yet' }}
+                {{ showOnlyMyConversations ? 'No conversations yet' : 'No conversations from others' }}
               </div>
               <div
                 v-for="conv in filteredConversations"
@@ -369,7 +370,7 @@ function formatTime(dateStr: string): string {
                 <div class="flex-1 min-w-0 pointer-events-none">
                   <div class="truncate font-medium">{{ conv.title }}</div>
                   <div class="text-muted-foreground mt-0.5">{{ formatTime(conv.updatedAt) }}</div>
-                  <div v-if="hasMultipleOwners && userEmailMap.get(conv.userId)" class="text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                  <div v-if="!showOnlyMyConversations && conv.userId !== currentUserId && userEmailMap.get(conv.userId)" class="text-muted-foreground truncate mt-0.5 flex items-center gap-1">
                     <User :size="9" />{{ userEmailMap.get(conv.userId) }}
                   </div>
                 </div>

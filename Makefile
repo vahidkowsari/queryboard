@@ -181,5 +181,5 @@ deploy-frontend:
 	npm run build
 	aws s3 sync dist/ s3://$(PROJECT_NAME)-$(ENVIRONMENT)-frontend --delete
 	aws cloudfront create-invalidation \
-		--distribution-id $$(aws cloudfront list-distributions --query 'DistributionList.Items[?Origins[0].Id==`$(PROJECT_NAME)-$(ENVIRONMENT)-frontend-origin`].Id' --output text || aws cloudfront list-distributions --query 'DistributionList.Items[?contains(to_string(Origins[*].DomainName), `$(PROJECT_NAME)-$(ENVIRONMENT)-frontend`)].Id' --output text) \
+		--distribution-id $$(aws cloudfront list-distributions --query 'DistributionList.Items[?Origins.Items[?Id==`s3-frontend` && contains(DomainName, `$(PROJECT_NAME)-$(ENVIRONMENT)-frontend`)]].Id' --output text) \
 		--paths "/*"
