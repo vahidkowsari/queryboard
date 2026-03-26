@@ -158,6 +158,7 @@ export interface Project {
   llmConfig?: LLMConfig
   chartLibrary?: ChartLibrary
   colorConfig?: ColorConfig
+  showLlmDetails?: boolean
   schemaDetectedAt?: Date
   createdAt: Date
   updatedAt: Date
