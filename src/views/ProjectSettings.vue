@@ -184,6 +184,20 @@
                   Lower values make responses more focused and consistent. Higher values increase creativity and variation.
                 </p>
               </div>
+              <div class="flex items-center gap-2">
+                <input
+                  id="showLlmDetails"
+                  v-model="showLlmDetailsForm"
+                  type="checkbox"
+                  class="w-4 h-4 rounded border-input"
+                />
+                <label for="showLlmDetails" class="text-sm font-medium cursor-pointer">
+                  Show LLM details during generation
+                </label>
+              </div>
+              <p class="text-xs text-muted-foreground -mt-2 ml-6">
+                Display which AI model is being used in the agent progress section during chart generation and conversations.
+              </p>
               <Button @click="saveLLMConfig">Save AI Model</Button>
             </div>
           </Card>
@@ -389,6 +403,7 @@ const defaultModels = Object.fromEntries(
 ) as Record<LLMVendor, string>
 
 const llmForm = ref({ vendor: 'anthropic' as LLMVendor, model: defaultModels['anthropic'], apiKey: '', temperature: 0.3 })
+const showLlmDetailsForm = ref(false)
 
 watch(() => llmForm.value.vendor, (vendor) => {
   llmForm.value.model = defaultModels[vendor]
@@ -439,12 +454,14 @@ onMounted(async () => {
       llmConfig: row.llmConfig || undefined,
       chartLibrary: row.chartLibrary || undefined,
       colorConfig: row.colorConfig || undefined,
+      showLlmDetails: row.showLlmDetails ?? false,
       schemaDetectedAt: row.schemaDetectedAt ? new Date(row.schemaDetectedAt) : undefined,
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt),
     }
     project.value = p
     form.value = { name: p.name, description: p.description || '' }
+    showLlmDetailsForm.value = p.showLlmDetails ?? false
     if (p.llmConfig) {
       const vendor = p.llmConfig.vendor
       const savedModel = p.llmConfig.model || ''
@@ -531,6 +548,7 @@ async function saveLLMConfig() {
         apiKey: llmForm.value.apiKey || undefined,
         temperature: llmForm.value.temperature,
       },
+      showLlmDetails: showLlmDetailsForm.value,
     })
     toast.success('AI model updated')
   } catch {

@@ -60,6 +60,7 @@ export function createProjectService(db: Db) {
         llmConfig?: LLMConfig
         chartLibrary?: ChartLibrary
         colorConfig?: ColorConfig
+        showLlmDetails?: boolean
       },
     ) {
       const set: Record<string, unknown> = { updatedAt: new Date() }
@@ -71,6 +72,7 @@ export function createProjectService(db: Db) {
       if (data.llmConfig !== undefined) set.llmConfig = data.llmConfig
       if (data.chartLibrary !== undefined) set.chartLibrary = data.chartLibrary
       if (data.colorConfig !== undefined) set.colorConfig = data.colorConfig
+      if (data.showLlmDetails !== undefined) set.showLlmDetails = data.showLlmDetails
 
       if (Object.keys(set).length === 1) return this.getById(id)
 

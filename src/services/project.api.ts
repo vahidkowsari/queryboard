@@ -10,6 +10,7 @@ export interface ProjectRow {
   llmConfig: LLMConfig | null
   chartLibrary: ChartLibrary | null
   colorConfig: ColorConfig | null
+  showLlmDetails: boolean | null
   schemaDetectedAt: string | null
   createdAt: string
   updatedAt: string
@@ -23,6 +24,7 @@ export interface ProjectPayload {
   llmConfig?: LLMConfig
   chartLibrary?: ChartLibrary
   colorConfig?: ColorConfig
+  showLlmDetails?: boolean
 }
 
 export const projectApi = {
