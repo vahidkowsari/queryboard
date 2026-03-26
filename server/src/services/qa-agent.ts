@@ -109,6 +109,7 @@ export async function runQAAgent(
 
   // Initialize LLM model
   const { model, vendor, modelId } = createLLMModel(llmConfig)
+  const temperature = llmConfig?.temperature ?? 0.3
   log(`Using ${vendor}/${modelId}`)
 
   // Initialize tool context and agent tools
@@ -140,6 +141,7 @@ export async function runQAAgent(
     // Call LLM with tools - it will decide which tool to use or answer the question
     const result = await generateText({
       model,
+      temperature,
       system: SYSTEM_PROMPT,
       messages,
       tools: agentTools,
