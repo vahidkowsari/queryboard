@@ -96,6 +96,21 @@ For a more robust AWS setup:
 4. **ALB** — load balancer in front of backend tasks
 5. **Secrets Manager** — store API keys and credentials
 
+### Deploying Frontend
+
+The frontend must be built with the API domain pointing to the ALB subdomain (bypasses CloudFront for API/SSE requests):
+
+```bash
+# Build with API pointed at ALB subdomain
+VITE_API_URL=https://queryboard-api.<your-tld> VITE_API_DOMAIN=https://queryboard-api.<your-tld> npm run build
+
+# Upload to S3
+aws s3 sync dist/ s3://<bucket-name>/
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+```
+
 ### Backups
 
 The PostgreSQL volume (`pgdata`) contains all data. Back it up regularly:

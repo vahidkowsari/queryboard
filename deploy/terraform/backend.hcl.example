@@ -1,0 +1,5 @@
+bucket         = "myorg-queryboard-state"
+key            = "queryboard/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "myorg-queryboard-locks"
+encrypt        = true

@@ -40,8 +40,13 @@ output "ecr_registry" {
 }
 
 output "api_domain" {
-  description = "Resolved API domain"
+  description = "Resolved API domain (direct to ALB, bypasses CloudFront)"
   value       = local.api_domain
+}
+
+output "api_domain_name" {
+  description = "API domain name (e.g. queryboard-api.yourcompany.com)"
+  value       = var.api_domain_name != "" ? var.api_domain_name : aws_lb.main.dns_name
 }
 
 output "web_domain" {

@@ -9,11 +9,8 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "scienzahealth-queryboard-state"
-    key            = "queryboard-us-west-2/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "scienzahealth-queryboard-locks"
-    encrypt        = true
+    # Configured via backend.hcl (see backend.hcl.example)
+    # Run: terraform init -backend-config=backend.hcl
   }
 }
 
@@ -31,7 +28,7 @@ provider "aws" {
 
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
-  api_domain  = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+  api_domain  = var.api_domain_name != "" ? "https://${var.api_domain_name}" : "http://${aws_lb.main.dns_name}"
   web_domain  = var.domain_name != "" ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 

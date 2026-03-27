@@ -140,7 +140,7 @@ PROJECT_NAME  = queryboard
 ENVIRONMENT   = prod-west
 
 tf-init:
-	terraform -chdir=$(TF_DIR) init
+	terraform -chdir=$(TF_DIR) init -backend-config=backend.hcl
 
 tf-plan:
 	terraform -chdir=$(TF_DIR) plan
@@ -176,8 +176,11 @@ deploy-backend: ecr-login ecr-push
 	@echo "✅ Backend deployment complete and stable."
 
 deploy-frontend:
-	VITE_API_DOMAIN=https://$$(grep 'domain_name' deploy/terraform/terraform.tfvars | head -1 | sed 's/.*= *"//;s/".*//') \
-	VITE_API_URL=https://$$(grep 'domain_name' deploy/terraform/terraform.tfvars | head -1 | sed 's/.*= *"//;s/".*//') \
+	$(eval API_HOST := $(shell grep '^api_domain_name' deploy/terraform/terraform.tfvars 2>/dev/null | sed 's/.*= *"//;s/".*//'))
+	$(eval API_HOST := $(if $(API_HOST),$(API_HOST),$(shell grep '^domain_name' deploy/terraform/terraform.tfvars 2>/dev/null | head -1 | sed 's/.*= *"//;s/".*//')))
+	@test -n "$(API_HOST)" || (echo "Error: neither api_domain_name nor domain_name found in terraform.tfvars" && exit 1)
+	VITE_API_DOMAIN=https://$(API_HOST) \
+	VITE_API_URL=https://$(API_HOST) \
 	npm run build
 	aws s3 sync dist/ s3://$(PROJECT_NAME)-$(ENVIRONMENT)-frontend --delete
 	aws cloudfront create-invalidation \
