@@ -33,6 +33,12 @@ export async function executeAthenaQuery(
       QueryString: query,
       QueryExecutionContext: { Database: dbConfig.database },
       WorkGroup: dbConfig.workgroup,
+      ResultReuseConfiguration: {
+        ResultReuseByAgeConfiguration: {
+          Enabled: true,
+          MaxAgeInMinutes: 60,
+        },
+      },
     }),
   )
   const executionId = startResponse.QueryExecutionId!
