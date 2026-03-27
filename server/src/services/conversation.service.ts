@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and, isNull } from 'drizzle-orm'
 import { conversations, conversationMessages } from '../db/schema.js'
 import type { Db } from '../db/index.js'
 
@@ -6,6 +6,7 @@ export interface ConversationRow {
   id: string
   projectId: string
   userId: string
+  chartId: string | null
   title: string
   createdAt: Date
   updatedAt: Date
@@ -31,7 +32,7 @@ export function createConversationService(db: Db) {
     return db
       .select()
       .from(conversations)
-      .where(eq(conversations.projectId, projectId))
+      .where(and(eq(conversations.projectId, projectId), isNull(conversations.chartId)))
       .orderBy(desc(conversations.updatedAt))
   }
 
@@ -50,12 +51,25 @@ export function createConversationService(db: Db) {
   /**
    * Creates a new conversation for a user in a project
    */
-  async function create(projectId: string, userId: string, title?: string): Promise<ConversationRow> {
+  async function create(projectId: string, userId: string, title?: string, chartId?: string): Promise<ConversationRow> {
     const rows = await db
       .insert(conversations)
-      .values({ projectId, userId, title: title || 'New conversation' })
+      .values({ projectId, userId, title: title || 'New conversation', ...(chartId ? { chartId } : {}) })
       .returning()
     return rows[0]!
+  }
+
+  /**
+   * Fetches the most recent conversation for a specific chart
+   */
+  async function getByChartId(projectId: string, chartId: string, userId: string): Promise<ConversationRow | null> {
+    const rows = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.projectId, projectId), eq(conversations.chartId, chartId), eq(conversations.userId, userId)))
+      .orderBy(desc(conversations.updatedAt))
+      .limit(1)
+    return rows[0] ?? null
   }
 
   /**
@@ -124,5 +138,5 @@ export function createConversationService(db: Db) {
     return rows[0]!
   }
 
-  return { listByProject, getById, create, updateTitle, remove, getMessages, addMessage }
+  return { listByProject, getById, getByChartId, create, updateTitle, remove, getMessages, addMessage }
 }

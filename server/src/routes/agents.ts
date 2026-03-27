@@ -2,7 +2,9 @@ import { Router } from 'express'
 import { askLLM } from '../services/claude.service.js'
 import { runChartAgent } from '../services/chart-agent.js'
 import { runQAAgent } from '../services/qa-agent.js'
+import { runChartChatAgent, type ChartContext } from '../services/chart-chat-agent.js'
 import { createQueryExecutor } from '../services/query-executors/index.js'
+import { createChartService } from '../services/chart.service.js'
 import { asyncHandler } from '../middleware/error.js'
 import { loadProject } from '../middleware/project.js'
 import { requireRole } from '../middleware/roles.js'
@@ -19,6 +21,7 @@ export function createAgentRoutes(db: Db): Router {
   const router = Router({ mergeParams: true })
   const tokenUsageService = createTokenUsageService(db)
   const conversationService = createConversationService(db)
+  const chartService = createChartService(db)
   const auditLog = createAuditLogService(db)
   router.use(loadProject(db))
   router.use(requireRole(ROLES.ADMIN, ROLES.EDITOR))
@@ -250,6 +253,182 @@ export function createAgentRoutes(db: Db): Router {
         }
       }
       if (!res.writableEnded) res.end()
+    }),
+  )
+
+  router.post(
+    '/chart-chat',
+    asyncHandler(async (req: SessionRequest, res) => {
+      const { message, dashboardId, chartId, conversationId } = req.body
+      const project = req.project!
+      const schema = project.schemaCache as Schema | null
+      const userId = req.session?.getUserId() ?? 'unknown'
+
+      if (!schema) {
+        return void res.status(400).json({ error: 'No schema available. Please detect schema first.' })
+      }
+      if (!dashboardId || !chartId || !message) {
+        return void res.status(400).json({ error: 'dashboardId, chartId, and message are required' })
+      }
+
+      // Load chart from DB
+      const chart = await chartService.getById(dashboardId, chartId)
+      if (!chart) {
+        return void res.status(404).json({ error: 'Chart not found' })
+      }
+
+      const chartContext: ChartContext = {
+        chartId: chart.id,
+        name: chart.name,
+        sql: chart.query,
+        chartSpec: chart.chartSpec as object | undefined,
+        chartType: chart.chartType ?? undefined,
+        data: (chart.data as Record<string, string>[] | null) ?? undefined,
+        description: chart.description ?? undefined,
+        summary: chart.summary ?? undefined,
+        userQuery: chart.userQuery ?? undefined,
+        filters: (chart.filters as import('../types.js').ChartFilter[] | null) ?? undefined,
+      }
+
+      console.log(`ChartChatAgent: user=${userId} project=${project.id} chart="${chart.name}" message="${message.substring(0, 80)}"`)
+
+      // Create or validate conversation
+      let convId = conversationId as string | undefined
+      if (convId) {
+        const conv = await conversationService.getById(convId)
+        if (!conv || conv.projectId !== project.id) {
+          return void res.status(404).json({ error: 'Conversation not found' })
+        }
+      } else {
+        // Try to resume existing conversation for this chart
+        const existing = await conversationService.getByChartId(project.id, chartId, userId)
+        if (existing) {
+          convId = existing.id
+        } else {
+          const conv = await conversationService.create(project.id, userId, `Chat: ${chart.name}`, chartId)
+          convId = conv.id
+        }
+      }
+
+      // Fetch conversation history BEFORE saving current message
+      const previousMessages = await conversationService.getMessages(convId)
+      const conversationHistory = previousMessages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }))
+
+      // Save user message AFTER fetching history
+      await conversationService.addMessage(convId, 'user', message)
+
+      // SSE streaming
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      })
+
+      res.write(`event: conversation\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`)
+
+      const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
+      const ac = new AbortController()
+      req.on('close', () => ac.abort())
+
+      const heartbeat = setInterval(() => {
+        if (!res.writableEnded) res.write(`: heartbeat\n\n`)
+      }, 15_000)
+
+      try {
+        const result = await runChartChatAgent(
+          message,
+          chartContext,
+          schema,
+          executor,
+          (step) => {
+            if (!res.writableEnded) res.write(`event: step\ndata: ${JSON.stringify({ step })}\n\n`)
+          },
+          (text) => {
+            if (!res.writableEnded) res.write(`event: thinking\ndata: ${JSON.stringify({ text })}\n\n`)
+          },
+          project.llmConfig,
+          ac.signal,
+          conversationHistory,
+        )
+
+        if (result.tokenUsage.totalTokens > 0) {
+          await tokenUsageService.record({
+            projectId: project.id,
+            chartId: chart.id,
+            vendor: result.tokenUsage.vendor,
+            model: result.tokenUsage.model,
+            promptTokens: result.tokenUsage.promptTokens,
+            completionTokens: result.tokenUsage.completionTokens,
+            totalTokens: result.tokenUsage.totalTokens,
+            operation: 'chart-chat',
+          })
+        }
+
+        // Save assistant message
+        await conversationService.addMessage(convId, 'assistant', result.answer, {
+          sql: result.sql,
+          data: result.data,
+          columns: result.columns,
+          steps: result.steps,
+        })
+
+        res.write(
+          `event: result\ndata: ${JSON.stringify({
+            answer: result.answer,
+            sql: result.sql,
+            data: result.data,
+            columns: result.columns,
+            steps: result.steps,
+          })}\n\n`,
+        )
+      } catch (err) {
+        if (ac.signal.aborted) {
+          console.log('ChartChatAgent: cancelled by client')
+        } else {
+          const msg = err instanceof Error ? err.message : 'Chart chat failed'
+          if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
+        }
+      } finally {
+        clearInterval(heartbeat)
+      }
+      if (!res.writableEnded) res.end()
+    }),
+  )
+
+  // GET /api/projects/:projectId/agents/chart-chat/history
+  router.get(
+    '/chart-chat/history',
+    asyncHandler(async (req: SessionRequest, res) => {
+      const project = req.project!
+      const chartId = req.query.chartId as string
+      if (!chartId) {
+        return void res.status(400).json({ error: 'chartId query parameter is required' })
+      }
+
+      const userId = req.session?.getUserId() ?? ''
+      if (!userId) {
+        return void res.status(401).json({ error: 'Unauthorized' })
+      }
+
+      const conv = await conversationService.getByChartId(project.id, chartId, userId)
+      if (!conv) {
+        return void res.json({ conversationId: null, messages: [] })
+      }
+
+      const msgs = await conversationService.getMessages(conv.id)
+      res.json({
+        conversationId: conv.id,
+        messages: msgs.map((m) => ({
+          role: m.role,
+          content: m.content,
+          sql: m.sql,
+          data: m.data,
+          columns: m.columns,
+        })),
+      })
     }),
   )
 
