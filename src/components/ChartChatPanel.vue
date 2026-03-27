@@ -18,6 +18,7 @@ interface Props {
   dashboardId: string
   chart: Chart
   show: boolean
+  showLlmDetails?: boolean
 }
 
 const props = defineProps<Props>()
@@ -165,9 +166,12 @@ async function sendMessage(messageText?: string) {
             if (eventType === 'conversation') {
               conversationId.value = data.conversationId
             } else if (eventType === 'step') {
-              agentSteps.value.push(data.step)
+              const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
+              if (shouldShow) {
+                agentSteps.value.push(data.step)
+                scrollToBottom()
+              }
               totalStepsReceived.value++
-              scrollToBottom()
             } else if (eventType === 'thinking') {
               // Could store thinking text, omitting for simplicity in chat panel
             } else if (eventType === 'result') {

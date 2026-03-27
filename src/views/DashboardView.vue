@@ -295,7 +295,7 @@
       </div>
     </Modal>
 
-    <AskPanel :projectId="projectId" :show="showAskPanel" @close="showAskPanel = false" />
+    <AskPanel :projectId="projectId" :show="showAskPanel" :showLlmDetails="showLlmDetails" @close="showAskPanel = false" />
 
     <ChartChatPanel
       v-if="chattingChart && dashboard"
@@ -303,6 +303,7 @@
       :dashboardId="dashboard.id"
       :chart="chattingChart"
       :show="!!chattingChart"
+      :showLlmDetails="showLlmDetails"
       @close="chattingChart = null"
     />
   </div>
@@ -347,7 +348,7 @@ import type { Chart } from '../types'
 import { useToast } from '../composables/useToast'
 import { useConfirm } from '../composables/useConfirm'
 import { formatDate } from '../utils/formatDate'
-import { useProjectColorConfig } from '../composables/useProjectColorConfig'
+import { useProjectConfig } from '../composables/useProjectConfig'
 import { useRole } from '../composables/useRole'
 import AskPanel from '../components/AskPanel.vue'
 import ChartChatPanel from '../components/ChartChatPanel.vue'
@@ -375,7 +376,7 @@ const listExportMenuId = ref<string | null>(null)
 const movingChart = ref<Chart | null>(null)
 const moveTargetId = ref('')
 const otherDashboards = ref<{ id: string; name: string }[]>([])
-const { colorConfig, chartLibrary } = useProjectColorConfig(projectId)
+const { colorConfig, chartLibrary, showLlmDetails } = useProjectConfig(projectId)
 const { isEditor } = useRole()
 const showAskPanel = ref(false)
 const chattingChart = ref<Chart | null>(null)

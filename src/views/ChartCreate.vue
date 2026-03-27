@@ -12,6 +12,7 @@
         :dashboard-id="dashboardId"
         :color-config="colorConfig"
         :chart-library="chartLibrary"
+        :show-llm-details="showLlmDetails"
         @chart-created="handleChartCreated"
       />
     </div>
@@ -23,13 +24,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import AIChartGenerator from '../components/AIChartGenerator.vue'
 import Button from '../components/ui/button.vue'
-import { useProjectColorConfig } from '../composables/useProjectColorConfig'
+import { useProjectConfig } from '../composables/useProjectConfig'
 
 const router = useRouter()
 const route = useRoute()
 const projectId = route.params.projectId as string
 const dashboardId = route.params.dashboardId as string
-const { colorConfig, chartLibrary } = useProjectColorConfig(projectId)
+const { colorConfig, chartLibrary, showLlmDetails } = useProjectConfig(projectId)
 
 function goBack() {
   router.push({ name: 'dashboard', params: { projectId, id: dashboardId } })

@@ -32,6 +32,7 @@
           :chart-name-override="chartName"
           :color-config="colorConfig"
           :chart-library="chartLibrary"
+          :show-llm-details="showLlmDetails"
           @chart-updated="handleChartUpdated"
         />
       </div>
@@ -50,14 +51,14 @@ import LoadingSpinner from '../components/LoadingSpinner.vue'
 import Button from '../components/ui/button.vue'
 import { useToast } from '../composables/useToast'
 import { useChartLoader } from '../composables/useChartLoader'
-import { useProjectColorConfig } from '../composables/useProjectColorConfig'
+import { useProjectConfig } from '../composables/useProjectConfig'
 
 const router = useRouter()
 const dashboardStore = useDashboardStore()
 const toast = useToast()
 
 const { projectId, dashboardId, chartId, loading, chart } = useChartLoader()
-const { colorConfig, chartLibrary } = useProjectColorConfig(projectId)
+const { colorConfig, chartLibrary, showLlmDetails } = useProjectConfig(projectId)
 const chartName = ref('')
 
 watch(chart, (c) => {
