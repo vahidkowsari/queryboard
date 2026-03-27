@@ -9,6 +9,34 @@ export const ROLES = { ADMIN: 'admin', EDITOR: 'editor', VIEWER: 'viewer' } as c
 export type AppRole = (typeof ROLES)[keyof typeof ROLES]
 
 /**
+ * Extracts the parent domain for cookie sharing across sibling subdomains
+ * e.g. "https://queryboard-api.example.com" → ".example.com"
+ * This allows cookies to be shared between queryboard.example.com and queryboard-api.example.com
+ * Returns undefined for localhost (no cross-subdomain needed in dev)
+ */
+function getCookieDomain(): string | undefined {
+  try {
+    const websiteHost = new URL(config.supertokens.websiteDomain).hostname
+    const apiHost = new URL(config.supertokens.apiDomain).hostname
+    if (websiteHost === 'localhost' || apiHost === 'localhost') return undefined
+    // Same domain — no cookieDomain needed
+    if (websiteHost === apiHost) return undefined
+    // Find common parent domain for sibling subdomains
+    const wParts = websiteHost.split('.')
+    const aParts = apiHost.split('.')
+    const common: string[] = []
+    while (wParts.length && aParts.length && wParts[wParts.length - 1] === aParts[aParts.length - 1]) {
+      common.unshift(wParts.pop()!)
+      aParts.pop()
+    }
+    if (common.length >= 2) return `.${common.join('.')}`
+    return undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Initializes SuperTokens authentication with email/password and OAuth providers
  * Configures role-based access control and email domain restrictions
  */
@@ -158,6 +186,8 @@ export function initSuperTokens() {
       }),
       UserRoles.init(),
       Session.init({
+        cookieDomain: getCookieDomain(),
+        cookieSecure: true,
         override: {
           functions: (originalImplementation) => ({
             ...originalImplementation,

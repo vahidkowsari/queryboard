@@ -1,9 +1,17 @@
 # Required
 db_password = "your_secure_password"
 
+# Region & Environment
+aws_region         = "us-west-2"
+environment        = "prod"
+availability_zones = ["us-west-2a", "us-west-2b"]
+
 # Domain (requires Route53 hosted zone)
-domain_name     = "queryboard.yourcompany.com"
-route53_zone_id = "Z1234567890ABC"
+domain_name              = "queryboard.yourcompany.com"
+api_domain_name          = "queryboard-api.yourcompany.com"
+route53_zone_id          = "Z1234567890ABC"
+acm_certificate_arn          = ""  # us-east-1 cert for CloudFront
+acm_certificate_arn_regional = ""  # regional cert for ALB HTTPS
 
 # OAuth Providers (configure at least one)
 google_oauth_client_id     = "your_client_id"

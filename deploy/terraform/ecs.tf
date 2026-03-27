@@ -289,5 +289,5 @@ resource "aws_ecs_service" "backend" {
     container_port   = 3001
   }
 
-  depends_on = [aws_lb_listener.http]
+  depends_on = [aws_lb_listener.http, aws_lb_listener.http_redirect, aws_lb_listener.https]
 }

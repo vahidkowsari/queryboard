@@ -102,8 +102,20 @@ variable "route53_zone_id" {
   default     = ""
 }
 
+variable "api_domain_name" {
+  description = "Domain name for the API (e.g. queryboard-api.yourcompany.com). Must be covered by acm_certificate_arn. Leave empty to use ALB DNS directly."
+  type        = string
+  default     = ""
+}
+
 variable "acm_certificate_arn" {
-  description = "ARN of an existing ACM certificate (must cover domain_name and *.domain_name)"
+  description = "ARN of an ACM certificate in us-east-1 for CloudFront (must cover domain_name)"
+  type        = string
+  default     = ""
+}
+
+variable "acm_certificate_arn_regional" {
+  description = "ARN of an ACM certificate in the ALB's region for HTTPS. Leave empty to skip ALB HTTPS listener."
   type        = string
   default     = ""
 }
