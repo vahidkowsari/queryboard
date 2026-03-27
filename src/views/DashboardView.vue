@@ -159,37 +159,53 @@
                       <Button variant="ghost" size="icon" @click="fullscreenChart(chart)" title="Full screen">
                         <Maximize2 :size="16" />
                       </Button>
+                      <Button variant="ghost" size="icon" @click="refreshChart(chart)" title="Refresh">
+                        <RefreshCw :size="16" />
+                      </Button>
                       <div class="relative">
-                        <Button variant="ghost" size="icon" @click="toggleListExport(chart.id)" title="Export">
-                          <Download :size="16" />
+                        <Button variant="ghost" size="icon" @click="toggleListMore(chart.id)" title="More actions">
+                          <MoreVertical :size="16" />
                         </Button>
                         <div
-                          v-if="listExportMenuId === chart.id"
-                          class="absolute right-0 top-8 z-50 bg-popover border rounded-md shadow-md py-1 min-w-[120px]"
+                          v-if="listMoreMenuId === chart.id"
+                          class="absolute right-0 top-8 z-50 bg-popover border rounded-md shadow-md py-1 min-w-[180px]"
                         >
                           <button
                             class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
                             @click="handleListExport(chart, 'csv')"
                           >
-                            <FileText :size="14" /> CSV
+                            <FileText :size="14" /> Export CSV
                           </button>
                           <button
                             class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
                             @click="handleListExport(chart, 'excel')"
                           >
-                            <Sheet :size="14" class="text-green-600" /> Excel
+                            <Sheet :size="14" class="text-green-600" /> Export Excel
+                          </button>
+                          <button
+                            v-if="isEditor()"
+                            class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
+                            @click="listMoreMenuId = null; openMoveModal(chart)"
+                          >
+                            <ArrowRightLeft :size="14" /> Move to dashboard
+                          </button>
+                          <button
+                            v-if="isEditor()"
+                            class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
+                            @click="listMoreMenuId = null; openCopyModal(chart)"
+                          >
+                            <CopyPlus :size="14" /> Copy to dashboard
+                          </button>
+                          <hr v-if="isEditor()" class="my-1" />
+                          <button
+                            v-if="isEditor()"
+                            class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2 text-red-600"
+                            @click="listMoreMenuId = null; deleteChart(chart)"
+                          >
+                            <Trash2 :size="14" /> Delete
                           </button>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" @click="refreshChart(chart)" title="Refresh">
-                        <RefreshCw :size="16" />
-                      </Button>
-                      <Button v-if="isEditor()" variant="ghost" size="icon" @click="openMoveModal(chart)" title="Move">
-                        <ArrowRightLeft :size="16" />
-                      </Button>
-                      <Button v-if="isEditor()" variant="ghost" size="icon" @click="deleteChart(chart)" title="Delete">
-                        <Trash2 :size="16" />
-                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -222,6 +238,7 @@
               @refresh="refreshChart"
               @fullscreen="fullscreenChart"
               @move="openMoveModal"
+              @copy="openCopyModal"
               @chat="openChartChat"
             />
           </VueDraggable>
@@ -295,6 +312,24 @@
       </div>
     </Modal>
 
+    <Modal :show="!!copyingChart" @close="copyingChart = null">
+      <h2 class="text-xl font-semibold mb-4">Copy Chart</h2>
+      <p class="text-sm text-muted-foreground mb-4">
+        Copy <strong>{{ copyingChart?.name }}</strong> to another dashboard:
+      </p>
+      <select
+        v-model="copyTargetId"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-4"
+      >
+        <option value="">Select dashboard...</option>
+        <option v-for="d in otherDashboards" :key="d.id" :value="d.id">{{ d.name }}</option>
+      </select>
+      <div class="flex gap-3">
+        <Button @click="handleCopyChart" :disabled="!copyTargetId" class="flex-1">Copy</Button>
+        <Button variant="outline" @click="copyingChart = null">Cancel</Button>
+      </div>
+    </Modal>
+
     <AskPanel :projectId="projectId" :show="showAskPanel" :showLlmDetails="showLlmDetails" @close="showAskPanel = false" />
 
     <ChartChatPanel
@@ -325,12 +360,13 @@ import {
   FileDown,
   FileText,
   Sheet,
-  Download,
   Share2,
   Copy,
   ArrowRightLeft,
+  CopyPlus,
   Settings2,
   MessageSquare,
+  MoreVertical,
 } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useDashboardStore } from '../stores/dashboard.store'
@@ -372,9 +408,11 @@ const chartsContainer = ref<HTMLElement | null>(null)
 const exportingPdf = ref(false)
 const showSettingsModal = ref(false)
 const sharingInProgress = ref(false)
-const listExportMenuId = ref<string | null>(null)
+const listMoreMenuId = ref<string | null>(null)
 const movingChart = ref<Chart | null>(null)
 const moveTargetId = ref('')
+const copyingChart = ref<Chart | null>(null)
+const copyTargetId = ref('')
 const otherDashboards = ref<{ id: string; name: string }[]>([])
 const { colorConfig, chartLibrary, showLlmDetails } = useProjectConfig(projectId)
 const { isEditor } = useRole()
@@ -551,12 +589,37 @@ async function handleMoveChart() {
   }
 }
 
-function toggleListExport(chartId: string) {
-  listExportMenuId.value = listExportMenuId.value === chartId ? null : chartId
+async function openCopyModal(chart: Chart) {
+  copyingChart.value = chart
+  copyTargetId.value = ''
+  try {
+    const all = await dashboardApi.list(projectId)
+    otherDashboards.value = all
+      .filter((d) => d.id !== dashboard.value?.id)
+      .map((d) => ({ id: d.id, name: d.name }))
+  } catch {
+    toast.error('Failed to load dashboards')
+  }
+}
+
+async function handleCopyChart() {
+  if (!copyingChart.value || !copyTargetId.value || !dashboard.value) return
+  try {
+    await dashboardApi.copyChart(projectId, dashboard.value.id, copyingChart.value.id, copyTargetId.value)
+    const targetName = otherDashboards.value.find((d) => d.id === copyTargetId.value)?.name || 'target'
+    toast.success(`Chart copied to "${targetName}"`)
+    copyingChart.value = null
+  } catch {
+    toast.error('Failed to copy chart')
+  }
+}
+
+function toggleListMore(chartId: string) {
+  listMoreMenuId.value = listMoreMenuId.value === chartId ? null : chartId
 }
 
 function handleListExport(chart: Chart, type: 'csv' | 'excel') {
-  listExportMenuId.value = null
+  listMoreMenuId.value = null
   if (type === 'csv') exportCsv(chart)
   else exportExcel(chart)
 }

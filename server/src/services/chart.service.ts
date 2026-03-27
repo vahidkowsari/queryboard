@@ -156,6 +156,47 @@ export function createChartService(db: Db) {
     },
 
     /**
+     * Copies a chart from one dashboard to another
+     */
+    async copy(chartId: string, fromDashboardId: string, toDashboardId: string, copiedBy?: string) {
+      const source = await db
+        .select()
+        .from(charts)
+        .where(and(eq(charts.id, chartId), eq(charts.dashboardId, fromDashboardId)))
+      if (!source[0]) return null
+
+      const [{ nextPos }] = await db
+        .select({ nextPos: sql<number>`COALESCE(MAX(${charts.position}), -1) + 1` })
+        .from(charts)
+        .where(eq(charts.dashboardId, toDashboardId))
+
+      const s = source[0]
+      const rows = await db
+        .insert(charts)
+        .values({
+          dashboardId: toDashboardId,
+          name: s.name,
+          userQuery: s.userQuery,
+          description: s.description,
+          summary: s.summary,
+          query: s.query,
+          chartType: s.chartType,
+          chartSpec: s.chartSpec,
+          data: s.data,
+          colorConfig: s.colorConfig,
+          filters: s.filters,
+          position: nextPos,
+          createdBy: copiedBy || s.createdBy,
+        })
+        .returning()
+
+      if (rows[0]) {
+        await touchDashboard(toDashboardId)
+      }
+      return rows[0] || null
+    },
+
+    /**
      * Deletes a chart from a dashboard
      */
     async remove(dashboardId: string, chartId: string) {

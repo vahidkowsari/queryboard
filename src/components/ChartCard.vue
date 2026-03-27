@@ -24,7 +24,7 @@
           <Button variant="ghost" size="icon" class="h-8 w-8 sm:h-7 sm:w-7" @click="$emit('fullscreen', chart)" title="Full screen">
             <Maximize2 :size="16" class="sm:w-3.5 sm:h-3.5" />
           </Button>
-          <div class="relative">
+          <div class="relative" data-export-menu>
             <Button
               variant="ghost"
               size="icon"
@@ -64,15 +64,51 @@
           <Button variant="ghost" size="icon" class="h-7 w-7" @click="$emit('chat', chart)" title="Chat with chart">
             <MessageSquare :size="14" />
           </Button>
-          <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('edit', chart)" title="Edit chart">
-            <Edit2 :size="14" />
-          </Button>
-          <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('move', chart)" title="Move to another dashboard">
-            <ArrowRightLeft :size="14" />
-          </Button>
-          <Button v-if="isEditor()" variant="ghost" size="icon" class="h-7 w-7" @click="$emit('delete', chart)" title="Delete chart">
-            <Trash2 :size="14" />
-          </Button>
+          <div class="relative" data-more-menu>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-7 w-7"
+              @click="showMoreMenu = !showMoreMenu"
+              title="More actions"
+            >
+              <MoreVertical :size="14" />
+            </Button>
+            <div
+              v-if="showMoreMenu"
+              class="absolute right-0 top-8 z-50 bg-popover border rounded-md shadow-md py-1 min-w-[180px]"
+            >
+              <button
+                v-if="isEditor()"
+                class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
+                @click="showMoreMenu = false; $emit('edit', chart)"
+              >
+                <Edit2 :size="14" /> Edit
+              </button>
+              <button
+                v-if="isEditor()"
+                class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
+                @click="showMoreMenu = false; $emit('move', chart)"
+              >
+                <ArrowRightLeft :size="14" /> Move to dashboard
+              </button>
+              <button
+                v-if="isEditor()"
+                class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
+                @click="showMoreMenu = false; $emit('copy', chart)"
+              >
+                <CopyPlus :size="14" /> Copy to dashboard
+              </button>
+              <hr v-if="isEditor()" class="my-1" />
+              <button
+                v-if="isEditor()"
+                class="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2 text-red-600"
+                @click="showMoreMenu = false; $emit('delete', chart)"
+              >
+                <Trash2 :size="14" /> Delete
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -142,7 +178,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft, User, MessageSquare, ChevronDown, Clock } from 'lucide-vue-next'
+import { Edit2, Trash2, RefreshCw, Maximize2, GripVertical, Download, FileText, Sheet, Image, ArrowRightLeft, CopyPlus, User, MessageSquare, ChevronDown, Clock, MoreVertical } from 'lucide-vue-next'
 import { useRole } from '../composables/useRole'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
@@ -163,6 +199,7 @@ const { isEditor } = useRole()
 const chartRendererRef = ref<InstanceType<typeof ChartRenderer> | null>(null)
 const showSummary = ref(true)
 const showExportMenu = ref(false)
+const showMoreMenu = ref(false)
 
 const formatRelativeTime = (date: Date | string | null | undefined) => {
   if (!date) return 'never'
@@ -189,12 +226,14 @@ function handleExport(type: 'png' | 'csv' | 'excel') {
   else exportExcel(props.chart)
 }
 
-function closeExportMenu(e: MouseEvent) {
-  if (!(e.target as HTMLElement).closest('.relative')) showExportMenu.value = false
+function closeDropdowns(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('[data-export-menu]')) showExportMenu.value = false
+  if (!target.closest('[data-more-menu]')) showMoreMenu.value = false
 }
 
-onMounted(() => document.addEventListener('click', closeExportMenu))
-onUnmounted(() => document.removeEventListener('click', closeExportMenu))
+onMounted(() => document.addEventListener('click', closeDropdowns))
+onUnmounted(() => document.removeEventListener('click', closeDropdowns))
 
 const props = defineProps<Props>()
 defineEmits<{
@@ -203,6 +242,7 @@ defineEmits<{
   refresh: [chart: Chart]
   fullscreen: [chart: Chart]
   move: [chart: Chart]
+  copy: [chart: Chart]
   chat: [chart: Chart]
 }>()
 

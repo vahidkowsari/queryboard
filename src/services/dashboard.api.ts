@@ -127,6 +127,14 @@ export const dashboardApi = {
   },
 
   /**
+   * Copies a chart from one dashboard to another
+   */
+  async copyChart(projectId: string, dashboardId: string, chartId: string, targetDashboardId: string): Promise<ChartRow> {
+    const { data } = await api.post(`${basePath(projectId)}/${dashboardId}/charts/${chartId}/copy`, { targetDashboardId })
+    return data
+  },
+
+  /**
    * Deletes a chart from a dashboard
    */
   async removeChart(projectId: string, dashboardId: string, chartId: string): Promise<void> {

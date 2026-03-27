@@ -12,6 +12,7 @@ export type AuditAction =
   | 'imported'
   | 'refreshed'
   | 'moved'
+  | 'copied'
   | 'reordered'
   | 'detected_schema'
   | 'enriched_schema'

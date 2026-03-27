@@ -239,6 +239,29 @@ export function createChartRoutes(db: Db): Router {
     }),
   )
 
+  router.post(
+    '/:dashboardId/charts/:chartId/copy',
+    canEdit,
+    asyncHandler(async (req: SessionRequest, res) => {
+      const { targetDashboardId } = req.body
+      if (!targetDashboardId) return void res.status(400).json({ error: 'targetDashboardId is required' })
+
+      const userId = req.session!.getUserId()
+      const roles: string[] = req.session?.getAccessTokenPayload()?.roles ?? []
+      if (!roles.includes('admin')) {
+        const canAccessTarget = await permissionService.canAccess(targetDashboardId, userId, 'edit')
+        if (!canAccessTarget) {
+          return void res.status(403).json({ error: 'You do not have edit permission on the target dashboard' })
+        }
+      }
+
+      const chart = await chartService.copy(req.params.chartId, req.params.dashboardId, targetDashboardId, userId)
+      if (!chart) return void res.status(404).json({ error: 'Chart not found' })
+      await auditLog.log({ projectId: req.params.projectId, userId, action: 'copied', entityType: 'chart', entityId: chart.id, details: { fromDashboard: req.params.dashboardId, toDashboard: targetDashboardId, sourceChartId: req.params.chartId } })
+      res.status(201).json(chart)
+    }),
+  )
+
   router.get(
     '/:dashboardId/charts/:chartId/refresh-history',
     canView,
