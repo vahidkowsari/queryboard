@@ -1,105 +1,64 @@
 # Deploying QueryBoard
 
-## Quick Start (Docker Compose)
-
-The simplest way to deploy QueryBoard is with Docker Compose on a single server.
-
-### 1. Create environment file
+## Local Development
 
 ```bash
-cp .env.example .env
+docker compose up -d
 ```
 
-Edit `.env` with your values:
-
-```
-# Database
-DB_PASSWORD=your_secure_password
-
-# Domains — set to your server's URL (no trailing slash)
-API_DOMAIN=https://queryboard.yourcompany.com
-WEBSITE_DOMAIN=https://queryboard.yourcompany.com
-
-# Google OAuth
-GOOGLE_OAUTH_CLIENT_ID=your_client_id
-GOOGLE_OAUTH_CLIENT_SECRET=your_client_secret
-
-# Optional: restrict to a single email domain
-ALLOWED_EMAIL_DOMAIN=yourcompany.com
-
-# LLM API keys (set the ones you use)
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-GOOGLE_AI_API_KEY=AI...
-
-# Port to expose (default 80)
-PORT=80
-```
-
-### 2. Build and start
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-This starts 4 services:
-- **postgres** — PostgreSQL database
-- **supertokens** — Auth service
-- **backend** — Express API server
-- **frontend** — Nginx serving the Vue app + proxying `/api` and `/auth` to the backend
-
-### 3. Access
-
-Open `http://your-server-ip` (or your domain if DNS is configured).
-
-### Updating
-
-```bash
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-### Logs
-
-```bash
-docker compose -f docker-compose.prod.yml logs -f backend
-docker compose -f docker-compose.prod.yml logs -f frontend
-```
+Runs frontend (Vite dev server on port 5173) + backend + postgres + supertokens.
 
 ---
 
-## Production Considerations
+## AWS Production Deployment
 
-### HTTPS
+QueryBoard is designed for AWS deployment with:
 
-For production, put a reverse proxy with TLS in front (e.g., Caddy, Traefik, or an AWS ALB). The simplest option:
+1. **RDS PostgreSQL** — managed database
+2. **ECS Fargate** — runs backend + SuperTokens as containers
+3. **S3 + CloudFront** — serves frontend static build
+4. **ALB** — load balancer for backend API
+5. **Secrets Manager** — stores API keys and credentials
+
+### Infrastructure Setup
+
+All infrastructure is defined in Terraform at `deploy/terraform/`:
 
 ```bash
-# Install Caddy on the host
-sudo apt install caddy
-
-# Caddyfile
-queryboard.yourcompany.com {
-    reverse_proxy localhost:80
-}
+cd deploy/terraform
+terraform init
+terraform plan
+terraform apply
 ```
 
-Caddy auto-provisions Let's Encrypt certificates.
+### Deploying Backend
 
-### AWS Deployment
+```bash
+# Build and push to ECR
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ecr-url>
+docker build -t queryboard-backend ./server
+docker tag queryboard-backend:latest <ecr-url>:latest
+docker push <ecr-url>:latest
 
-For a more robust AWS setup:
+# Force ECS to deploy new image
+aws ecs update-service --cluster <cluster-name> --service <service-name> --force-new-deployment
+```
 
-1. **RDS PostgreSQL** — replace the Docker PostgreSQL
-2. **ECS Fargate** — run backend + SuperTokens as ECS tasks
-3. **S3 + CloudFront** — serve the frontend static build
-4. **ALB** — load balancer in front of backend tasks
-5. **Secrets Manager** — store API keys and credentials
+### Deploying Frontend
+
+```bash
+# Build and upload to S3
+npm run build
+aws s3 sync dist/ s3://<bucket-name>/
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+```
 
 ### Backups
 
-The PostgreSQL volume (`pgdata`) contains all data. Back it up regularly:
+RDS automated backups are enabled. For manual backups:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec postgres pg_dump -U charting charting > backup.sql
+aws rds create-db-snapshot --db-instance-identifier <instance-id> --db-snapshot-identifier backup-$(date +%Y%m%d)
 ```
