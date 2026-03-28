@@ -97,20 +97,6 @@ export function createAgentRoutes(db: Db): Router {
           ac.signal,
         )
 
-        if (result.tokenUsage.totalTokens > 0) {
-          await tokenUsageService.record({
-            projectId: project.id,
-            vendor: result.tokenUsage.vendor,
-            model: result.tokenUsage.model,
-            promptTokens: result.tokenUsage.promptTokens,
-            completionTokens: result.tokenUsage.completionTokens,
-            totalTokens: result.tokenUsage.totalTokens,
-            operation: 'chart-generate',
-          })
-        }
-
-        await auditLog.log({ projectId: project.id, userId, action: 'generated', entityType: 'chart', entityName: result.title, details: { userQuery: userQuery?.substring(0, 200), chartType: result.chartType } })
-
         res.write(
           `event: result\ndata: ${JSON.stringify({
             title: result.title,
@@ -125,6 +111,23 @@ export function createAgentRoutes(db: Db): Router {
             filters: result.filters,
           })}\n\n`,
         )
+
+        try {
+          if (result.tokenUsage.totalTokens > 0) {
+            await tokenUsageService.record({
+              projectId: project.id,
+              vendor: result.tokenUsage.vendor,
+              model: result.tokenUsage.model,
+              promptTokens: result.tokenUsage.promptTokens,
+              completionTokens: result.tokenUsage.completionTokens,
+              totalTokens: result.tokenUsage.totalTokens,
+              operation: 'chart-generate',
+            })
+          }
+          await auditLog.log({ projectId: project.id, userId, action: 'generated', entityType: 'chart', entityName: result.title, details: { userQuery: userQuery?.substring(0, 200), chartType: result.chartType } })
+        } catch (logErr) {
+          console.error('Failed to record token usage or audit log:', logErr)
+        }
       } catch (err) {
         if (ac.signal.aborted) {
           console.log('ChartAgent: generation cancelled by client')
@@ -199,6 +202,11 @@ export function createAgentRoutes(db: Db): Router {
       const ac = new AbortController()
       req.on('close', () => ac.abort())
 
+      // Send periodic heartbeats to keep CloudFront from timing out
+      const heartbeat = setInterval(() => {
+        if (!res.writableEnded) res.write(`: heartbeat\n\n`)
+      }, 15_000)
+
       try {
         const result = await runQAAgent(
           question,
@@ -215,26 +223,6 @@ export function createAgentRoutes(db: Db): Router {
           conversationHistory,
         )
 
-        if (result.tokenUsage.totalTokens > 0) {
-          await tokenUsageService.record({
-            projectId: project.id,
-            vendor: result.tokenUsage.vendor,
-            model: result.tokenUsage.model,
-            promptTokens: result.tokenUsage.promptTokens,
-            completionTokens: result.tokenUsage.completionTokens,
-            totalTokens: result.tokenUsage.totalTokens,
-            operation: 'qa-ask',
-          })
-        }
-
-        // Save assistant message
-        await conversationService.addMessage(convId, 'assistant', result.answer, {
-          sql: result.sql,
-          data: result.data,
-          columns: result.columns,
-          steps: result.steps,
-        })
-
         res.write(
           `event: result\ndata: ${JSON.stringify({
             answer: result.answer,
@@ -244,6 +232,29 @@ export function createAgentRoutes(db: Db): Router {
             steps: result.steps,
           })}\n\n`,
         )
+
+        try {
+          if (result.tokenUsage.totalTokens > 0) {
+            await tokenUsageService.record({
+              projectId: project.id,
+              vendor: result.tokenUsage.vendor,
+              model: result.tokenUsage.model,
+              promptTokens: result.tokenUsage.promptTokens,
+              completionTokens: result.tokenUsage.completionTokens,
+              totalTokens: result.tokenUsage.totalTokens,
+              operation: 'qa-ask',
+            })
+          }
+          // Save assistant message
+          await conversationService.addMessage(convId, 'assistant', result.answer, {
+            sql: result.sql,
+            data: result.data,
+            columns: result.columns,
+            steps: result.steps,
+          })
+        } catch (logErr) {
+          console.error('Failed to record token usage or save conversation:', logErr)
+        }
       } catch (err) {
         if (ac.signal.aborted) {
           console.log('QAAgent: cancelled by client')
@@ -251,6 +262,8 @@ export function createAgentRoutes(db: Db): Router {
           const msg = err instanceof Error ? err.message : 'Failed to answer question'
           if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
         }
+      } finally {
+        clearInterval(heartbeat)
       }
       if (!res.writableEnded) res.end()
     }),
@@ -354,27 +367,6 @@ export function createAgentRoutes(db: Db): Router {
           conversationHistory,
         )
 
-        if (result.tokenUsage.totalTokens > 0) {
-          await tokenUsageService.record({
-            projectId: project.id,
-            chartId: chart.id,
-            vendor: result.tokenUsage.vendor,
-            model: result.tokenUsage.model,
-            promptTokens: result.tokenUsage.promptTokens,
-            completionTokens: result.tokenUsage.completionTokens,
-            totalTokens: result.tokenUsage.totalTokens,
-            operation: 'chart-chat',
-          })
-        }
-
-        // Save assistant message
-        await conversationService.addMessage(convId, 'assistant', result.answer, {
-          sql: result.sql,
-          data: result.data,
-          columns: result.columns,
-          steps: result.steps,
-        })
-
         res.write(
           `event: result\ndata: ${JSON.stringify({
             answer: result.answer,
@@ -384,6 +376,30 @@ export function createAgentRoutes(db: Db): Router {
             steps: result.steps,
           })}\n\n`,
         )
+
+        try {
+          if (result.tokenUsage.totalTokens > 0) {
+            await tokenUsageService.record({
+              projectId: project.id,
+              chartId: chart.id,
+              vendor: result.tokenUsage.vendor,
+              model: result.tokenUsage.model,
+              promptTokens: result.tokenUsage.promptTokens,
+              completionTokens: result.tokenUsage.completionTokens,
+              totalTokens: result.tokenUsage.totalTokens,
+              operation: 'chart-chat',
+            })
+          }
+          // Save assistant message
+          await conversationService.addMessage(convId, 'assistant', result.answer, {
+            sql: result.sql,
+            data: result.data,
+            columns: result.columns,
+            steps: result.steps,
+          })
+        } catch (logErr) {
+          console.error('Failed to record token usage or save conversation:', logErr)
+        }
       } catch (err) {
         if (ac.signal.aborted) {
           console.log('ChartChatAgent: cancelled by client')

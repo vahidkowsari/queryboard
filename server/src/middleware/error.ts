@@ -5,6 +5,10 @@ import type { Request, Response, NextFunction } from 'express'
  */
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   console.error(`[Error] ${err.message}`)
+  if (res.headersSent) {
+    if (!res.writableEnded) res.end()
+    return
+  }
   res.status(500).json({ error: err.message })
 }
 

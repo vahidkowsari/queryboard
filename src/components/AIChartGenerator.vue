@@ -235,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X, Eye, MessageSquare } from 'lucide-vue-next'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
@@ -294,6 +294,10 @@ const activeColorPalette = ref<string[]>(props.editChart?.colorConfig?.palette |
 const customColor = ref('#4e79a7')
 const abortController = ref<AbortController | null>(null)
 const chartFilters = ref<ChartFilter[] | null>(props.editChart?.filters || null)
+
+onUnmounted(() => {
+  abortController.value?.abort()
+})
 
 const hasRenderableSpec = computed(() => {
   const spec = generatedChart.value as Record<string, unknown> | undefined
@@ -395,7 +399,13 @@ async function generateChart() {
         if (line.startsWith('event: ')) {
           eventType = line.slice(7)
         } else if (line.startsWith('data: ')) {
-          const data = JSON.parse(line.slice(6))
+          let data: any
+          try {
+            data = JSON.parse(line.slice(6))
+          } catch {
+            console.warn('SSE: failed to parse JSON line, skipping:', line.slice(6, 120))
+            continue
+          }
           if (eventType === 'step') {
             // Filter out model/vendor information from UI display unless showLlmDetails is enabled
             const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
@@ -447,7 +457,9 @@ async function generateChart() {
     if (err instanceof DOMException && err.name === 'AbortError') {
       status.value = 'Cancelled'
     } else {
-      error.value = err instanceof Error ? err.message : 'Failed to generate chart'
+      const raw = err instanceof Error ? err.message : String(err)
+      const isNetworkErr = err instanceof TypeError || raw.toLowerCase().includes('network') || raw.toLowerCase().includes('failed to fetch')
+      error.value = isNetworkErr ? 'Connection lost — please check your network and try again' : raw
     }
     status.value = ''
   } finally {
