@@ -527,9 +527,12 @@ export function registerSessionReconnectRoute(router: Router): void {
         return void res.status(404).json({ error: 'Session not found or expired' })
       }
 
-      // Verify the user owns this session
+      // Verify the user owns this session and it belongs to the current project
       if (session.userId !== userId) {
         return void res.status(403).json({ error: 'Not your session' })
+      }
+      if (session.projectId !== req.project!.id) {
+        return void res.status(404).json({ error: 'Session not found or expired' })
       }
 
       console.log(`SSESession: client reconnecting to session=${sessionId} status=${session.status}`)
