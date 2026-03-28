@@ -410,7 +410,8 @@ export async function runChartAgent(
     .addNode('act', actingNode)
     .setRouter(chartRouter)
     .setEntryPoint('reason')
-    .setMaxSteps(20)
+    .setMaxSteps(20) // Maximum reasoning cycles before forcing completion
+    .setReasoningNodeName('reason')
     .build()
 
   // Create orchestrator with callbacks

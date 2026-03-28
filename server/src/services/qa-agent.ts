@@ -337,7 +337,8 @@ export async function runQAAgent(
     .addNode('act', actingNode)
     .setRouter(qaRouter)
     .setEntryPoint('reason')
-    .setMaxSteps(10)
+    .setMaxSteps(10) // Maximum reasoning cycles before forcing completion
+    .setReasoningNodeName('reason')
     .build()
 
   // Create orchestrator with callbacks

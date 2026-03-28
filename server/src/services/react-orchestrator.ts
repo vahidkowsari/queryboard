@@ -43,6 +43,7 @@ export interface ReActWorkflow<TState extends ReActState> {
   router: ReActRouter<TState>
   entryPoint: string
   maxSteps: number
+  reasoningNodeName?: string // Optional: name of the reasoning node to track cycles
 }
 
 /**
@@ -71,10 +72,20 @@ export class ReActOrchestrator<TState extends ReActState> {
   async execute(initialState: TState): Promise<TState> {
     let currentState = { ...initialState }
     let currentNode = this.workflow.entryPoint
-    let stepCount = 0
+    let totalSteps = 0
+    let reasoningCycles = 0
+    const reasoningNodeName = this.workflow.reasoningNodeName || 'reason'
 
-    while (currentNode !== 'END' && stepCount < this.workflow.maxSteps) {
-      stepCount++
+    while (currentNode !== 'END' && totalSteps < this.workflow.maxSteps * 10) { // Safety: 10x buffer
+      totalSteps++
+
+      // Track reasoning cycles for more intuitive limits
+      if (currentNode === reasoningNodeName) {
+        reasoningCycles++
+        if (reasoningCycles > this.workflow.maxSteps) {
+          throw new Error(`ReAct workflow exceeded maximum reasoning cycles (${this.workflow.maxSteps})`)
+        }
+      }
 
       const nodeFunction = this.workflow.nodes.get(currentNode)
       if (!nodeFunction) {
@@ -97,8 +108,8 @@ export class ReActOrchestrator<TState extends ReActState> {
       currentNode = this.workflow.router(currentState)
     }
 
-    if (stepCount >= this.workflow.maxSteps && !currentState.isComplete) {
-      throw new Error(`ReAct workflow exceeded maximum steps (${this.workflow.maxSteps})`)
+    if (totalSteps >= this.workflow.maxSteps * 10) {
+      throw new Error(`ReAct workflow exceeded maximum total steps (${this.workflow.maxSteps * 10}) - possible infinite loop`)
     }
 
     return currentState
@@ -134,6 +145,7 @@ export class ReActWorkflowBuilder<TState extends ReActState> {
   private router?: ReActRouter<TState>
   private entryPoint = 'start'
   private maxSteps = 20
+  private reasoningNodeName?: string
 
   addNode(name: string, nodeFunction: ReActNode<TState>): this {
     this.nodes.set(name, nodeFunction)
@@ -155,6 +167,11 @@ export class ReActWorkflowBuilder<TState extends ReActState> {
     return this
   }
 
+  setReasoningNodeName(name: string): this {
+    this.reasoningNodeName = name
+    return this
+  }
+
   build(): ReActWorkflow<TState> {
     if (!this.router) {
       throw new Error('Router must be set before building workflow')
@@ -171,6 +188,7 @@ export class ReActWorkflowBuilder<TState extends ReActState> {
       router: this.router,
       entryPoint: this.entryPoint,
       maxSteps: this.maxSteps,
+      reasoningNodeName: this.reasoningNodeName,
     }
   }
 }
