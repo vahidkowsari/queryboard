@@ -72,12 +72,6 @@
           </button>
         </div>
         <template v-for="(step, i) in agentSteps" :key="i">
-          <div
-            v-if="showReasoning && stepToThinkingMap[i] !== undefined && thinkingTexts[stepToThinkingMap[i]]"
-            class="ml-6 p-2 bg-primary/10 rounded text-xs text-primary italic whitespace-pre-wrap"
-          >
-            {{ thinkingTexts[stepToThinkingMap[i]!] }}
-          </div>
           <div class="flex items-start gap-2 text-sm">
             <Check v-if="!loading || i < agentSteps.length - 1" :size="16" class="text-green-600 mt-0.5 shrink-0" />
             <Loader2 v-else :size="16" class="animate-spin text-primary mt-0.5 shrink-0" />
@@ -85,6 +79,12 @@
               :class="loading && i === agentSteps.length - 1 ? 'text-primary font-medium' : 'text-muted-foreground'"
               >{{ step }}</span
             >
+          </div>
+          <div
+            v-if="showReasoning && stepToThinkingMap[i] !== undefined && thinkingTexts[stepToThinkingMap[i]]"
+            class="ml-6 p-2 bg-primary/10 rounded text-xs text-primary italic whitespace-pre-wrap"
+          >
+            {{ thinkingTexts[stepToThinkingMap[i]!] }}
           </div>
         </template>
         <div
@@ -235,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X, Eye, MessageSquare } from 'lucide-vue-next'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
@@ -245,7 +245,7 @@ import Textarea from './ui/textarea.vue'
 import { useDashboardStore } from '../stores/dashboard.store'
 import { useToast } from '../composables/useToast'
 import { useRole } from '../composables/useRole'
-import { API_BASE_URL } from '../services/api'
+import { useResumableSSE, type SSECallbacks } from '../composables/useResumableSSE'
 import type { Chart, ChartType, ChartLibrary, ChartDataRow, ColorConfig, ChartFilter } from '../types'
 import { CHART_TYPE_OPTIONS } from '../utils/chartTransform'
 import { COLOR_PRESETS } from '../utils/colorPresets'
@@ -269,6 +269,7 @@ const dashboardStore = useDashboardStore()
 const toast = useToast()
 const { isEditor } = useRole()
 const isViewOnly = computed(() => !isEditor())
+const { startSession, reconnectSession, findLatestSession, finishSession } = useResumableSSE()
 
 const userQuery = ref(props.editChart?.userQuery || props.editChart?.name || '')
 const loading = ref(false)
@@ -292,7 +293,6 @@ const lastQuery = ref<string | null>(props.editChart?.userQuery || null)
 const showColorPicker = ref(false)
 const activeColorPalette = ref<string[]>(props.editChart?.colorConfig?.palette || [])
 const customColor = ref('#4e79a7')
-const abortController = ref<AbortController | null>(null)
 const chartFilters = ref<ChartFilter[] | null>(props.editChart?.filters || null)
 
 const hasRenderableSpec = computed(() => {
@@ -318,7 +318,9 @@ const tableColumns = computed<string[]>(() => {
 })
 
 function cancelGeneration() {
-  abortController.value?.abort()
+  finishSession()
+  loading.value = false
+  status.value = 'Cancelled'
 }
 
 function applyPreset(palette: string[]) {
@@ -340,6 +342,47 @@ function hasExistingChart(): boolean {
 
 const chartTypeOptions = [{ value: 'auto' as ChartType, label: 'Auto' }, ...CHART_TYPE_OPTIONS]
 
+let receivedResult = false
+
+function makeSSECallbacks(): SSECallbacks {
+  return {
+    onStep: (data) => {
+      const stepText = typeof data.step === 'string' ? data.step : ''
+      if (!stepText) return
+      const shouldShow = props.showLlmDetails || !stepText.startsWith('Using ')
+      if (shouldShow) {
+        agentSteps.value.push(stepText)
+        stepToThinkingMap.value.push(totalStepsReceived.value)
+        status.value = stepText
+      }
+      totalStepsReceived.value++
+    },
+    onThinking: (data) => {
+      const thinkingText = typeof data.text === 'string' ? data.text : ''
+      if (!thinkingText) return
+      const idx = totalStepsReceived.value
+      thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + thinkingText
+    },
+    onResult: (data) => {
+      receivedResult = true
+      generatedTitle.value = (data.title as string) || null
+      sqlQuery.value = data.sql as string
+      explanation.value = (data.description as string) || null
+      summary.value = (data.summary as string) || null
+      generatedChart.value = data.chartSpec as Record<string, unknown>
+      chartData.value = (data.data as ChartDataRow[]) || null
+      chartFilters.value = (data.filters as ChartFilter[])?.length ? (data.filters as ChartFilter[]) : null
+    },
+    onError: (data) => {
+      const errMsg = typeof data.error === 'string' && data.error.trim() ? data.error : 'Chart generation failed'
+      error.value = errMsg
+    },
+    onSessionEnd: () => {
+      // Server confirmed session is done
+    },
+  }
+}
+
 async function generateChart() {
   if (!userQuery.value.trim()) return
 
@@ -350,18 +393,18 @@ async function generateChart() {
   thinkingTexts.value = []
   stepToThinkingMap.value = []
   totalStepsReceived.value = 0
+  receivedResult = false
 
-  const controller = new AbortController()
-  abortController.value = controller
-  const pid = dashboardStore.projectId
+  const pid = dashboardStore.projectId?.trim()
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${pid}/agents/generate-chart`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
+    if (!pid) {
+      throw new Error('No project selected. Please refresh the page and try again.')
+    }
+
+    await startSession(
+      `/api/projects/${pid}/agents/generate-chart`,
+      {
         userQuery: userQuery.value,
         chartType: selectedChartType.value,
         ...(hasExistingChart()
@@ -375,86 +418,70 @@ async function generateChart() {
               },
             }
           : {}),
-      }),
-    })
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}))
-      throw new Error(body.error || `HTTP ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('No response stream')
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let eventType = ''
-
-    function processLines(lines: string[]) {
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7)
-        } else if (line.startsWith('data: ')) {
-          const data = JSON.parse(line.slice(6))
-          if (eventType === 'step') {
-            // Filter out model/vendor information from UI display unless showLlmDetails is enabled
-            const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
-            if (shouldShow) {
-              agentSteps.value.push(data.step)
-              stepToThinkingMap.value.push(totalStepsReceived.value)
-              status.value = data.step
-            }
-            totalStepsReceived.value++
-          } else if (eventType === 'thinking') {
-            // Store thinking text at the current total step index (including filtered steps)
-            const idx = totalStepsReceived.value
-            thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
-          } else if (eventType === 'result') {
-            generatedTitle.value = data.title || null
-            sqlQuery.value = data.sql
-            explanation.value = data.description
-            summary.value = data.summary || null
-            generatedChart.value = data.chartSpec
-            chartData.value = data.data || null
-            chartFilters.value = data.filters?.length ? data.filters : null
-          } else if (eventType === 'error') {
-            throw new Error(data.error)
-          }
-          eventType = ''
-        }
-      }
-    }
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-      processLines(lines)
-    }
-
-    // Process any remaining buffer
-    if (buffer.trim()) {
-      processLines(buffer.split('\n'))
-    }
+        dashboardId: props.dashboardId,
+      },
+      makeSSECallbacks(),
+    )
 
     status.value = ''
-    lastQuery.value = userQuery.value
-    await saveChart()
+    if (receivedResult) {
+      lastQuery.value = userQuery.value
+      await saveChart()
+    }
+    finishSession()
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      status.value = 'Cancelled'
-    } else {
-      error.value = err instanceof Error ? err.message : 'Failed to generate chart'
+      // User navigated away — session continues on server, don't show error
+      return
     }
+    const raw = err instanceof Error ? err.message : String(err)
+    const normalized = raw.toLowerCase()
+    const isNetworkErr =
+      normalized.includes('network') ||
+      normalized.includes('failed to fetch') ||
+      normalized.includes('load failed') ||
+      normalized.includes('network connection was lost')
+    error.value = isNetworkErr ? 'Connection lost — please check your network and try again' : raw
     status.value = ''
+    finishSession()
   } finally {
-    abortController.value = null
     loading.value = false
   }
 }
+
+onMounted(async () => {
+  const pid = dashboardStore.projectId?.trim()
+  if (!pid) return
+
+  const sessionId = await findLatestSession(pid, 'generate-chart', { dashboardId: props.dashboardId })
+  if (!sessionId) return
+
+  // Found an active session — reconnect
+  loading.value = true
+  error.value = null
+  status.value = 'Reconnecting...'
+  agentSteps.value = []
+  thinkingTexts.value = []
+  stepToThinkingMap.value = []
+  totalStepsReceived.value = 0
+  receivedResult = false
+
+  try {
+    const ok = await reconnectSession(pid, sessionId, makeSSECallbacks())
+    if (ok && receivedResult) {
+      status.value = ''
+      lastQuery.value = userQuery.value
+      await saveChart()
+    }
+    finishSession()
+  } catch {
+    // Reconnection failed silently — session expired
+    finishSession()
+  } finally {
+    loading.value = false
+    status.value = ''
+  }
+})
 
 async function saveChart() {
   if (!generatedChart.value || !sqlQuery.value) return

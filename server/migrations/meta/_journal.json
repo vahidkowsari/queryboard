@@ -127,6 +127,13 @@
       "when": 1774567575449,
       "tag": "0019_even_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1774719964738,
+      "tag": "0019_melted_sentinels",
+      "breakpoints": true
     }
   ]
 }

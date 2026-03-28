@@ -4,6 +4,7 @@ import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Check, C
 import { marked } from 'marked'
 import { API_BASE_URL } from '../services/api'
 import { config } from '../config'
+import { useResumableSSE, type SSECallbacks } from '../composables/useResumableSSE'
 import Button from './ui/button.vue'
 import type { Chart } from '../types'
 
@@ -46,6 +47,8 @@ const messagesRef = ref<HTMLElement | null>(null)
 const expandedSql = ref<number | null>(null)
 const expandedData = ref<number | null>(null)
 const copiedIndex = ref<number | null>(null)
+const { startSession, reconnectSession, findLatestSession, finishSession } = useResumableSSE()
+let assistantResultCommitted = false
 
 const suggestions = computed(() => [
   'What insights can you find?',
@@ -99,6 +102,7 @@ async function loadHistory() {
 watch(() => props.show, (val) => {
   if (val) {
     if (!conversationId.value) loadHistory()
+    void tryReconnectSession()
     nextTick(() => inputRef.value?.focus())
   }
 }, { immediate: true })
@@ -121,81 +125,85 @@ async function sendMessage(messageText?: string) {
   loading.value = true
   agentSteps.value = []
   totalStepsReceived.value = 0
+  assistantResultCommitted = false
   scrollToBottom()
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${props.projectId}/agents/chart-chat`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    await startSession(
+      `/api/projects/${props.projectId}/agents/chart-chat`,
+      {
         message: q,
         dashboardId: props.dashboardId,
         chartId: props.chart.id,
         ...(conversationId.value ? { conversationId: conversationId.value } : {}),
-      }),
-    })
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Request failed' }))
-      messages.value.push({ role: 'assistant', content: `Error: ${err.error || 'Request failed'}` })
-      return
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('No response body')
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      let eventType = ''
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7).trim()
-        } else if (line.startsWith('data: ') && eventType) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (eventType === 'conversation') {
-              conversationId.value = data.conversationId
-            } else if (eventType === 'step') {
-              const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
-              if (shouldShow) {
-                agentSteps.value.push(data.step)
-                scrollToBottom()
-              }
-              totalStepsReceived.value++
-            } else if (eventType === 'thinking') {
-              // Could store thinking text, omitting for simplicity in chat panel
-            } else if (eventType === 'result') {
-              messages.value.push({
-                role: 'assistant',
-                content: data.answer,
-                sql: data.sql,
-                data: data.data,
-                columns: data.columns,
-              })
-              scrollToBottom()
-            } else if (eventType === 'error') {
-              messages.value.push({ role: 'assistant', content: `Error: ${data.error}` })
-            }
-          } catch {
-            // ignore parse errors
-          }
-          eventType = ''
-        }
-      }
-    }
+      },
+      makeChartChatCallbacks(),
+    )
+    finishSession()
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return
     const msg = err instanceof Error ? err.message : 'Failed to chat'
     messages.value.push({ role: 'assistant', content: `Error: ${msg}` })
+    finishSession()
+  } finally {
+    loading.value = false
+    agentSteps.value = []
+    scrollToBottom()
+  }
+}
+
+function makeChartChatCallbacks(): SSECallbacks {
+  return {
+    onConversation: (data) => {
+      conversationId.value = data.conversationId
+    },
+    onStep: (data) => {
+      const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
+      if (shouldShow) {
+        agentSteps.value.push(data.step)
+        scrollToBottom()
+      }
+      totalStepsReceived.value++
+    },
+    onResult: (data) => {
+      if (assistantResultCommitted) return
+      assistantResultCommitted = true
+      messages.value.push({
+        role: 'assistant',
+        content: data.answer as string,
+        sql: data.sql as string | undefined,
+        data: data.data as Record<string, string>[] | undefined,
+        columns: data.columns as string[] | undefined,
+      })
+      scrollToBottom()
+    },
+    onError: (data) => {
+      messages.value.push({ role: 'assistant', content: `Error: ${data.error}` })
+    },
+  }
+}
+
+async function tryReconnectSession() {
+  const sessionId = await findLatestSession(props.projectId, 'chart-chat', {
+    dashboardId: props.dashboardId,
+    chartId: props.chart.id,
+  })
+  if (!sessionId || loading.value) return
+
+  loading.value = true
+  agentSteps.value = []
+  totalStepsReceived.value = 0
+  assistantResultCommitted = false
+  scrollToBottom()
+
+  try {
+    const ok = await reconnectSession(props.projectId, sessionId, makeChartChatCallbacks())
+    if (!ok) {
+      // Session expired or unavailable
+    }
+    finishSession()
+  } catch {
+    finishSession()
   } finally {
     loading.value = false
     agentSteps.value = []

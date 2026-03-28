@@ -3,11 +3,11 @@ import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { MessageSquare, Send, Loader2, X, ChevronDown, ChevronUp, Code, Plus, Trash2, PanelLeftClose, PanelLeft, Copy, Check, Maximize2, Minimize2, Settings2, User, Users } from 'lucide-vue-next'
 import { marked } from 'marked'
 import Session from 'supertokens-web-js/recipe/session'
-import { API_BASE_URL } from '../services/api'
 import { config } from '../config'
 import { conversationApi, type Conversation, type ConversationMessage } from '../services/conversation.api'
 import { projectApi } from '../services/project.api'
 import { useRole } from '../composables/useRole'
+import { useResumableSSE, type SSECallbacks } from '../composables/useResumableSSE'
 import Button from './ui/button.vue'
 import ConversationPermissions from './ConversationPermissions.vue'
 
@@ -51,8 +51,10 @@ const showPermissions = ref(false)
 const userEmailMap = ref<Map<string, string>>(new Map())
 const hasMultipleOwners = computed(() => new Set(conversations.value.map((c) => c.userId)).size > 1)
 const { isAdmin, refreshRoles } = useRole()
+const { startSession, reconnectSession, findLatestSession, finishSession } = useResumableSSE()
 const currentUserId = ref<string | null>(null)
 const showOnlyMyConversations = ref(true)
+let assistantResultCommitted = false
 
 const filteredConversations = computed(() => {
   if (!currentUserId.value) return conversations.value
@@ -156,6 +158,7 @@ watch(() => props.show, (val) => {
     loadConversations()
     loadProjectUsers()
     loadCurrentUserId()
+    tryReconnectSession()
     nextTick(() => inputRef.value?.focus())
   }
 })
@@ -164,12 +167,75 @@ function onEscape(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
 }
 
+async function tryReconnectSession() {
+  if (loading.value) return
+
+  let sessionId: string | null = null
+  let matchedConversationId: string | null = activeConversationId.value
+
+  if (activeConversationId.value) {
+    sessionId = await findLatestSession(props.projectId, 'ask', {
+      conversationId: activeConversationId.value,
+    })
+  } else {
+    let convs = conversations.value
+    if (!convs.length) {
+      try {
+        convs = await conversationApi.list(props.projectId)
+        conversations.value = convs
+      } catch {
+        convs = []
+      }
+    }
+
+    for (const conv of convs) {
+      const candidateSessionId = await findLatestSession(props.projectId, 'ask', {
+        conversationId: conv.id,
+      })
+      if (candidateSessionId) {
+        sessionId = candidateSessionId
+        matchedConversationId = conv.id
+        break
+      }
+    }
+  }
+
+  if (!sessionId) return
+
+  if (!activeConversationId.value && matchedConversationId) {
+    activeConversationId.value = matchedConversationId
+  }
+
+  loading.value = true
+  agentSteps.value = []
+  thinkingTexts.value = []
+  totalStepsReceived.value = 0
+  assistantResultCommitted = false
+  scrollToBottom()
+
+  try {
+    const ok = await reconnectSession(props.projectId, sessionId, makeAskCallbacks())
+    if (!ok) {
+      // Session expired — no error to show, conversation was already saved server-side
+    }
+    finishSession()
+  } catch {
+    finishSession()
+  } finally {
+    loading.value = false
+    agentSteps.value = []
+    thinkingTexts.value = []
+    scrollToBottom()
+  }
+}
+
 onMounted(async () => {
   await refreshRoles()
   if (props.show) {
     loadConversations()
     loadProjectUsers()
     loadCurrentUserId()
+    tryReconnectSession()
   }
   document.addEventListener('keydown', onEscape)
 })
@@ -177,6 +243,47 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('keydown', onEscape)
 })
+
+function makeAskCallbacks(): SSECallbacks {
+  return {
+    onConversation: (data) => {
+      activeConversationId.value = data.conversationId
+      loadConversations()
+    },
+    onStep: (data) => {
+      const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
+      if (shouldShow) {
+        agentSteps.value.push(data.step)
+        thinkingTexts.value.push('')
+        scrollToBottom()
+      }
+      totalStepsReceived.value++
+    },
+    onThinking: (data) => {
+      const idx = totalStepsReceived.value - 1
+      if (idx >= 0) {
+        thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
+      }
+    },
+    onResult: (data) => {
+      if (assistantResultCommitted) return
+      assistantResultCommitted = true
+      messages.value.push({
+        role: 'assistant',
+        content: data.answer as string,
+        sql: data.sql as string | undefined,
+        data: data.data as Record<string, string>[] | undefined,
+        columns: data.columns as string[] | undefined,
+        steps: data.steps as string[] | undefined,
+        thinkingTexts: thinkingTexts.value.length > 0 ? [...thinkingTexts.value] : undefined,
+      })
+      scrollToBottom()
+    },
+    onError: (data) => {
+      messages.value.push({ role: 'assistant', content: `Error: ${data.error}` })
+    },
+  }
+}
 
 async function ask() {
   const q = question.value.trim()
@@ -188,87 +295,24 @@ async function ask() {
   agentSteps.value = []
   thinkingTexts.value = []
   totalStepsReceived.value = 0
+  assistantResultCommitted = false
   scrollToBottom()
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${props.projectId}/agents/ask`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    await startSession(
+      `/api/projects/${props.projectId}/agents/ask`,
+      {
         question: q,
         ...(activeConversationId.value ? { conversationId: activeConversationId.value } : {}),
-      }),
-    })
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Request failed' }))
-      messages.value.push({ role: 'assistant', content: `Error: ${err.error || 'Request failed'}` })
-      return
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('No response body')
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      let eventType = ''
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7).trim()
-        } else if (line.startsWith('data: ') && eventType) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (eventType === 'conversation') {
-              activeConversationId.value = data.conversationId
-              loadConversations()
-            } else if (eventType === 'step') {
-              // Filter out model/vendor information from UI display unless showLlmDetails is enabled
-              const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
-              if (shouldShow) {
-                agentSteps.value.push(data.step)
-                thinkingTexts.value.push('')
-                scrollToBottom()
-              }
-              totalStepsReceived.value++
-            } else if (eventType === 'thinking') {
-              const idx = totalStepsReceived.value - 1
-              if (idx >= 0) {
-                thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
-              }
-            } else if (eventType === 'result') {
-              messages.value.push({
-                role: 'assistant',
-                content: data.answer,
-                sql: data.sql,
-                data: data.data,
-                columns: data.columns,
-                steps: data.steps,
-                thinkingTexts: thinkingTexts.value.length > 0 ? [...thinkingTexts.value] : undefined,
-              })
-              scrollToBottom()
-            } else if (eventType === 'error') {
-              messages.value.push({ role: 'assistant', content: `Error: ${data.error}` })
-            }
-          } catch {
-            // ignore parse errors
-          }
-          eventType = ''
-        }
-      }
-    }
+      },
+      makeAskCallbacks(),
+    )
+    finishSession()
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return
     const msg = err instanceof Error ? err.message : 'Failed to get answer'
     messages.value.push({ role: 'assistant', content: `Error: ${msg}` })
+    finishSession()
   } finally {
     loading.value = false
     agentSteps.value = []

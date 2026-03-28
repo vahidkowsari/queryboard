@@ -1,6 +1,6 @@
 {
-  "id": "284ffc3c-3e99-44b1-8971-f4c99e845dc9",
-  "prevId": "80c6d53e-9025-4008-bc4d-4c1417c272bf",
+  "id": "0a9b41ae-8375-43bb-84a7-be5db202992c",
+  "prevId": "f517bbb8-3c6b-4213-b774-44118669495e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -560,6 +560,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "chart_id": {
+          "name": "chart_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "title": {
           "name": "title",
           "type": "varchar(255)",
@@ -612,6 +618,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_conversations_chart_id": {
+          "name": "idx_conversations_chart_id",
+          "columns": [
+            {
+              "expression": "chart_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -621,6 +642,19 @@
           "tableTo": "projects",
           "columnsFrom": [
             "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "conversations_chart_id_charts_id_fk": {
+          "name": "conversations_chart_id_charts_id_fk",
+          "tableFrom": "conversations",
+          "tableTo": "charts",
+          "columnsFrom": [
+            "chart_id"
           ],
           "columnsTo": [
             "id"

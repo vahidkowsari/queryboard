@@ -268,3 +268,49 @@ export const refreshHistory = pgTable(
     index('idx_refresh_history_created_at').on(table.createdAt),
   ],
 )
+
+export const sseSessions = pgTable(
+  'sse_sessions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    type: varchar('type', { length: 30 }).notNull(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id', { length: 128 }).notNull(),
+    dashboardId: uuid('dashboard_id'),
+    chartId: uuid('chart_id'),
+    conversationId: uuid('conversation_id'),
+    status: varchar('status', { length: 20 }).notNull().default('running'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('idx_sse_sessions_project_id').on(table.projectId),
+    index('idx_sse_sessions_user_id').on(table.userId),
+    index('idx_sse_sessions_dashboard_id').on(table.dashboardId),
+    index('idx_sse_sessions_chart_id').on(table.chartId),
+    index('idx_sse_sessions_conversation_id').on(table.conversationId),
+    index('idx_sse_sessions_status').on(table.status),
+    index('idx_sse_sessions_expires_at').on(table.expiresAt),
+  ],
+)
+
+export const sseSessionEvents = pgTable(
+  'sse_session_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sseSessions.id, { onDelete: 'cascade' }),
+    event: varchar('event', { length: 40 }).notNull(),
+    data: jsonb('data').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_sse_session_events_session_id').on(table.sessionId),
+    index('idx_sse_session_events_created_at').on(table.createdAt),
+  ],
+)

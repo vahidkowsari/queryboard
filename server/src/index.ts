@@ -27,6 +27,7 @@ import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { seedProjectsFromConfig } from './services/project-seeder.js'
 import { createRefreshScheduler } from './services/refresh-scheduler.js'
+import { initializeSSESessionManager } from './services/sse-session.service.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -64,6 +65,7 @@ async function startServer() {
   // --- PostgreSQL + Drizzle ---
   const pool = new pg.Pool(config.db)
   const db = createDb(pool)
+  initializeSSESessionManager(db)
   const refreshScheduler = createRefreshScheduler(db)
 
   // --- Startup: connect, migrate, seed ---
