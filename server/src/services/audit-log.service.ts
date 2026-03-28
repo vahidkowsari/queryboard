@@ -6,6 +6,8 @@ export type AuditAction =
   | 'created'
   | 'updated'
   | 'deleted'
+  | 'login'
+  | 'logout'
   | 'shared'
   | 'unshared'
   | 'exported'
@@ -27,6 +29,7 @@ export type AuditEntityType =
   | 'group'
   | 'permission'
   | 'schema'
+  | 'auth'
 
 export interface AuditLogEntry {
   projectId: string
