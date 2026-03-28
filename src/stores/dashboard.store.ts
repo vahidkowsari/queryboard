@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Dashboard, Chart } from '../types'
 import { dashboardApi } from '../services/dashboard.api'
+import { extractApiError } from '../services/api'
 import type { DashboardRow, ChartRow } from '../services/dashboard.api'
 
 function rowToDashboard(row: DashboardRow): Dashboard {
@@ -41,6 +42,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const dashboards = ref<Dashboard[]>([])
   const currentDashboard = ref<Dashboard | null>(null)
   const loading = ref(false)
+  const lastError = ref<string | null>(null)
   const projectId = ref<string>('')
 
   function findDashboard(id: string): Dashboard | undefined {
@@ -53,14 +55,16 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function fetchDashboards(): Promise<void> {
     loading.value = true
+    lastError.value = null
     try {
       const rows = await dashboardApi.list(projectId.value)
       dashboards.value = rows.map(rowToDashboard)
       if (currentDashboard.value) {
         currentDashboard.value = findDashboard(currentDashboard.value.id) ?? null
       }
-    } catch (err) {
-      console.warn('Failed to fetch dashboards from API, using local state')
+    } catch (error) {
+      lastError.value = extractApiError(error)
+      console.warn(`Failed to fetch dashboards from API: ${lastError.value}`)
     } finally {
       loading.value = false
     }
@@ -97,6 +101,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function loadDashboard(id: string): Promise<Dashboard | null> {
+    lastError.value = null
     try {
       const row = await dashboardApi.getById(projectId.value, id)
       const dashboard = rowToDashboard(row)
@@ -108,7 +113,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
       }
       currentDashboard.value = dashboard
       return dashboard
-    } catch {
+    } catch (error) {
+      lastError.value = extractApiError(error)
       return null
     }
   }
@@ -162,12 +168,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
   async function reorderCharts(dashboardId: string, charts: Chart[]): Promise<void> {
     const dashboard = findDashboard(dashboardId)
     if (!dashboard) return
+    const previousCharts = [...dashboard.charts]
     dashboard.charts = charts
-    await dashboardApi.reorderCharts(
-      projectId.value,
-      dashboardId,
-      charts.map((c) => c.id),
-    )
+    lastError.value = null
+    try {
+      await dashboardApi.reorderCharts(
+        projectId.value,
+        dashboardId,
+        charts.map((c) => c.id),
+      )
+    } catch (error) {
+      dashboard.charts = previousCharts
+      lastError.value = extractApiError(error)
+      throw error
+    }
   }
 
   async function refreshChart(dashboardId: string, chartId: string): Promise<void> {
@@ -221,6 +235,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     dashboards,
     currentDashboard,
     loading,
+    lastError,
     projectId,
     setProjectId,
     fetchDashboards,

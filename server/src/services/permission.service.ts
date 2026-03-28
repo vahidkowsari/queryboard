@@ -92,6 +92,45 @@ export function createPermissionService(db: Db) {
     },
 
     /**
+     * Batch-filters a list of dashboard IDs to those the user can access.
+     * Fetches all permissions and memberships in two queries instead of N.
+     */
+    async filterAccessibleDashboards(
+      dashboardIds: string[],
+      userId: string,
+      requiredLevel: PermissionLevel = 'view',
+    ): Promise<string[]> {
+      if (dashboardIds.length === 0) return []
+
+      const [allPerms, memberships] = await Promise.all([
+        db.select().from(dashboardPermissions).where(inArray(dashboardPermissions.dashboardId, dashboardIds)),
+        db.select().from(groupMembers).where(eq(groupMembers.userId, userId)),
+      ])
+
+      const userGroupIds = memberships.map((m) => m.groupId)
+      const permsByDashboard = new Map<string, typeof allPerms>()
+      for (const p of allPerms) {
+        if (!permsByDashboard.has(p.dashboardId)) permsByDashboard.set(p.dashboardId, [])
+        permsByDashboard.get(p.dashboardId)!.push(p)
+      }
+
+      return dashboardIds.filter((id) => {
+        const perms = permsByDashboard.get(id)
+        if (!perms || perms.length === 0) return true
+
+        const matchingPerms = perms.filter((p) => {
+          if (p.userId !== null && p.userId === userId) return true
+          if (p.groupId !== null && userGroupIds.includes(p.groupId)) return true
+          return false
+        })
+
+        if (matchingPerms.length === 0) return false
+        if (requiredLevel === 'view') return true
+        return matchingPerms.some((p) => p.permission === 'edit')
+      })
+    },
+
+    /**
      * Fetches all permissions for a conversation
      */
     async listForConversation(conversationId: string) {

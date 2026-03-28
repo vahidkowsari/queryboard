@@ -38,6 +38,38 @@ function parseOrBadRequest<T>(res: Response, parsed: { success: boolean; data?: 
   return null
 }
 
+async function runSSESession(
+  res: Response,
+  opts: {
+    label: string
+    context: string
+    onClientClose: () => void
+    run: () => Promise<void>
+    onError: (err: unknown) => void
+    onFinally?: () => Promise<void>
+  },
+): Promise<void> {
+  initializeSSE(res)
+  attachSSELifecycle(res, {
+    label: opts.label,
+    context: opts.context,
+    onClientClose: opts.onClientClose,
+  })
+
+  const stopHeartbeat = startSSEHeartbeat(res)
+  try {
+    await opts.run()
+  } catch (err) {
+    opts.onError(err)
+  } finally {
+    stopHeartbeat()
+    if (opts.onFinally) {
+      await opts.onFinally()
+    }
+    if (!res.writableEnded) res.end()
+  }
+}
+
 export function registerGenerateRoute(router: Router, deps: AgentRouteDeps): void {
   const { tokenUsageService } = deps
 
@@ -87,78 +119,80 @@ export function registerGenerateChartRoute(router: Router, deps: AgentRouteDeps)
 
       console.log(`ChartAgent: user=${userId} project=${project.id} query="${userQuery.substring(0, 80)}"`)
 
-      initializeSSE(res)
-
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      attachSSELifecycle(res, {
+      await runSSESession(res, {
         label: 'ChartAgent',
         context: `user=${userId} project=${project.id}`,
         onClientClose: () => ac.abort(),
-      })
+        run: async () => {
+          const result = await runChartAgent(
+            userQuery,
+            schema,
+            executor,
+            chartType,
+            (step) => writeSSEEvent(res, 'step', { step }),
+            (text) => writeSSEEvent(res, 'thinking', { text }),
+            (existingChart as object | undefined) || undefined,
+            project.llmConfig,
+            project.chartLibrary,
+            project.colorConfig,
+            ac.signal,
+          )
 
-      const stopHeartbeat = startSSEHeartbeat(res)
-
-      try {
-        const result = await runChartAgent(
-          userQuery,
-          schema,
-          executor,
-          chartType,
-          (step) => writeSSEEvent(res, 'step', { step }),
-          (text) => writeSSEEvent(res, 'thinking', { text }),
-          (existingChart as object | undefined) || undefined,
-          project.llmConfig,
-          project.chartLibrary,
-          project.colorConfig,
-          ac.signal,
-        )
-
-        writeSSEEvent(res, 'result', {
-          title: result.title,
-          chartType: result.chartType,
-          sql: result.sql,
-          description: result.description,
-          summary: result.summary,
-          chartSpec: result.chartSpec,
-          data: result.data,
-          columns: result.columns,
-          steps: result.steps,
-          filters: result.filters,
-        })
-
-        await recordTokenUsageSafe(async () => {
-          if (result.tokenUsage.totalTokens > 0) {
-            await tokenUsageService.record({
-              projectId: project.id,
-              vendor: result.tokenUsage.vendor,
-              model: result.tokenUsage.model,
-              promptTokens: result.tokenUsage.promptTokens,
-              completionTokens: result.tokenUsage.completionTokens,
-              totalTokens: result.tokenUsage.totalTokens,
-              operation: 'chart-generate',
-            })
-          }
-          await auditLog.log({
-            projectId: project.id,
-            userId,
-            action: 'generated',
-            entityType: 'chart',
-            entityName: result.title,
-            details: { userQuery: userQuery.substring(0, 200), chartType: result.chartType },
+          writeSSEEvent(res, 'result', {
+            title: result.title,
+            chartType: result.chartType,
+            sql: result.sql,
+            description: result.description,
+            summary: result.summary,
+            chartSpec: result.chartSpec,
+            data: result.data,
+            columns: result.columns,
+            steps: result.steps,
+            filters: result.filters,
           })
-        }, 'Failed to record token usage or audit log:')
-      } catch (err) {
-        if (ac.signal.aborted) {
-          console.log('ChartAgent: generation cancelled by client')
-        } else {
-          console.error('ChartAgent: generation failed', err)
-          writeSSEEvent(res, 'error', { error: getErrorMessage(err, 'Chart generation failed') })
-        }
-      } finally {
-        stopHeartbeat()
-      }
-      if (!res.writableEnded) res.end()
+
+          await recordTokenUsageSafe(async () => {
+            if (result.tokenUsage.totalTokens > 0) {
+              await tokenUsageService.record({
+                projectId: project.id,
+                vendor: result.tokenUsage.vendor,
+                model: result.tokenUsage.model,
+                promptTokens: result.tokenUsage.promptTokens,
+                completionTokens: result.tokenUsage.completionTokens,
+                totalTokens: result.tokenUsage.totalTokens,
+                operation: 'chart-generate',
+              })
+            }
+            await auditLog.log({
+              projectId: project.id,
+              userId,
+              action: 'generated',
+              entityType: 'chart',
+              entityName: result.title,
+              details: { userQuery: userQuery.substring(0, 200), chartType: result.chartType },
+            })
+          }, 'Failed to record token usage or audit log:')
+        },
+        onError: (err) => {
+          if (ac.signal.aborted) {
+            console.log('ChartAgent: generation cancelled by client')
+          } else {
+            console.error('ChartAgent: generation failed', err)
+            writeSSEEvent(res, 'error', { error: getErrorMessage(err, 'Chart generation failed') })
+          }
+        },
+        onFinally: async () => {
+          if (executor.cleanup) {
+            try {
+              await executor.cleanup()
+            } catch (cleanupErr) {
+              console.error('ChartAgent: executor cleanup failed', cleanupErr)
+            }
+          }
+        },
+      })
     }),
   )
 }
@@ -207,76 +241,79 @@ export function registerAskRoute(router: Router, deps: AgentRouteDeps): void {
       const conversationHistory = toConversationHistory(previousMessages)
       await conversationService.addMessage(convId, 'user', question)
 
-      initializeSSE(res)
-      writeSSEEvent(res, 'conversation', { conversationId: convId })
-
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      attachSSELifecycle(res, {
+      await runSSESession(res, {
         label: 'QAAgent',
         context: `user=${userId} project=${project.id}`,
         onClientClose: () => ac.abort(),
-      })
+        run: async () => {
+          writeSSEEvent(res, 'conversation', { conversationId: convId })
 
-      const stopHeartbeat = startSSEHeartbeat(res)
+          const result = await runQAAgent(
+            question,
+            schema,
+            executor,
+            (step) => writeSSEEvent(res, 'step', { step }),
+            (text) => writeSSEEvent(res, 'thinking', { text }),
+            project.llmConfig,
+            ac.signal,
+            conversationHistory,
+          )
 
-      try {
-        const result = await runQAAgent(
-          question,
-          schema,
-          executor,
-          (step) => writeSSEEvent(res, 'step', { step }),
-          (text) => writeSSEEvent(res, 'thinking', { text }),
-          project.llmConfig,
-          ac.signal,
-          conversationHistory,
-        )
-
-        writeSSEEvent(res, 'result', {
-          answer: result.answer,
-          sql: result.sql,
-          data: result.data,
-          columns: result.columns,
-          steps: result.steps,
-        })
-
-        await recordTokenUsageSafe(async () => {
-          if (result.tokenUsage.totalTokens > 0) {
-            await tokenUsageService.record({
-              projectId: project.id,
-              vendor: result.tokenUsage.vendor,
-              model: result.tokenUsage.model,
-              promptTokens: result.tokenUsage.promptTokens,
-              completionTokens: result.tokenUsage.completionTokens,
-              totalTokens: result.tokenUsage.totalTokens,
-              operation: 'qa-ask',
-            })
-          }
-
-          await conversationService.addMessage(convId, 'assistant', result.answer, {
+          writeSSEEvent(res, 'result', {
+            answer: result.answer,
             sql: result.sql,
             data: result.data,
             columns: result.columns,
             steps: result.steps,
           })
-        }, 'Failed to record token usage or save conversation:')
-      } catch (err) {
-        if (ac.signal.aborted) {
-          console.log('QAAgent: cancelled by client')
-        } else {
-          console.error('QAAgent: failed', err)
-          writeSSEEvent(res, 'error', { error: getErrorMessage(err, 'Failed to answer question') })
-        }
-      } finally {
-        stopHeartbeat()
-      }
-      if (!res.writableEnded) res.end()
+
+          await recordTokenUsageSafe(async () => {
+            if (result.tokenUsage.totalTokens > 0) {
+              await tokenUsageService.record({
+                projectId: project.id,
+                vendor: result.tokenUsage.vendor,
+                model: result.tokenUsage.model,
+                promptTokens: result.tokenUsage.promptTokens,
+                completionTokens: result.tokenUsage.completionTokens,
+                totalTokens: result.tokenUsage.totalTokens,
+                operation: 'qa-ask',
+              })
+            }
+
+            await conversationService.addMessage(convId, 'assistant', result.answer, {
+              sql: result.sql,
+              data: result.data,
+              columns: result.columns,
+              steps: result.steps,
+            })
+          }, 'Failed to record token usage or save conversation:')
+        },
+        onError: (err) => {
+          if (ac.signal.aborted) {
+            console.log('QAAgent: cancelled by client')
+          } else {
+            console.error('QAAgent: failed', err)
+            writeSSEEvent(res, 'error', { error: getErrorMessage(err, 'Failed to answer question') })
+          }
+        },
+        onFinally: async () => {
+          if (executor.cleanup) {
+            try {
+              await executor.cleanup()
+            } catch (cleanupErr) {
+              console.error('QAAgent: executor cleanup failed', cleanupErr)
+            }
+          }
+        },
+      })
     }),
   )
 }
 
 export function registerChartChatRoute(router: Router, deps: AgentRouteDeps): void {
-  const { tokenUsageService, conversationService, chartService } = deps
+  const { db, tokenUsageService, conversationService, chartService } = deps
 
   router.post(
     '/chart-chat',
@@ -319,6 +356,15 @@ export function registerChartChatRoute(router: Router, deps: AgentRouteDeps): vo
         if (!conv || conv.projectId !== project.id) {
           return void res.status(404).json({ error: 'Conversation not found' })
         }
+
+        const roles: string[] = req.session?.getAccessTokenPayload()?.roles ?? []
+        if (!roles.includes(ROLES.ADMIN)) {
+          const permissionService = createPermissionService(db)
+          const allowed = await permissionService.canAccessConversation(convId, userId, 'edit')
+          if (!allowed) {
+            return void res.status(403).json({ error: 'You do not have permission to access this conversation' })
+          }
+        }
       } else {
         const existing = await conversationService.getByChartId(project.id, chartId, userId)
         if (existing) {
@@ -333,72 +379,75 @@ export function registerChartChatRoute(router: Router, deps: AgentRouteDeps): vo
       const conversationHistory = toConversationHistory(previousMessages)
       await conversationService.addMessage(convId, 'user', message)
 
-      initializeSSE(res)
-      writeSSEEvent(res, 'conversation', { conversationId: convId })
-
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      attachSSELifecycle(res, {
+      await runSSESession(res, {
         label: 'ChartChatAgent',
         context: `user=${userId} project=${project.id} conversation=${convId}`,
         onClientClose: () => ac.abort(),
-      })
+        run: async () => {
+          writeSSEEvent(res, 'conversation', { conversationId: convId })
 
-      const stopHeartbeat = startSSEHeartbeat(res)
+          const result = await runChartChatAgent(
+            message,
+            chartContext,
+            schema,
+            executor,
+            (step) => writeSSEEvent(res, 'step', { step }),
+            (text) => writeSSEEvent(res, 'thinking', { text }),
+            project.llmConfig,
+            ac.signal,
+            conversationHistory,
+          )
 
-      try {
-        const result = await runChartChatAgent(
-          message,
-          chartContext,
-          schema,
-          executor,
-          (step) => writeSSEEvent(res, 'step', { step }),
-          (text) => writeSSEEvent(res, 'thinking', { text }),
-          project.llmConfig,
-          ac.signal,
-          conversationHistory,
-        )
-
-        writeSSEEvent(res, 'result', {
-          answer: result.answer,
-          sql: result.sql,
-          data: result.data,
-          columns: result.columns,
-          steps: result.steps,
-        })
-
-        await recordTokenUsageSafe(async () => {
-          if (result.tokenUsage.totalTokens > 0) {
-            await tokenUsageService.record({
-              projectId: project.id,
-              chartId: chart.id,
-              vendor: result.tokenUsage.vendor,
-              model: result.tokenUsage.model,
-              promptTokens: result.tokenUsage.promptTokens,
-              completionTokens: result.tokenUsage.completionTokens,
-              totalTokens: result.tokenUsage.totalTokens,
-              operation: 'chart-chat',
-            })
-          }
-
-          await conversationService.addMessage(convId, 'assistant', result.answer, {
+          writeSSEEvent(res, 'result', {
+            answer: result.answer,
             sql: result.sql,
             data: result.data,
             columns: result.columns,
             steps: result.steps,
           })
-        }, 'Failed to record token usage or save conversation:')
-      } catch (err) {
-        if (ac.signal.aborted) {
-          console.log('ChartChatAgent: cancelled by client')
-        } else {
-          console.error('ChartChatAgent: failed', err)
-          writeSSEEvent(res, 'error', { error: getErrorMessage(err, 'Chart chat failed') })
-        }
-      } finally {
-        stopHeartbeat()
-      }
-      if (!res.writableEnded) res.end()
+
+          await recordTokenUsageSafe(async () => {
+            if (result.tokenUsage.totalTokens > 0) {
+              await tokenUsageService.record({
+                projectId: project.id,
+                chartId: chart.id,
+                vendor: result.tokenUsage.vendor,
+                model: result.tokenUsage.model,
+                promptTokens: result.tokenUsage.promptTokens,
+                completionTokens: result.tokenUsage.completionTokens,
+                totalTokens: result.tokenUsage.totalTokens,
+                operation: 'chart-chat',
+              })
+            }
+
+            await conversationService.addMessage(convId, 'assistant', result.answer, {
+              sql: result.sql,
+              data: result.data,
+              columns: result.columns,
+              steps: result.steps,
+            })
+          }, 'Failed to record token usage or save conversation:')
+        },
+        onError: (err) => {
+          if (ac.signal.aborted) {
+            console.log('ChartChatAgent: cancelled by client')
+          } else {
+            console.error('ChartChatAgent: failed', err)
+            writeSSEEvent(res, 'error', { error: getErrorMessage(err, 'Chart chat failed') })
+          }
+        },
+        onFinally: async () => {
+          if (executor.cleanup) {
+            try {
+              await executor.cleanup()
+            } catch (cleanupErr) {
+              console.error('ChartChatAgent: executor cleanup failed', cleanupErr)
+            }
+          }
+        },
+      })
     }),
   )
 }

@@ -31,13 +31,13 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
 
       // Filter to only dashboards the user can view
       const userId = req.session!.getUserId()
-      const visible = await Promise.all(
-        dashboards.map(async (d) => {
-          const allowed = await permissionService.canAccess(d.id, userId, 'view')
-          return allowed ? d : null
-        }),
+      const allowedIds = await permissionService.filterAccessibleDashboards(
+        dashboards.map((d) => d.id),
+        userId,
+        'view',
       )
-      res.json(visible.filter(Boolean))
+      const allowedIdSet = new Set(allowedIds)
+      res.json(dashboards.filter((d) => allowedIdSet.has(d.id)))
     }),
   )
 
@@ -164,16 +164,23 @@ export function createDashboardRoutes(db: Db, scheduler?: RefreshScheduler): Rou
       if (!mimeMatch) {
         return void res.status(400).json({ error: 'Invalid image format. Only JPEG, PNG, and WebP are supported' })
       }
-      
-      const base64Data = thumbnail.replace(/^data:image\/\w+;base64,/, '')
-      const buffer = Buffer.from(base64Data, 'base64')
-      
-      // Validate size (5MB limit)
+
+      // Validate size (5MB limit) before decoding to avoid large memory allocation
       const maxSize = 5 * 1024 * 1024
+      const base64Data = thumbnail.replace(/^data:image\/\w+;base64,/, '')
+      const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0
+      const estimatedSize = Math.floor((base64Data.length * 3) / 4) - padding
+      if (estimatedSize > maxSize) {
+        return void res.status(413).json({ error: 'Thumbnail too large. Maximum size is 5MB' })
+      }
+
+      const buffer = Buffer.from(base64Data, 'base64')
+
+      // Validate decoded size (defense-in-depth)
       if (buffer.length > maxSize) {
         return void res.status(413).json({ error: 'Thumbnail too large. Maximum size is 5MB' })
       }
-      
+
       const dashboard = await dashboardService.updateThumbnail(req.params.id, buffer)
       if (!dashboard) return void res.status(404).json({ error: 'Dashboard not found' })
       res.json({ success: true })

@@ -22,6 +22,27 @@ export function createChartRoutes(db: Db): Router {
   const canView = requireDashboardAccess(db, 'view')
   const canEdit = requireDashboardAccess(db, 'edit')
 
+  function resolveSqlWithFilters(
+    query: string,
+    rawFilters: unknown,
+    filterValues: Record<string, string>,
+  ): { sql: string; hasAppliedFilters: boolean } {
+    const filters = (rawFilters as ChartFilter[] | null) || []
+    const hasAppliedFilters = filters.length > 0 && hasFilterPlaceholders(query)
+    if (!hasAppliedFilters) {
+      return { sql: query, hasAppliedFilters: false }
+    }
+    return { sql: substituteFilters(query, filters, filterValues), hasAppliedFilters: true }
+  }
+
+  async function recordRefreshSafely(payload: Parameters<typeof refreshHistoryService.recordRefresh>[0]): Promise<void> {
+    try {
+      await refreshHistoryService.recordRefresh(payload)
+    } catch (historyErr) {
+      console.error('Failed to record refresh history:', historyErr)
+    }
+  }
+
   router.post(
     '/:dashboardId/charts',
     canEdit,
@@ -79,12 +100,7 @@ export function createChartRoutes(db: Db): Router {
       const project = await projectService.getById(projectId)
       if (!project) return void res.status(404).json({ error: 'Project not found' })
 
-      const filters = (chart.filters as ChartFilter[] | null) || []
-      let sql = chart.query
-      const hasFilters = filters.length > 0 && hasFilterPlaceholders(sql)
-      if (hasFilters) {
-        sql = substituteFilters(sql, filters, filterValues)
-      }
+      const { sql, hasAppliedFilters } = resolveSqlWithFilters(chart.query, chart.filters, filterValues)
 
       const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
       const startTime = Date.now()
@@ -99,11 +115,11 @@ export function createChartRoutes(db: Db): Router {
 
         const updated = await chartService.updateDataWithRefresh(dashboardId, chartId, result.rows)
 
-        await refreshHistoryService.recordRefresh({
+        await recordRefreshSafely({
           chartId,
           dashboardId,
           triggeredBy: userId,
-          triggerType: hasFilters ? 'filter' : 'manual',
+          triggerType: hasAppliedFilters ? 'filter' : 'manual',
           status,
           executionTimeMs,
           rowCount,
@@ -115,21 +131,25 @@ export function createChartRoutes(db: Db): Router {
         errorMessage = err instanceof Error ? err.message : 'Refresh failed'
         const executionTimeMs = Date.now() - startTime
 
-        try {
-          await refreshHistoryService.recordRefresh({
-            chartId,
-            dashboardId,
-            triggeredBy: userId,
-            triggerType: hasFilters ? 'filter' : 'manual',
-            status,
-            executionTimeMs,
-            errorMessage,
-          })
-        } catch (historyErr) {
-          console.error('Failed to record refresh history:', historyErr)
-        }
+        await recordRefreshSafely({
+          chartId,
+          dashboardId,
+          triggeredBy: userId,
+          triggerType: hasAppliedFilters ? 'filter' : 'manual',
+          status,
+          executionTimeMs,
+          errorMessage,
+        })
 
         throw err
+      } finally {
+        if (executor.cleanup) {
+          try {
+            await executor.cleanup()
+          } catch (cleanupErr) {
+            console.error('Failed to cleanup query executor:', cleanupErr)
+          }
+        }
       }
     }),
   )
@@ -157,24 +177,19 @@ export function createChartRoutes(db: Db): Router {
       const executor = createQueryExecutor(project.dbEngine as DbEngine, project.dbConfig as DbConfig)
       const results: Record<string, unknown>[] = []
 
-      for (const chart of allCharts) {
-        if (!chart.query) continue
-        const filters = (chart.filters as ChartFilter[] | null) || []
-        let sql = chart.query
-        if (filters.length > 0 && hasFilterPlaceholders(sql)) {
-          sql = substituteFilters(sql, filters, filterValues)
-        } else {
-          continue
-        }
+      try {
+        for (const chart of allCharts) {
+          if (!chart.query) continue
+          const { sql, hasAppliedFilters } = resolveSqlWithFilters(chart.query, chart.filters, filterValues)
+          if (!hasAppliedFilters) continue
 
-        const startTime = Date.now()
-        try {
-          const result = await executor.execute(sql)
-          const executionTimeMs = Date.now() - startTime
-          const updated = await chartService.updateDataWithRefresh(dashboardId, chart.id, result.rows)
-          
+          const startTime = Date.now()
           try {
-            await refreshHistoryService.recordRefresh({
+            const result = await executor.execute(sql)
+            const executionTimeMs = Date.now() - startTime
+            const updated = await chartService.updateDataWithRefresh(dashboardId, chart.id, result.rows)
+
+            await recordRefreshSafely({
               chartId: chart.id,
               dashboardId,
               triggeredBy: userId,
@@ -183,17 +198,15 @@ export function createChartRoutes(db: Db): Router {
               executionTimeMs,
               rowCount: result.rows.length,
             })
-          } catch (historyErr) {
-            console.error('Failed to record refresh history:', historyErr)
-          }
-          
-          results.push(updated!)
-        } catch (err) {
-          const executionTimeMs = Date.now() - startTime
-          const errorMessage = err instanceof Error ? err.message : 'Refresh failed'
-          
-          try {
-            await refreshHistoryService.recordRefresh({
+
+            if (updated) {
+              results.push(updated)
+            }
+          } catch (err) {
+            const executionTimeMs = Date.now() - startTime
+            const errorMessage = err instanceof Error ? err.message : 'Refresh failed'
+
+            await recordRefreshSafely({
               chartId: chart.id,
               dashboardId,
               triggeredBy: userId,
@@ -202,12 +215,18 @@ export function createChartRoutes(db: Db): Router {
               executionTimeMs,
               errorMessage,
             })
-          } catch (historyErr) {
-            console.error('Failed to record refresh history:', historyErr)
+
+            console.error(`Failed to refresh chart ${chart.id}:`, err)
+            results.push({ id: chart.id, error: errorMessage })
           }
-          
-          console.error(`Failed to refresh chart ${chart.id}:`, err)
-          results.push({ id: chart.id, error: errorMessage })
+        }
+      } finally {
+        if (executor.cleanup) {
+          try {
+            await executor.cleanup()
+          } catch (cleanupErr) {
+            console.error('Failed to cleanup query executor:', cleanupErr)
+          }
         }
       }
 

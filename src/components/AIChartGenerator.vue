@@ -72,12 +72,6 @@
           </button>
         </div>
         <template v-for="(step, i) in agentSteps" :key="i">
-          <div
-            v-if="showReasoning && stepToThinkingMap[i] !== undefined && thinkingTexts[stepToThinkingMap[i]]"
-            class="ml-6 p-2 bg-primary/10 rounded text-xs text-primary italic whitespace-pre-wrap"
-          >
-            {{ thinkingTexts[stepToThinkingMap[i]!] }}
-          </div>
           <div class="flex items-start gap-2 text-sm">
             <Check v-if="!loading || i < agentSteps.length - 1" :size="16" class="text-green-600 mt-0.5 shrink-0" />
             <Loader2 v-else :size="16" class="animate-spin text-primary mt-0.5 shrink-0" />
@@ -85,6 +79,12 @@
               :class="loading && i === agentSteps.length - 1 ? 'text-primary font-medium' : 'text-muted-foreground'"
               >{{ step }}</span
             >
+          </div>
+          <div
+            v-if="showReasoning && stepToThinkingMap[i] !== undefined && thinkingTexts[stepToThinkingMap[i]]"
+            class="ml-6 p-2 bg-primary/10 rounded text-xs text-primary italic whitespace-pre-wrap"
+          >
+            {{ thinkingTexts[stepToThinkingMap[i]!] }}
           </div>
         </template>
         <div
