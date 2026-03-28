@@ -4,9 +4,34 @@ import ThirdParty from 'supertokens-node/recipe/thirdparty/index.js'
 import EmailPassword from 'supertokens-node/recipe/emailpassword/index.js'
 import UserRoles from 'supertokens-node/recipe/userroles/index.js'
 import { config } from './config.js'
+import type { Db } from './db/index.js'
+import { projects } from './db/schema.js'
+import { createAuditLogService } from './services/audit-log.service.js'
 
 export const ROLES = { ADMIN: 'admin', EDITOR: 'editor', VIEWER: 'viewer' } as const
 export type AppRole = (typeof ROLES)[keyof typeof ROLES]
+
+async function logAuthEventForAllProjects(db: Db, userId: string, action: 'login' | 'logout') {
+  const auditLog = createAuditLogService(db)
+
+  try {
+    const projectRows = await db.select({ id: projects.id, name: projects.name }).from(projects)
+    await Promise.all(
+      projectRows.map((project) =>
+        auditLog.log({
+          projectId: project.id,
+          userId,
+          action,
+          entityType: 'auth',
+          entityId: project.id,
+          entityName: project.name,
+        }),
+      ),
+    )
+  } catch (err) {
+    console.error(`Failed to record ${action} audit event:`, err)
+  }
+}
 
 /**
  * Extracts the parent domain for cookie sharing across sibling subdomains
@@ -40,7 +65,7 @@ function getCookieDomain(): string | undefined {
  * Initializes SuperTokens authentication with email/password and OAuth providers
  * Configures role-based access control and email domain restrictions
  */
-export function initSuperTokens() {
+export function initSuperTokens(db: Db) {
   supertokens.init({
     framework: 'express',
     supertokens: {
@@ -197,7 +222,17 @@ export function initSuperTokens() {
                 ...input.accessTokenPayload,
                 roles: roles.status === 'OK' ? roles.roles : [],
               }
-              return originalImplementation.createNewSession(input)
+              const session = await originalImplementation.createNewSession(input)
+              await logAuthEventForAllProjects(db, input.userId, 'login')
+              return session
+            },
+            revokeSession: async (input) => {
+              const sessionInfo = await Session.getSessionInformation(input.sessionHandle)
+              const result = await originalImplementation.revokeSession(input)
+              if (sessionInfo?.userId) {
+                await logAuthEventForAllProjects(db, sessionInfo.userId, 'logout')
+              }
+              return result
             },
           }),
         },

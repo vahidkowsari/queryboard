@@ -48,7 +48,11 @@ async function startServer() {
   const config = await loadConfig()
   setConfig(config) // Make config available globally
 
-  initSuperTokens()
+  // --- PostgreSQL + Drizzle ---
+  const pool = new pg.Pool(config.db)
+  const db = createDb(pool)
+
+  initSuperTokens(db)
 
   const app = express()
   app.use(
@@ -60,10 +64,6 @@ async function startServer() {
   )
   app.use(stMiddleware())
   app.use(express.json({ limit: '10mb' }))
-
-  // --- PostgreSQL + Drizzle ---
-  const pool = new pg.Pool(config.db)
-  const db = createDb(pool)
   const refreshScheduler = createRefreshScheduler(db)
 
   // --- Startup: connect, migrate, seed ---
