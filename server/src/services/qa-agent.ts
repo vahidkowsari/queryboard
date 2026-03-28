@@ -4,6 +4,7 @@ import { createLLMModel } from './llm-providers/index.js'
 import { rowsToObjects } from './chart-agent-handlers.js'
 import { createDataTools, type ToolHandlerContext } from './agent-tools.js'
 import type { TokenUsageInfo } from './chart-agent.js'
+import { ReActOrchestrator, ReActWorkflowBuilder, type ReActState, type IntermediateStep } from './react-orchestrator.js'
 
 /**
  * Result from the QA agent containing answer, optional SQL/data, and token usage
@@ -85,7 +86,216 @@ export interface ConversationHistoryMessage {
 }
 
 /**
- * Runs the Q&A agent that answers questions about data using schema exploration and SQL queries
+ * QA-specific ReAct state
+ */
+interface QAReActState extends ReActState<QAResult> {
+  question: string
+  schema: Schema
+  executor: QueryExecutor
+  toolContext: ToolHandlerContext
+  llmConfig: {
+    model: any
+    vendor: string
+    modelId: string
+    temperature: number
+  }
+  tokenUsage: TokenUsageInfo
+  steps: string[]
+  signal?: AbortSignal
+  onStep?: (step: string) => void
+  onThinking?: (text: string) => void
+}
+
+/**
+ * Reasoning Node - LLM decides what to do next
+ */
+async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>> {
+  const newSteps = [...state.steps]
+  const log = (msg: string) => {
+    newSteps.push(msg)
+    state.onStep?.(msg)
+    console.log(`QAAgent(ReAct): ${msg}`)
+  }
+
+  // Warn agent to answer soon if running out of steps
+  let conversationHistory = [...state.conversationHistory]
+  if (state.intermediateSteps.length >= 8) {
+    conversationHistory = [
+      ...conversationHistory,
+      {
+        role: 'user',
+        content: 'You are running out of turns. Call answer_question NOW with whatever information you have.',
+      },
+    ]
+  }
+
+  const agentTools = createQATools(state.toolContext, log)
+
+  // Call LLM to reason and decide next action
+  const result = await generateText({
+    model: state.llmConfig.model,
+    temperature: state.llmConfig.temperature,
+    system: SYSTEM_PROMPT,
+    messages: conversationHistory,
+    tools: agentTools,
+    maxOutputTokens: 8192,
+    abortSignal: state.signal,
+  })
+
+  // Track token usage (immutably)
+  const turnInput = result.usage?.inputTokens ?? 0
+  const turnOutput = result.usage?.outputTokens ?? 0
+  const newTokenUsage = {
+    ...state.tokenUsage,
+    promptTokens: state.tokenUsage.promptTokens + turnInput,
+    completionTokens: state.tokenUsage.completionTokens + turnOutput,
+    totalTokens: state.tokenUsage.totalTokens + turnInput + turnOutput,
+  }
+
+  const thought = result.text?.trim() || ''
+  const toolCalls = result.toolCalls || []
+
+  // Stream thinking text to UI
+  if (thought) {
+    state.onThinking?.(thought)
+  }
+
+  // Update conversation history
+  const updatedHistory = [...conversationHistory, ...result.response.messages]
+
+  return {
+    conversationHistory: updatedHistory,
+    nextAction: toolCalls.length > 0 ? toolCalls[0].toolName : null,
+    steps: newSteps,
+    tokenUsage: newTokenUsage,
+    metadata: {
+      ...state.metadata,
+      lastThought: thought,
+      lastToolCalls: toolCalls,
+      lastNode: 'reason',
+    },
+  }
+}
+
+/**
+ * Acting Node - Process the tool execution results from reasoning node
+ * Note: Tools are already executed by AI SDK in generateText, we just need to
+ * extract terminal actions and track intermediate steps
+ */
+async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
+  // Check abort signal
+  if (state.signal?.aborted) {
+    throw new Error('Operation aborted')
+  }
+
+  const toolCalls = (state.metadata.lastToolCalls as any[]) || []
+  
+  if (toolCalls.length === 0) {
+    throw new Error('Acting node called but no tool calls available')
+  }
+
+  const thought = (state.metadata.lastThought as string) || ''
+  const toolCall = toolCalls[0]
+  const newSteps = [...state.steps]
+
+  // Check if this is the terminal answer_question action
+  if (toolCall.toolName === 'answer_question') {
+    const input = toolCall.args as { answer: string; sql?: string }
+
+    const msg = 'Answering question'
+    newSteps.push(msg)
+    state.onStep?.(msg)
+
+    // Include query data if agent ran a query
+    let data: Record<string, string>[] | undefined
+    let columns: string[] | undefined
+    let sql: string | undefined
+    if (state.toolContext.lastQueryResult) {
+      columns = state.toolContext.lastQueryResult.columns
+      data = rowsToObjects(columns, state.toolContext.lastQueryResult.rows)
+      sql = 'See steps for SQL query'
+    }
+
+    const result: QAResult = {
+      answer: input.answer,
+      sql: input.sql,
+      data,
+      columns,
+      steps: newSteps,
+      tokenUsage: state.tokenUsage,
+    }
+
+    // Create intermediate step for the final action
+    const step: IntermediateStep = {
+      stepNumber: state.intermediateSteps.length + 1,
+      thought,
+      action: 'answer_question',
+      actionInput: { answer: input.answer.substring(0, 100) },
+      observation: 'Answer provided',
+      timestamp: new Date(),
+    }
+
+    return {
+      intermediateSteps: [...state.intermediateSteps, step],
+      steps: newSteps,
+      isComplete: true,
+      result,
+      metadata: {
+        ...state.metadata,
+        lastNode: 'act',
+      },
+    }
+  }
+
+  // For other tools, they were already executed by AI SDK in the reasoning node
+  // The tool results are already in the conversation history
+  // We just need to track this as an intermediate step
+  const step: IntermediateStep = {
+    stepNumber: state.intermediateSteps.length + 1,
+    thought,
+    action: toolCall.toolName,
+    actionInput: toolCall.args,
+    observation: 'Tool executed by AI SDK (see conversation history)',
+    timestamp: new Date(),
+  }
+
+  return {
+    intermediateSteps: [...state.intermediateSteps, step],
+    steps: newSteps,
+    metadata: {
+      ...state.metadata,
+      lastNode: 'act',
+    },
+  }
+}
+
+/**
+ * Router - Decides which node to execute next
+ */
+function qaRouter(state: QAReActState): string | 'END' {
+  if (state.isComplete) {
+    return 'END'
+  }
+
+  if (state.nextAction === null) {
+    throw new Error(`Agent finished without answering: ${state.metadata.lastThought || 'No response'}`)
+  }
+
+  // After reasoning, go to acting. After acting, go back to reasoning.
+  const lastNode = state.metadata.lastNode as string | undefined
+  if (lastNode === 'reason') {
+    return 'act'
+  } else if (lastNode === 'act') {
+    return 'reason'
+  }
+
+  // Initial state - start with reasoning
+  return 'reason'
+}
+
+/**
+ * Runs the Q&A agent using ReAct architecture
+ * Agent answers questions about data using schema exploration and SQL queries
  * Supports conversation history for multi-turn conversations
  * @returns Answer with optional SQL query, data, and token usage
  */
@@ -99,103 +309,71 @@ export async function runQAAgent(
   signal?: AbortSignal,
   conversationHistory?: ConversationHistoryMessage[],
 ): Promise<QAResult> {
-  // Track all steps for debugging
   const steps: string[] = []
   const log = (msg: string) => {
     steps.push(msg)
     onStep?.(msg)
-    console.log(`QAAgent: ${msg}`)
+    console.log(`QAAgent(ReAct): ${msg}`)
   }
 
-  // Initialize LLM model
   const { model, vendor, modelId } = createLLMModel(llmConfig)
   const temperature = llmConfig?.temperature ?? 0.3
   log(`Using ${vendor}/${modelId}`)
 
-  // Initialize tool context and agent tools
   const ctx: ToolHandlerContext = { schema, executor, lastQueryResult: null, storedResults: [] }
-  const agentTools = createQATools(ctx, log)
-  const messages: ModelMessage[] = [{ role: 'user', content: question }]
+  const tokenUsage: TokenUsageInfo = { promptTokens: 0, completionTokens: 0, totalTokens: 0, vendor, model: modelId }
 
-  // Prepend conversation history for multi-turn conversations
+  // Build conversation messages with history
+  const messages: ModelMessage[] = [{ role: 'user', content: question }]
   if (conversationHistory && conversationHistory.length > 0) {
     for (const msg of conversationHistory) {
       messages.unshift({ role: msg.role, content: msg.content })
     }
   }
 
-  const tokenUsage: TokenUsageInfo = { promptTokens: 0, completionTokens: 0, totalTokens: 0, vendor, model: modelId }
+  // Build ReAct workflow
+  const workflow = new ReActWorkflowBuilder<QAReActState>()
+    .addNode('reason', reasoningNode)
+    .addNode('act', actingNode)
+    .setRouter(qaRouter)
+    .setEntryPoint('reason')
+    .setMaxSteps(10)
+    .build()
 
-  // Main agent loop - agent explores schema and queries data to answer question
-  for (let turn = 0; turn < MAX_TURNS; turn++) {
-    console.log(`QAAgent: Turn ${turn + 1}`)
+  // Create orchestrator with callbacks
+  const orchestrator = new ReActOrchestrator(workflow, {
+    onStep: (step) => {
+      log(`Step ${step.stepNumber}: ${step.action}`)
+    },
+  })
 
-    // Warn agent to answer soon if running out of turns
-    if (turn >= MAX_TURNS - 2) {
-      messages.push({
-        role: 'user',
-        content: 'You are running out of turns. Call answer_question NOW with whatever information you have.',
-      })
-    }
-
-    // Call LLM with tools - it will decide which tool to use or answer the question
-    const result = await generateText({
-      model,
-      temperature,
-      system: SYSTEM_PROMPT,
-      messages,
-      tools: agentTools,
-      maxOutputTokens: 8192,
-      abortSignal: signal,
-    })
-
-    // Track token usage for cost monitoring
-    const turnInput = result.usage?.inputTokens ?? 0
-    const turnOutput = result.usage?.outputTokens ?? 0
-    tokenUsage.promptTokens += turnInput
-    tokenUsage.completionTokens += turnOutput
-    tokenUsage.totalTokens += turnInput + turnOutput
-
-    // Stream thinking text to UI if provided
-    if (result.text?.trim()) {
-      onThinking?.(result.text)
-    }
-
-    // Check if agent called answer_question tool - this ends the loop
-    const answerCall = result.toolCalls?.find((tc) => tc.toolName === 'answer_question')
-    if (answerCall) {
-      const input = (answerCall as unknown as { input: { answer: string; sql?: string } }).input
-      log('Answering question')
-
-      // Include query data if agent ran a query
-      let data: Record<string, string>[] | undefined
-      let columns: string[] | undefined
-      let sql: string | undefined
-      if (ctx.lastQueryResult) {
-        columns = ctx.lastQueryResult.columns
-        data = rowsToObjects(columns, ctx.lastQueryResult.rows)
-        sql = 'See steps for SQL query'
-      }
-
-      return {
-        answer: input.answer,
-        sql: input.sql,
-        data,
-        columns,
-        steps,
-        tokenUsage,
-      }
-    }
-
-    // If no tool calls, agent is stuck - throw error
-    if (!result.toolCalls || result.toolCalls.length === 0) {
-      throw new Error(`Agent finished without answering: ${result.text || 'No response'}`)
-    }
-
-    // Add agent's response to message history for next turn
-    messages.push(...result.response.messages)
+  // Initial state
+  const initialState: QAReActState = {
+    input: question,
+    question,
+    schema,
+    executor,
+    toolContext: ctx,
+    llmConfig: { model, vendor, modelId, temperature },
+    tokenUsage,
+    steps,
+    signal,
+    onStep,
+    onThinking,
+    intermediateSteps: [],
+    conversationHistory: messages,
+    nextAction: null,
+    isComplete: false,
+    result: null,
+    metadata: {},
   }
 
-  // If we exit loop without answering, agent failed
-  throw new Error('Agent exceeded maximum turns without answering')
+  // Execute workflow
+  const finalState = await orchestrator.execute(initialState)
+
+  if (!finalState.result) {
+    throw new Error('ReAct workflow completed but no result was produced')
+  }
+
+  return finalState.result
 }
