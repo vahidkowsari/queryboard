@@ -104,22 +104,34 @@ interface QAReActState extends ReActState<QAResult> {
   signal?: AbortSignal
   onStep?: (step: string) => void
   onThinking?: (text: string) => void
+  reasoningCycles: number
+  maxReasoningCycles: number
 }
 
 /**
  * Reasoning Node - LLM decides what to do next
  */
 async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>> {
+  // Track reasoning cycles
+  const reasoningCycles = state.reasoningCycles + 1
+
   const newSteps = [...state.steps]
   const log = (msg: string) => {
     newSteps.push(msg)
     state.onStep?.(msg)
-    console.log(`QAAgent(ReAct): ${msg}`)
+    console.log(`QAAgent(ReAct) [Cycle ${reasoningCycles}]: ${msg}`)
   }
 
-  // Warn agent to answer soon if running out of steps
+  // Check for abort signal
+  if (state.signal?.aborted) {
+    console.log(`QAAgent(ReAct) [Cycle ${reasoningCycles}]: Client disconnected (aborted)`)
+    throw new Error('Operation aborted by client')
+  }
+
+  // Warn agent to answer soon if running out of cycles (80% of max)
+  const warningThreshold = Math.floor(state.maxReasoningCycles * 0.8)
   let conversationHistory = [...state.conversationHistory]
-  if (state.intermediateSteps.length >= 8) {
+  if (reasoningCycles >= warningThreshold) {
     conversationHistory = [
       ...conversationHistory,
       {
@@ -168,11 +180,13 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
     nextAction: toolCalls.length > 0 ? toolCalls[0].toolName : null,
     steps: newSteps,
     tokenUsage: newTokenUsage,
+    reasoningCycles,
     metadata: {
       ...state.metadata,
       lastThought: thought,
       lastToolCalls: toolCalls,
       lastNode: 'reason',
+      currentCycle: reasoningCycles,
     },
   }
 }
@@ -183,9 +197,13 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
  * extract terminal actions and track intermediate steps
  */
 async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
+  // Get current cycle from metadata (set by reasoning node)
+  const currentCycle = (state.metadata.currentCycle as number) || state.reasoningCycles
+  
   // Check abort signal
   if (state.signal?.aborted) {
-    throw new Error('Operation aborted')
+    console.log(`QAAgent(ReAct) [Cycle ${currentCycle}]: Client disconnected during action (aborted)`)
+    throw new Error('Operation aborted by client')
   }
 
   const toolCalls = (state.metadata.lastToolCalls as any[]) || []
@@ -367,6 +385,8 @@ export async function runQAAgent(
     isComplete: false,
     result: null,
     metadata: {},
+    reasoningCycles: 0,
+    maxReasoningCycles: 10,
   }
 
   // Execute workflow

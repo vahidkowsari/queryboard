@@ -73,19 +73,10 @@ export class ReActOrchestrator<TState extends ReActState> {
     let currentState = { ...initialState }
     let currentNode = this.workflow.entryPoint
     let totalSteps = 0
-    let reasoningCycles = 0
     const reasoningNodeName = this.workflow.reasoningNodeName || 'reason'
 
     while (currentNode !== 'END' && totalSteps < this.workflow.maxSteps * 10) { // Safety: 10x buffer
       totalSteps++
-
-      // Track reasoning cycles for more intuitive limits
-      if (currentNode === reasoningNodeName) {
-        reasoningCycles++
-        if (reasoningCycles > this.workflow.maxSteps) {
-          throw new Error(`ReAct workflow exceeded maximum reasoning cycles (${this.workflow.maxSteps})`)
-        }
-      }
 
       const nodeFunction = this.workflow.nodes.get(currentNode)
       if (!nodeFunction) {
@@ -98,6 +89,14 @@ export class ReActOrchestrator<TState extends ReActState> {
 
       // Notify state change
       this.onStateChangeCallback?.(currentState)
+
+      // Check reasoning cycle limit using state field
+      if (currentNode === reasoningNodeName) {
+        const currentCycle = (currentState.metadata.currentCycle as number) || 0
+        if (currentCycle > this.workflow.maxSteps) {
+          throw new Error(`ReAct workflow exceeded maximum reasoning cycles (${this.workflow.maxSteps})`)
+        }
+      }
 
       // Check if workflow is complete
       if (currentState.isComplete) {

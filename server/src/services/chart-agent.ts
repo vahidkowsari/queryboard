@@ -71,6 +71,8 @@ interface ChartReActState extends ReActState<ChartAgentResult> {
   signal?: AbortSignal
   onStep?: (step: string) => void
   onThinking?: (text: string) => void
+  reasoningCycles: number
+  maxReasoningCycles: number
 }
 
 /**
@@ -137,16 +139,26 @@ function coerceNumbersInSpec(spec: Record<string, unknown>): void {
  * Reasoning Node - LLM decides what to do next
  */
 async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReActState>> {
+  // Track reasoning cycles
+  const reasoningCycles = state.reasoningCycles + 1
+
   const newSteps = [...state.steps]
   const log = (msg: string) => {
     newSteps.push(msg)
     state.onStep?.(msg)
-    console.log(`ChartAgent(ReAct): ${msg}`)
+    console.log(`ChartAgent(ReAct) [Cycle ${reasoningCycles}]: ${msg}`)
   }
 
-  // Force chart creation if running out of steps
+  // Check for abort signal
+  if (state.signal?.aborted) {
+    console.log(`ChartAgent(ReAct) [Cycle ${reasoningCycles}]: Client disconnected (aborted)`)
+    throw new Error('Operation aborted by client')
+  }
+
+  // Force chart creation if running out of cycles (90% of max)
+  const warningThreshold = Math.floor(state.maxReasoningCycles * 0.9)
   let conversationHistory = [...state.conversationHistory]
-  if (state.intermediateSteps.length >= 18 && state.toolContext.lastQueryResult) {
+  if (reasoningCycles >= warningThreshold && state.toolContext.lastQueryResult) {
     conversationHistory = [
       ...conversationHistory,
       {
@@ -195,11 +207,13 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
     nextAction: toolCalls.length > 0 ? toolCalls[0].toolName : null,
     steps: newSteps,
     tokenUsage: newTokenUsage,
+    reasoningCycles,
     metadata: {
       ...state.metadata,
       lastThought: thought,
       lastToolCalls: toolCalls,
       lastNode: 'reason',
+      currentCycle: reasoningCycles,
     },
   }
 }
@@ -210,9 +224,13 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
  * extract terminal actions and track intermediate steps
  */
 async function actingNode(state: ChartReActState): Promise<Partial<ChartReActState>> {
+  // Get current cycle from metadata (set by reasoning node)
+  const currentCycle = (state.metadata.currentCycle as number) || state.reasoningCycles
+  
   // Check abort signal
   if (state.signal?.aborted) {
-    throw new Error('Operation aborted')
+    console.log(`ChartAgent(ReAct) [Cycle ${currentCycle}]: Client disconnected during action (aborted)`)
+    throw new Error('Operation aborted by client')
   }
 
   const toolCalls = (state.metadata.lastToolCalls as any[]) || []
@@ -445,6 +463,8 @@ export async function runChartAgent(
     isComplete: false,
     result: null,
     metadata: {},
+    reasoningCycles: 0,
+    maxReasoningCycles: 20,
   }
 
   // Execute workflow
