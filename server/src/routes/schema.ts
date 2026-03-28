@@ -10,6 +10,7 @@ import { enrichSchemaWithDescriptions } from '../services/schema-enricher.js'
 import { createTokenUsageService } from '../services/token-usage.service.js'
 import { createSchemaJobService } from '../services/schema-job.service.js'
 import { initializeSSE, writeSSEEvent } from './sse-utils.js'
+import { schemaDetectBodySchema } from './schema-validation.js'
 import type { Db } from '../db/index.js'
 import type { SchemaProgressEvent, ProjectRow } from '../types.js'
 
@@ -105,6 +106,11 @@ export function createSchemaRoutes(db: Db): Router {
     '/detect',
     requireRole(ROLES.ADMIN, ROLES.EDITOR),
     asyncHandler(async (req, res) => {
+      const parsed = schemaDetectBodySchema.safeParse(req.body ?? {})
+      if (!parsed.success) {
+        return void res.status(400).json({ error: 'Invalid request payload', details: parsed.error.issues })
+      }
+
       const project = req.project!
 
       if (await schemaJobService.hasRunningJob(project.id)) {
