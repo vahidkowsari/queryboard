@@ -9,6 +9,7 @@ import { detectSchema } from '../services/schema-detector.js'
 import { enrichSchemaWithDescriptions } from '../services/schema-enricher.js'
 import { createTokenUsageService } from '../services/token-usage.service.js'
 import { createSchemaJobService } from '../services/schema-job.service.js'
+import { initializeSSE, writeSSEEvent } from './sse-utils.js'
 import type { Db } from '../db/index.js'
 import type { SchemaProgressEvent, ProjectRow } from '../types.js'
 
@@ -128,16 +129,13 @@ export function createSchemaRoutes(db: Db): Router {
     asyncHandler(async (req, res) => {
       const project = req.project!
 
-      res.setHeader('Content-Type', 'text/event-stream')
-      res.setHeader('Cache-Control', 'no-cache')
-      res.setHeader('Connection', 'keep-alive')
-      res.flushHeaders()
+      initializeSSE(res)
 
       let finished = false
 
       function sendEvent(event: SchemaProgressEvent) {
         if (!finished) {
-          res.write(`data: ${JSON.stringify(event)}\n\n`)
+          writeSSEEvent(res, 'message', event)
         }
       }
 

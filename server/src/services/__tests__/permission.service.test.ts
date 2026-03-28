@@ -66,7 +66,15 @@ function createMockDb(opts: {
     })),
   }
 
-  return db
+  const tx = {
+    delete: db.delete,
+    insert: db.insert,
+  }
+
+  return {
+    ...db,
+    transaction: vi.fn().mockImplementation(async (fn: (trx: typeof tx) => Promise<unknown>) => fn(tx)),
+  }
 }
 
 // ---------------------------------------------------------------------------

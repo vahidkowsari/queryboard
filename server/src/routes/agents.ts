@@ -13,6 +13,7 @@ import { createTokenUsageService } from '../services/token-usage.service.js'
 import { createConversationService } from '../services/conversation.service.js'
 import { createPermissionService } from '../services/permission.service.js'
 import { createAuditLogService } from '../services/audit-log.service.js'
+import { initializeSSE, writeSSEEvent, startSSEHeartbeat, attachSSELifecycle } from './sse-utils.js'
 import type { Db } from '../db/index.js'
 import type { Schema } from '../types.js'
 import type { SessionRequest } from 'supertokens-node/framework/express/index.js'
@@ -63,29 +64,18 @@ export function createAgentRoutes(db: Db): Router {
       console.log(`ChartAgent: user=${userId} project=${project.id} query="${userQuery.substring(0, 80)}"`)
 
       // SSE streaming for step-by-step updates
-      res.setHeader('Content-Type', 'text/event-stream')
-      res.setHeader('Cache-Control', 'no-cache')
-      res.setHeader('Connection', 'keep-alive')
-      res.flushHeaders()
+      initializeSSE(res)
 
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      console.log(`ChartAgent: SSE stream started user=${userId} project=${project.id}`)
-      res.once('close', () => {
-        console.log(`ChartAgent: SSE stream closed by client user=${userId} project=${project.id}`)
-        ac.abort()
-      })
-      res.once('finish', () => {
-        console.log(`ChartAgent: SSE stream finished user=${userId} project=${project.id}`)
-      })
-      res.on('error', (streamErr) => {
-        console.error(`ChartAgent: SSE stream error user=${userId} project=${project.id}`, streamErr)
+      attachSSELifecycle(res, {
+        label: 'ChartAgent',
+        context: `user=${userId} project=${project.id}`,
+        onClientClose: () => ac.abort(),
       })
 
       // Send periodic heartbeats to keep CloudFront from timing out
-      const heartbeat = setInterval(() => {
-        if (!res.writableEnded) res.write(`: heartbeat\n\n`)
-      }, 15_000)
+      const stopHeartbeat = startSSEHeartbeat(res)
 
       try {
         const result = await runChartAgent(
@@ -94,10 +84,10 @@ export function createAgentRoutes(db: Db): Router {
           executor,
           chartType,
           (step) => {
-            if (!res.writableEnded) res.write(`event: step\ndata: ${JSON.stringify({ step })}\n\n`)
+            writeSSEEvent(res, 'step', { step })
           },
           (text) => {
-            if (!res.writableEnded) res.write(`event: thinking\ndata: ${JSON.stringify({ text })}\n\n`)
+            writeSSEEvent(res, 'thinking', { text })
           },
           existingChart || undefined,
           project.llmConfig,
@@ -106,20 +96,18 @@ export function createAgentRoutes(db: Db): Router {
           ac.signal,
         )
 
-        res.write(
-          `event: result\ndata: ${JSON.stringify({
-            title: result.title,
-            chartType: result.chartType,
-            sql: result.sql,
-            description: result.description,
-            summary: result.summary,
-            chartSpec: result.chartSpec,
-            data: result.data,
-            columns: result.columns,
-            steps: result.steps,
-            filters: result.filters,
-          })}\n\n`,
-        )
+        writeSSEEvent(res, 'result', {
+          title: result.title,
+          chartType: result.chartType,
+          sql: result.sql,
+          description: result.description,
+          summary: result.summary,
+          chartSpec: result.chartSpec,
+          data: result.data,
+          columns: result.columns,
+          steps: result.steps,
+          filters: result.filters,
+        })
 
         try {
           if (result.tokenUsage.totalTokens > 0) {
@@ -143,10 +131,10 @@ export function createAgentRoutes(db: Db): Router {
         } else {
           console.error('ChartAgent: generation failed', err)
           const msg = err instanceof Error ? err.message : 'Chart generation failed'
-          if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
+          writeSSEEvent(res, 'error', { error: msg })
         }
       } finally {
-        clearInterval(heartbeat)
+        stopHeartbeat()
       }
       if (!res.writableEnded) res.end()
     }),
@@ -199,32 +187,21 @@ export function createAgentRoutes(db: Db): Router {
       // Save user message AFTER fetching history
       await conversationService.addMessage(convId, 'user', question)
 
-      res.setHeader('Content-Type', 'text/event-stream')
-      res.setHeader('Cache-Control', 'no-cache')
-      res.setHeader('Connection', 'keep-alive')
-      res.flushHeaders()
+      initializeSSE(res)
 
       // Send conversationId so frontend can track it
-      res.write(`event: conversation\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`)
+      writeSSEEvent(res, 'conversation', { conversationId: convId })
 
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      console.log(`QAAgent: SSE stream started user=${userId} project=${project.id}`)
-      res.once('close', () => {
-        console.log(`QAAgent: SSE stream closed by client user=${userId} project=${project.id}`)
-        ac.abort()
-      })
-      res.once('finish', () => {
-        console.log(`QAAgent: SSE stream finished user=${userId} project=${project.id}`)
-      })
-      res.on('error', (streamErr) => {
-        console.error(`QAAgent: SSE stream error user=${userId} project=${project.id}`, streamErr)
+      attachSSELifecycle(res, {
+        label: 'QAAgent',
+        context: `user=${userId} project=${project.id}`,
+        onClientClose: () => ac.abort(),
       })
 
       // Send periodic heartbeats to keep CloudFront from timing out
-      const heartbeat = setInterval(() => {
-        if (!res.writableEnded) res.write(`: heartbeat\n\n`)
-      }, 15_000)
+      const stopHeartbeat = startSSEHeartbeat(res)
 
       try {
         const result = await runQAAgent(
@@ -232,25 +209,23 @@ export function createAgentRoutes(db: Db): Router {
           schema,
           executor,
           (step) => {
-            if (!res.writableEnded) res.write(`event: step\ndata: ${JSON.stringify({ step })}\n\n`)
+            writeSSEEvent(res, 'step', { step })
           },
           (text) => {
-            if (!res.writableEnded) res.write(`event: thinking\ndata: ${JSON.stringify({ text })}\n\n`)
+            writeSSEEvent(res, 'thinking', { text })
           },
           project.llmConfig,
           ac.signal,
           conversationHistory,
         )
 
-        res.write(
-          `event: result\ndata: ${JSON.stringify({
-            answer: result.answer,
-            sql: result.sql,
-            data: result.data,
-            columns: result.columns,
-            steps: result.steps,
-          })}\n\n`,
-        )
+        writeSSEEvent(res, 'result', {
+          answer: result.answer,
+          sql: result.sql,
+          data: result.data,
+          columns: result.columns,
+          steps: result.steps,
+        })
 
         try {
           if (result.tokenUsage.totalTokens > 0) {
@@ -280,10 +255,10 @@ export function createAgentRoutes(db: Db): Router {
         } else {
           console.error('QAAgent: failed', err)
           const msg = err instanceof Error ? err.message : 'Failed to answer question'
-          if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
+          writeSSEEvent(res, 'error', { error: msg })
         }
       } finally {
-        clearInterval(heartbeat)
+        stopHeartbeat()
       }
       if (!res.writableEnded) res.end()
     }),
@@ -354,30 +329,19 @@ export function createAgentRoutes(db: Db): Router {
       await conversationService.addMessage(convId, 'user', message)
 
       // SSE streaming
-      res.setHeader('Content-Type', 'text/event-stream')
-      res.setHeader('Cache-Control', 'no-cache')
-      res.setHeader('Connection', 'keep-alive')
-      res.flushHeaders()
+      initializeSSE(res)
 
-      res.write(`event: conversation\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`)
+      writeSSEEvent(res, 'conversation', { conversationId: convId })
 
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      console.log(`ChartChatAgent: SSE stream started user=${userId} project=${project.id} conversation=${convId}`)
-      res.once('close', () => {
-        console.log(`ChartChatAgent: SSE stream closed by client user=${userId} project=${project.id} conversation=${convId}`)
-        ac.abort()
-      })
-      res.once('finish', () => {
-        console.log(`ChartChatAgent: SSE stream finished user=${userId} project=${project.id} conversation=${convId}`)
-      })
-      res.on('error', (streamErr) => {
-        console.error(`ChartChatAgent: SSE stream error user=${userId} project=${project.id} conversation=${convId}`, streamErr)
+      attachSSELifecycle(res, {
+        label: 'ChartChatAgent',
+        context: `user=${userId} project=${project.id} conversation=${convId}`,
+        onClientClose: () => ac.abort(),
       })
 
-      const heartbeat = setInterval(() => {
-        if (!res.writableEnded) res.write(`: heartbeat\n\n`)
-      }, 15_000)
+      const stopHeartbeat = startSSEHeartbeat(res)
 
       try {
         const result = await runChartChatAgent(
@@ -386,25 +350,23 @@ export function createAgentRoutes(db: Db): Router {
           schema,
           executor,
           (step) => {
-            if (!res.writableEnded) res.write(`event: step\ndata: ${JSON.stringify({ step })}\n\n`)
+            writeSSEEvent(res, 'step', { step })
           },
           (text) => {
-            if (!res.writableEnded) res.write(`event: thinking\ndata: ${JSON.stringify({ text })}\n\n`)
+            writeSSEEvent(res, 'thinking', { text })
           },
           project.llmConfig,
           ac.signal,
           conversationHistory,
         )
 
-        res.write(
-          `event: result\ndata: ${JSON.stringify({
-            answer: result.answer,
-            sql: result.sql,
-            data: result.data,
-            columns: result.columns,
-            steps: result.steps,
-          })}\n\n`,
-        )
+        writeSSEEvent(res, 'result', {
+          answer: result.answer,
+          sql: result.sql,
+          data: result.data,
+          columns: result.columns,
+          steps: result.steps,
+        })
 
         try {
           if (result.tokenUsage.totalTokens > 0) {
@@ -435,10 +397,10 @@ export function createAgentRoutes(db: Db): Router {
         } else {
           console.error('ChartChatAgent: failed', err)
           const msg = err instanceof Error ? err.message : 'Chart chat failed'
-          if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
+          writeSSEEvent(res, 'error', { error: msg })
         }
       } finally {
-        clearInterval(heartbeat)
+        stopHeartbeat()
       }
       if (!res.writableEnded) res.end()
     }),

@@ -1,4 +1,4 @@
-import type { TokenUsageInfo } from './chart-agent.js'
+import type { TokenUsageInfo } from './chart-agent-types.js'
 import type { ModelMessage } from 'ai'
 
 export const REACT_URGENCY_PROMPTS = {
@@ -8,8 +8,33 @@ export const REACT_URGENCY_PROMPTS = {
     'You are running out of turns. Call answer_question NOW with whatever information you have.',
 } as const
 
+export const REACT_RECOVERY_PROMPTS = {
+  createChartRetry:
+    'Your previous create_chart tool call was invalid because required arguments were missing. ' +
+    'Call create_chart again now and include ALL required fields: title, sql, description, summary, chart_spec. ' +
+    'Do not call any other tool. Use this exact JSON shape for arguments: ' +
+    '{"title":"...","chart_type":"bar|line|area|pie|scatter|kpi|table|map","sql":"...","description":"...","summary":"...","chart_spec":"{...json string...}"}',
+} as const
+
+export const REACT_TERMINAL_ERRORS = {
+  chartNoResult: 'ReAct workflow completed but no chart result was produced',
+  qaNoResult: 'ReAct workflow completed but no QA result was produced',
+} as const
+
 export function formatAgentCycleLog(agentLabel: string, cycle: number, message: string): string {
   return `${agentLabel} [Cycle ${cycle}]: ${message}`
+}
+
+const telemetryCounters = new Map<string, number>()
+
+export function incrementTelemetryCounter(name: string): number {
+  const next = (telemetryCounters.get(name) || 0) + 1
+  telemetryCounters.set(name, next)
+  return next
+}
+
+export function resetTelemetryCountersForTests(): void {
+  telemetryCounters.clear()
 }
 
 export interface ReActNodeMetadata {
@@ -17,6 +42,7 @@ export interface ReActNodeMetadata {
   lastToolCalls?: unknown[]
   lastNode?: 'reason' | 'act'
   currentCycle?: number
+  invalidCreateChartRetries?: number
 }
 
 export interface ToolCallLike {
@@ -44,6 +70,7 @@ export function assertNotAborted(
   if (!signal?.aborted) return
 
   const phaseLabel = phase === 'reason' ? 'Client disconnected (aborted)' : 'Client disconnected during action (aborted)'
+  incrementTelemetryCounter(`${agentLabel}.aborted.${phase}`)
   console.log(formatAgentCycleLog(agentLabel, cycle, phaseLabel))
   throw new Error('Operation aborted by client')
 }

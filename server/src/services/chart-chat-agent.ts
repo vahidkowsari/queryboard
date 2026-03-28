@@ -3,7 +3,7 @@ import type { Schema, QueryExecutor, LLMConfig, ChartFilter } from '../types.js'
 import { createLLMModel } from './llm-providers/index.js'
 import { rowsToObjects } from './chart-agent-handlers.js'
 import { createDataTools, type ToolHandlerContext, type LogFn } from './agent-tools.js'
-import type { TokenUsageInfo } from './chart-agent.js'
+import type { TokenUsageInfo } from './chart-agent-types.js'
 import type { ConversationHistoryMessage } from './qa-agent.js'
 
 /**

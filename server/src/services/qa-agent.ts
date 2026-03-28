@@ -1,16 +1,18 @@
-import { generateText, tool, jsonSchema, type ModelMessage } from 'ai'
+import { generateText, tool, jsonSchema, type ModelMessage, type LanguageModel } from 'ai'
 import type { Schema, QueryExecutor, LLMConfig } from '../types.js'
 import { createLLMModel } from './llm-providers/index.js'
 import { rowsToObjects } from './chart-agent-handlers.js'
 import { createDataTools, type ToolHandlerContext } from './agent-tools.js'
-import type { TokenUsageInfo } from './chart-agent.js'
+import type { TokenUsageInfo } from './chart-agent-types.js'
 import { ReActOrchestrator, ReActWorkflowBuilder, type ReActState, type IntermediateStep } from './react-orchestrator.js'
 import {
   assertNotAborted,
   accumulateTokenUsage,
   formatAgentCycleLog,
   getReActMeta,
+  incrementTelemetryCounter,
   REACT_URGENCY_PROMPTS,
+  REACT_TERMINAL_ERRORS,
   setReActMeta,
   type ToolCallLike,
 } from './react-agent-utils.js'
@@ -84,8 +86,6 @@ function createQATools(ctx: ToolHandlerContext, log: (msg: string) => void) {
   }
 }
 
-const MAX_TURNS = 10
-
 /**
  * Message format for conversation history
  */
@@ -103,7 +103,7 @@ interface QAReActState extends ReActState<QAResult> {
   executor: QueryExecutor
   toolContext: ToolHandlerContext
   llmConfig: {
-    model: any
+    model: LanguageModel
     vendor: string
     modelId: string
     temperature: number
@@ -235,6 +235,8 @@ async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
       steps: newSteps,
       tokenUsage: state.tokenUsage,
     }
+
+    incrementTelemetryCounter('qa_agent.completed')
 
     // Create intermediate step for the final action
     const step: IntermediateStep = {
@@ -386,7 +388,7 @@ export async function runQAAgent(
   const finalState = await orchestrator.execute(initialState)
 
   if (!finalState.result) {
-    throw new Error('ReAct workflow completed but no result was produced')
+    throw new Error(REACT_TERMINAL_ERRORS.qaNoResult)
   }
 
   return finalState.result
