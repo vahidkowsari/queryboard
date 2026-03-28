@@ -1,7 +1,7 @@
 <template>
   <div class="vega-chart-container">
-    <div v-if="isKpi" class="flex flex-col items-center justify-center h-48 bg-muted/30 rounded-lg border">
-      <div class="text-5xl font-bold text-primary">{{ kpiValue }}</div>
+    <div v-if="isKpi" class="flex flex-col items-center justify-center h-48 rounded-lg border" :style="kpiContainerStyle">
+      <div class="text-5xl font-bold" :style="kpiValueStyle">{{ kpiValue }}</div>
       <div v-if="kpiChange !== null" class="flex items-center gap-1.5 mt-2">
         <span
           :class="[
@@ -16,9 +16,9 @@
           <span v-else>&mdash;</span>
           {{ kpiChange.label }}
         </span>
-        <span v-if="kpiChange.periodLabel" class="text-xs text-muted-foreground">{{ kpiChange.periodLabel }}</span>
+        <span v-if="kpiChange.periodLabel" class="text-xs" :style="kpiMetaStyle">{{ kpiChange.periodLabel }}</span>
       </div>
-      <div v-if="kpiLabel" class="text-sm text-muted-foreground mt-2">{{ kpiLabel }}</div>
+      <div v-if="kpiLabel" class="text-sm mt-2" :style="kpiMetaStyle">{{ kpiLabel }}</div>
     </div>
     <template v-else>
       <div v-if="error" class="flex items-center justify-center h-64">
@@ -35,7 +35,7 @@ import embed from 'vega-embed'
 import type { TopLevelSpec } from 'vega-lite'
 import type { EmbedOptions, Result } from 'vega-embed'
 import type { VegaSpec, ColorConfig } from '../types'
-import { applyProjectColors } from '../utils/applyColors'
+import { applyChartColors } from '../utils/applyColors'
 
 interface Props {
   spec: VegaSpec
@@ -45,6 +45,8 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const coloredChart = computed(() => applyChartColors(props.spec, props.colorConfig))
 
 const chartContainer = ref<HTMLElement | null>(null)
 const error = ref<string | null>(null)
@@ -61,7 +63,7 @@ async function exportPng() {
 
 defineExpose({ exportPng })
 
-const specAsVega = computed(() => props.spec)
+const specAsVega = computed(() => coloredChart.value.spec)
 
 const isKpi = computed(() => {
   const s = specAsVega.value
@@ -170,6 +172,24 @@ const kpiLabel = computed(() => {
   return specAsVega.value?.title || ''
 })
 
+const kpiContainerStyle = computed<Record<string, string>>(() => {
+  return {
+    backgroundColor: coloredChart.value.theme.backgroundColor,
+  }
+})
+
+const kpiValueStyle = computed<Record<string, string>>(() => {
+  return {
+    color: coloredChart.value.theme.valueColor,
+  }
+})
+
+const kpiMetaStyle = computed<Record<string, string>>(() => {
+  return {
+    color: coloredChart.value.theme.metaColor,
+  }
+})
+
 async function renderChart() {
   await nextTick()
   if (isKpi.value) return
@@ -183,10 +203,7 @@ async function renderChart() {
       vegaView = null
     }
 
-    let base = props.spec
-    if (props.colorConfig?.palette?.length) {
-      base = applyProjectColors(base, props.colorConfig)
-    }
+    const base = specAsVega.value
 
     const hasProjection = !!(base as Record<string, unknown>).projection ||
       ((base as Record<string, unknown>).layer as unknown[])?.some?.(

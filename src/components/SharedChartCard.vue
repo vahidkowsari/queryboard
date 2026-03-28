@@ -62,6 +62,7 @@ import ChartRenderer from './ChartRenderer.vue'
 import Card from './ui/card.vue'
 import type { ChartRow } from '../services/dashboard.api'
 import type { ChartDataRow, ColorConfig } from '../types'
+import { resolveEffectiveColorConfig } from '../utils/resolveColorConfig'
 
 interface Props {
   chart: ChartRow
@@ -81,8 +82,10 @@ const hasRenderableSpec = computed(() => {
 })
 
 const effectiveColorConfig = computed<ColorConfig | undefined>(() => {
-  if (props.chart.colorConfig?.palette?.length) return props.chart.colorConfig
-  return undefined
+  return resolveEffectiveColorConfig({
+    chartColorConfig: props.chart.colorConfig,
+    projectColorConfig: props.colorConfig,
+  })
 })
 
 const tableData = computed<ChartDataRow[]>(() => {

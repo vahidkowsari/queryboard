@@ -150,6 +150,7 @@ import Card from './ui/card.vue'
 import Button from './ui/button.vue'
 import type { Chart, ChartDataRow, ColorConfig, ChartLibrary } from '../types'
 import { exportCsv, exportExcel } from '../utils/exportData'
+import { resolveEffectiveColorConfig } from '../utils/resolveColorConfig'
 
 interface Props {
   chart: Chart
@@ -215,9 +216,10 @@ const hasRenderableSpec = computed(() => {
 })
 
 const effectiveColorConfig = computed<ColorConfig | undefined>(() => {
-  if (props.chart.colorConfig?.palette?.length) return props.chart.colorConfig
-  if (props.colorConfig?.palette?.length) return props.colorConfig
-  return undefined
+  return resolveEffectiveColorConfig({
+    chartColorConfig: props.chart.colorConfig,
+    projectColorConfig: props.colorConfig,
+  })
 })
 
 const tableData = computed<ChartDataRow[]>(() => {

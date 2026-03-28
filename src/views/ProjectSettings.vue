@@ -239,7 +239,12 @@
                     v-for="preset in COLOR_PRESETS"
                     :key="preset.name"
                     @click="applyPreset(preset)"
-                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border rounded-md hover:bg-muted transition-colors"
+                    :class="[
+                      'flex items-center gap-1.5 px-2.5 py-1.5 text-xs border rounded-md transition-colors',
+                      activePresetName === preset.name
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'hover:bg-muted',
+                    ]"
                   >
                     <span class="flex gap-0.5">
                       <span
@@ -252,6 +257,9 @@
                     {{ preset.name }}
                   </button>
                 </div>
+                <p class="text-xs text-muted-foreground mt-2">
+                  Current selection: {{ activePresetName || (colorForm.palette.length ? 'Custom' : 'None') }}
+                </p>
               </div>
 
               <div>
@@ -411,6 +419,24 @@ watch(() => llmForm.value.vendor, (vendor) => {
 const chartLibForm = ref({ library: 'vega-lite' as ChartLibrary })
 const colorForm = ref({ palette: [] as string[], background: '', textColor: '' })
 const activeTab = ref('general')
+
+function normalizePalette(palette: string[]): string[] {
+  return palette.map((c) => c.trim().toLowerCase())
+}
+
+function palettesEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false
+  const a = normalizePalette(left)
+  const b = normalizePalette(right)
+  return a.every((color, i) => color === b[i])
+}
+
+const activePresetName = computed(() => {
+  const current = colorForm.value.palette.filter((c) => c.trim())
+  if (!current.length) return ''
+  const match = COLOR_PRESETS.find((preset) => palettesEqual(current, preset.palette))
+  return match?.name || ''
+})
 
 const tabOptions = [
   { value: 'general', label: 'General' },

@@ -235,7 +235,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Sparkles, Save, ChevronDown, Check, Loader2, Palette, X, Eye, MessageSquare } from 'lucide-vue-next'
 import ChartRenderer from './ChartRenderer.vue'
 import InfoTooltip from './InfoTooltip.vue'
@@ -249,6 +250,7 @@ import { useResumableSSE, type SSECallbacks } from '../composables/useResumableS
 import type { Chart, ChartType, ChartLibrary, ChartDataRow, ColorConfig, ChartFilter } from '../types'
 import { CHART_TYPE_OPTIONS } from '../utils/chartTransform'
 import { COLOR_PRESETS } from '../utils/colorPresets'
+import { resolveEffectiveColorConfig } from '../utils/resolveColorConfig'
 
 interface Props {
   dashboardId: string
@@ -267,6 +269,7 @@ const emit = defineEmits<{
 
 const dashboardStore = useDashboardStore()
 const toast = useToast()
+const route = useRoute()
 const { isEditor } = useRole()
 const isViewOnly = computed(() => !isEditor())
 const { startSession, reconnectSession, findLatestSession, finishSession } = useResumableSSE()
@@ -291,9 +294,21 @@ const totalStepsReceived = ref(0)
 const generatedTitle = ref<string | null>(null)
 const lastQuery = ref<string | null>(props.editChart?.userQuery || null)
 const showColorPicker = ref(false)
-const activeColorPalette = ref<string[]>(props.editChart?.colorConfig?.palette || [])
+const activeColorPalette = ref<string[]>(props.editChart?.colorConfig?.palette || props.colorConfig?.palette || [])
 const customColor = ref('#4e79a7')
 const chartFilters = ref<ChartFilter[] | null>(props.editChart?.filters || null)
+
+watch(
+  () => props.colorConfig?.palette,
+  (palette) => {
+    if (activeColorPalette.value.length > 0) return
+    if (props.editChart?.colorConfig?.palette?.length) return
+    if (palette?.length) {
+      activeColorPalette.value = [...palette]
+    }
+  },
+  { immediate: true },
+)
 
 const hasRenderableSpec = computed(() => {
   const spec = generatedChart.value as Record<string, unknown> | undefined
@@ -332,8 +347,11 @@ function clearColors() {
 }
 
 const activeColorConfig = computed<ColorConfig | undefined>(() => {
-  if (!activeColorPalette.value.length) return undefined
-  return { palette: activeColorPalette.value }
+  return resolveEffectiveColorConfig({
+    chartColorConfig: props.editChart?.colorConfig,
+    projectColorConfig: props.colorConfig,
+    paletteOverride: activeColorPalette.value.length ? activeColorPalette.value : undefined,
+  })
 })
 
 function hasExistingChart(): boolean {
@@ -343,6 +361,11 @@ function hasExistingChart(): boolean {
 const chartTypeOptions = [{ value: 'auto' as ChartType, label: 'Auto' }, ...CHART_TYPE_OPTIONS]
 
 let receivedResult = false
+
+const resolvedProjectId = computed(() => {
+  const fromUrl = (route.params.projectId as string | undefined)?.trim()
+  return fromUrl || ''
+})
 
 function makeSSECallbacks(): SSECallbacks {
   return {
@@ -395,7 +418,7 @@ async function generateChart() {
   totalStepsReceived.value = 0
   receivedResult = false
 
-  const pid = dashboardStore.projectId?.trim()
+  const pid = resolvedProjectId.value
 
   try {
     if (!pid) {
@@ -450,7 +473,7 @@ async function generateChart() {
 }
 
 onMounted(async () => {
-  const pid = dashboardStore.projectId?.trim()
+  const pid = resolvedProjectId.value
   if (!pid) return
 
   const sessionId = await findLatestSession(pid, 'generate-chart', { dashboardId: props.dashboardId })
