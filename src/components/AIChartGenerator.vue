@@ -357,9 +357,14 @@ async function generateChart() {
 
   const controller = new AbortController()
   abortController.value = controller
-  const pid = dashboardStore.projectId
+  const pid = dashboardStore.projectId?.trim()
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
 
   try {
+    if (!pid) {
+      throw new Error('No project selected. Please refresh the page and try again.')
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/projects/${pid}/agents/generate-chart`, {
       method: 'POST',
       credentials: 'include',
@@ -387,7 +392,7 @@ async function generateChart() {
       throw new Error(body.error || `HTTP ${response.status}`)
     }
 
-    const reader = response.body?.getReader()
+    reader = response.body?.getReader() ?? null
     if (!reader) throw new Error('No response stream')
 
     const decoder = new TextDecoder()
@@ -406,19 +411,35 @@ async function generateChart() {
             console.warn('SSE: failed to parse JSON line, skipping:', line.slice(6, 120))
             continue
           }
+
+          if (!data || typeof data !== 'object') {
+            eventType = ''
+            continue
+          }
+
           if (eventType === 'step') {
+            const stepText = typeof data.step === 'string' ? data.step : ''
+            if (!stepText) {
+              eventType = ''
+              continue
+            }
             // Filter out model/vendor information from UI display unless showLlmDetails is enabled
-            const shouldShow = props.showLlmDetails || !data.step.startsWith('Using ')
+            const shouldShow = props.showLlmDetails || !stepText.startsWith('Using ')
             if (shouldShow) {
-              agentSteps.value.push(data.step)
+              agentSteps.value.push(stepText)
               stepToThinkingMap.value.push(totalStepsReceived.value)
-              status.value = data.step
+              status.value = stepText
             }
             totalStepsReceived.value++
           } else if (eventType === 'thinking') {
+            const thinkingText = typeof data.text === 'string' ? data.text : ''
+            if (!thinkingText) {
+              eventType = ''
+              continue
+            }
             // Store thinking text at the current total step index (including filtered steps)
             const idx = totalStepsReceived.value
-            thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + data.text
+            thinkingTexts.value[idx] = (thinkingTexts.value[idx] || '') + thinkingText
           } else if (eventType === 'result') {
             generatedTitle.value = data.title || null
             sqlQuery.value = data.sql
@@ -428,7 +449,8 @@ async function generateChart() {
             chartData.value = data.data || null
             chartFilters.value = data.filters?.length ? data.filters : null
           } else if (eventType === 'error') {
-            throw new Error(data.error)
+            const errMsg = typeof data.error === 'string' && data.error.trim() ? data.error : 'Chart generation failed'
+            throw new Error(errMsg)
           }
           eventType = ''
         }
@@ -458,11 +480,22 @@ async function generateChart() {
       status.value = 'Cancelled'
     } else {
       const raw = err instanceof Error ? err.message : String(err)
-      const isNetworkErr = err instanceof TypeError || raw.toLowerCase().includes('network') || raw.toLowerCase().includes('failed to fetch')
+      const normalized = raw.toLowerCase()
+      const isNetworkErr =
+        normalized.includes('network') ||
+        normalized.includes('failed to fetch') ||
+        normalized.includes('load failed') ||
+        normalized.includes('network connection was lost')
       error.value = isNetworkErr ? 'Connection lost — please check your network and try again' : raw
     }
     status.value = ''
   } finally {
+    if (reader) {
+      try {
+        await reader.cancel()
+      } catch {
+      }
+    }
     abortController.value = null
     loading.value = false
   }

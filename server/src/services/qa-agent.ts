@@ -5,6 +5,15 @@ import { rowsToObjects } from './chart-agent-handlers.js'
 import { createDataTools, type ToolHandlerContext } from './agent-tools.js'
 import type { TokenUsageInfo } from './chart-agent.js'
 import { ReActOrchestrator, ReActWorkflowBuilder, type ReActState, type IntermediateStep } from './react-orchestrator.js'
+import {
+  assertNotAborted,
+  accumulateTokenUsage,
+  formatAgentCycleLog,
+  getReActMeta,
+  REACT_URGENCY_PROMPTS,
+  setReActMeta,
+  type ToolCallLike,
+} from './react-agent-utils.js'
 
 /**
  * Result from the QA agent containing answer, optional SQL/data, and token usage
@@ -119,14 +128,10 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
   const log = (msg: string) => {
     newSteps.push(msg)
     state.onStep?.(msg)
-    console.log(`QAAgent(ReAct) [Cycle ${reasoningCycles}]: ${msg}`)
+    console.log(formatAgentCycleLog('QAAgent(ReAct)', reasoningCycles, msg))
   }
 
-  // Check for abort signal
-  if (state.signal?.aborted) {
-    console.log(`QAAgent(ReAct) [Cycle ${reasoningCycles}]: Client disconnected (aborted)`)
-    throw new Error('Operation aborted by client')
-  }
+  assertNotAborted(state.signal, 'QAAgent(ReAct)', reasoningCycles, 'reason')
 
   // Warn agent to answer soon if running out of cycles (80% of max)
   const warningThreshold = Math.floor(state.maxReasoningCycles * 0.8)
@@ -136,7 +141,7 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
       ...conversationHistory,
       {
         role: 'user',
-        content: 'You are running out of turns. Call answer_question NOW with whatever information you have.',
+        content: REACT_URGENCY_PROMPTS.qaAnswerNow,
       },
     ]
   }
@@ -154,15 +159,7 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
     abortSignal: state.signal,
   })
 
-  // Track token usage (immutably)
-  const turnInput = result.usage?.inputTokens ?? 0
-  const turnOutput = result.usage?.outputTokens ?? 0
-  const newTokenUsage = {
-    ...state.tokenUsage,
-    promptTokens: state.tokenUsage.promptTokens + turnInput,
-    completionTokens: state.tokenUsage.completionTokens + turnOutput,
-    totalTokens: state.tokenUsage.totalTokens + turnInput + turnOutput,
-  }
+  const newTokenUsage = accumulateTokenUsage(state.tokenUsage, result.usage)
 
   const thought = result.text?.trim() || ''
   const toolCalls = result.toolCalls || []
@@ -181,13 +178,12 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
     steps: newSteps,
     tokenUsage: newTokenUsage,
     reasoningCycles,
-    metadata: {
-      ...state.metadata,
+    metadata: setReActMeta(state.metadata, {
       lastThought: thought,
       lastToolCalls: toolCalls,
       lastNode: 'reason',
       currentCycle: reasoningCycles,
-    },
+    }),
   }
 }
 
@@ -198,27 +194,24 @@ async function reasoningNode(state: QAReActState): Promise<Partial<QAReActState>
  */
 async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
   // Get current cycle from metadata (set by reasoning node)
-  const currentCycle = (state.metadata.currentCycle as number) || state.reasoningCycles
-  
-  // Check abort signal
-  if (state.signal?.aborted) {
-    console.log(`QAAgent(ReAct) [Cycle ${currentCycle}]: Client disconnected during action (aborted)`)
-    throw new Error('Operation aborted by client')
-  }
+  const meta = getReActMeta(state.metadata)
+  const currentCycle = meta.currentCycle || state.reasoningCycles
 
-  const toolCalls = (state.metadata.lastToolCalls as any[]) || []
+  assertNotAborted(state.signal, 'QAAgent(ReAct)', currentCycle, 'act')
+
+  const toolCalls = (meta.lastToolCalls as ToolCallLike[]) || []
   
   if (toolCalls.length === 0) {
     throw new Error('Acting node called but no tool calls available')
   }
 
-  const thought = (state.metadata.lastThought as string) || ''
+  const thought = meta.lastThought || ''
   const toolCall = toolCalls[0]
   const newSteps = [...state.steps]
 
   // Check if this is the terminal answer_question action
   if (toolCall.toolName === 'answer_question') {
-    const input = toolCall.args as { answer: string; sql?: string }
+    const input = toolCall.input as { answer: string; sql?: string }
 
     const msg = 'Answering question'
     newSteps.push(msg)
@@ -258,10 +251,9 @@ async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
       steps: newSteps,
       isComplete: true,
       result,
-      metadata: {
-        ...state.metadata,
+      metadata: setReActMeta(state.metadata, {
         lastNode: 'act',
-      },
+      }),
     }
   }
 
@@ -272,7 +264,7 @@ async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
     stepNumber: state.intermediateSteps.length + 1,
     thought,
     action: toolCall.toolName,
-    actionInput: toolCall.args,
+    actionInput: (toolCall.input as Record<string, unknown>) || {},
     observation: 'Tool executed by AI SDK (see conversation history)',
     timestamp: new Date(),
   }
@@ -280,10 +272,9 @@ async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
   return {
     intermediateSteps: [...state.intermediateSteps, step],
     steps: newSteps,
-    metadata: {
-      ...state.metadata,
+    metadata: setReActMeta(state.metadata, {
       lastNode: 'act',
-    },
+    }),
   }
 }
 
@@ -291,16 +282,18 @@ async function actingNode(state: QAReActState): Promise<Partial<QAReActState>> {
  * Router - Decides which node to execute next
  */
 function qaRouter(state: QAReActState): string | 'END' {
+  const meta = getReActMeta(state.metadata)
+
   if (state.isComplete) {
     return 'END'
   }
 
   if (state.nextAction === null) {
-    throw new Error(`Agent finished without answering: ${state.metadata.lastThought || 'No response'}`)
+    throw new Error(`Agent finished without answering: ${meta.lastThought || 'No response'}`)
   }
 
   // After reasoning, go to acting. After acting, go back to reasoning.
-  const lastNode = state.metadata.lastNode as string | undefined
+  const lastNode = meta.lastNode
   if (lastNode === 'reason') {
     return 'act'
   } else if (lastNode === 'act') {

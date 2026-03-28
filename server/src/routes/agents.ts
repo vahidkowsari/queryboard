@@ -63,15 +63,24 @@ export function createAgentRoutes(db: Db): Router {
       console.log(`ChartAgent: user=${userId} project=${project.id} query="${userQuery.substring(0, 80)}"`)
 
       // SSE streaming for step-by-step updates
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      })
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.flushHeaders()
 
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      req.on('close', () => ac.abort())
+      console.log(`ChartAgent: SSE stream started user=${userId} project=${project.id}`)
+      res.once('close', () => {
+        console.log(`ChartAgent: SSE stream closed by client user=${userId} project=${project.id}`)
+        ac.abort()
+      })
+      res.once('finish', () => {
+        console.log(`ChartAgent: SSE stream finished user=${userId} project=${project.id}`)
+      })
+      res.on('error', (streamErr) => {
+        console.error(`ChartAgent: SSE stream error user=${userId} project=${project.id}`, streamErr)
+      })
 
       // Send periodic heartbeats to keep CloudFront from timing out
       const heartbeat = setInterval(() => {
@@ -132,6 +141,7 @@ export function createAgentRoutes(db: Db): Router {
         if (ac.signal.aborted) {
           console.log('ChartAgent: generation cancelled by client')
         } else {
+          console.error('ChartAgent: generation failed', err)
           const msg = err instanceof Error ? err.message : 'Chart generation failed'
           if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
         }
@@ -189,18 +199,27 @@ export function createAgentRoutes(db: Db): Router {
       // Save user message AFTER fetching history
       await conversationService.addMessage(convId, 'user', question)
 
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      })
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.flushHeaders()
 
       // Send conversationId so frontend can track it
       res.write(`event: conversation\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`)
 
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      req.on('close', () => ac.abort())
+      console.log(`QAAgent: SSE stream started user=${userId} project=${project.id}`)
+      res.once('close', () => {
+        console.log(`QAAgent: SSE stream closed by client user=${userId} project=${project.id}`)
+        ac.abort()
+      })
+      res.once('finish', () => {
+        console.log(`QAAgent: SSE stream finished user=${userId} project=${project.id}`)
+      })
+      res.on('error', (streamErr) => {
+        console.error(`QAAgent: SSE stream error user=${userId} project=${project.id}`, streamErr)
+      })
 
       // Send periodic heartbeats to keep CloudFront from timing out
       const heartbeat = setInterval(() => {
@@ -259,6 +278,7 @@ export function createAgentRoutes(db: Db): Router {
         if (ac.signal.aborted) {
           console.log('QAAgent: cancelled by client')
         } else {
+          console.error('QAAgent: failed', err)
           const msg = err instanceof Error ? err.message : 'Failed to answer question'
           if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
         }
@@ -334,17 +354,26 @@ export function createAgentRoutes(db: Db): Router {
       await conversationService.addMessage(convId, 'user', message)
 
       // SSE streaming
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      })
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.flushHeaders()
 
       res.write(`event: conversation\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`)
 
       const executor = createQueryExecutor(project.dbEngine, project.dbConfig)
       const ac = new AbortController()
-      req.on('close', () => ac.abort())
+      console.log(`ChartChatAgent: SSE stream started user=${userId} project=${project.id} conversation=${convId}`)
+      res.once('close', () => {
+        console.log(`ChartChatAgent: SSE stream closed by client user=${userId} project=${project.id} conversation=${convId}`)
+        ac.abort()
+      })
+      res.once('finish', () => {
+        console.log(`ChartChatAgent: SSE stream finished user=${userId} project=${project.id} conversation=${convId}`)
+      })
+      res.on('error', (streamErr) => {
+        console.error(`ChartChatAgent: SSE stream error user=${userId} project=${project.id} conversation=${convId}`, streamErr)
+      })
 
       const heartbeat = setInterval(() => {
         if (!res.writableEnded) res.write(`: heartbeat\n\n`)
@@ -404,6 +433,7 @@ export function createAgentRoutes(db: Db): Router {
         if (ac.signal.aborted) {
           console.log('ChartChatAgent: cancelled by client')
         } else {
+          console.error('ChartChatAgent: failed', err)
           const msg = err instanceof Error ? err.message : 'Chart chat failed'
           if (!res.writableEnded) res.write(`event: error\ndata: ${JSON.stringify({ error: msg })}\n\n`)
         }

@@ -6,6 +6,16 @@ import { rowsToObjects } from './chart-agent-handlers.js'
 import { buildSystemPrompt } from './chart-agent-prompts.js'
 import { createDataTools, type ToolHandlerContext, type LogFn } from './agent-tools.js'
 import { ReActOrchestrator, ReActWorkflowBuilder, type ReActState, type IntermediateStep } from './react-orchestrator.js'
+import {
+  assertNotAborted,
+  accumulateTokenUsage,
+  getReActMeta,
+  formatAgentCycleLog,
+  REACT_URGENCY_PROMPTS,
+  setReActMeta,
+  sanitizeTrailingAssistantToolCalls,
+  type ToolCallLike,
+} from './react-agent-utils.js'
 
 /**
  * Token usage information returned from LLM calls
@@ -109,6 +119,53 @@ function createChartTools(ctx: ToolHandlerContext, log: LogFn, chartSpecDescript
   }
 }
 
+interface CreateChartToolInput {
+  title?: string
+  chart_type?: string
+  sql?: string
+  description?: string
+  summary?: string
+  chart_spec?: string
+  filters?: string
+}
+
+function getCreateChartInput(toolCall: ToolCallLike): CreateChartToolInput | undefined {
+  const input = toolCall.input
+  if (!input || typeof input !== 'object') {
+    return undefined
+  }
+  return input as CreateChartToolInput
+}
+
+function getMissingCreateChartFields(input: CreateChartToolInput): string[] {
+  const missingFields: string[] = []
+  if (!input.title) missingFields.push('title')
+  if (!input.sql) missingFields.push('sql')
+  if (!input.description) missingFields.push('description')
+  if (!input.summary) missingFields.push('summary')
+  if (!input.chart_spec) missingFields.push('chart_spec')
+  return missingFields
+}
+
+function parseChartFilters(filtersRaw: string | undefined, newSteps: string[], onStep?: (step: string) => void): ChartFilter[] {
+  if (!filtersRaw) {
+    return []
+  }
+
+  try {
+    const filters = JSON.parse(filtersRaw) as ChartFilter[]
+    const msg = `Parsed ${filters.length} filter(s): ${filters.map((f) => f.placeholder).join(', ')}`
+    newSteps.push(msg)
+    onStep?.(msg)
+    return filters
+  } catch {
+    const msg = 'Warning: failed to parse filters JSON, ignoring'
+    newSteps.push(msg)
+    onStep?.(msg)
+    return []
+  }
+}
+
 /**
  * Converts string numbers to actual numbers in chart spec data values
  * This fixes issues where LLMs return numeric data as strings
@@ -146,14 +203,10 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
   const log = (msg: string) => {
     newSteps.push(msg)
     state.onStep?.(msg)
-    console.log(`ChartAgent(ReAct) [Cycle ${reasoningCycles}]: ${msg}`)
+    console.log(formatAgentCycleLog('ChartAgent(ReAct)', reasoningCycles, msg))
   }
 
-  // Check for abort signal
-  if (state.signal?.aborted) {
-    console.log(`ChartAgent(ReAct) [Cycle ${reasoningCycles}]: Client disconnected (aborted)`)
-    throw new Error('Operation aborted by client')
-  }
+  assertNotAborted(state.signal, 'ChartAgent(ReAct)', reasoningCycles, 'reason')
 
   // Force chart creation if running out of cycles (90% of max)
   const warningThreshold = Math.floor(state.maxReasoningCycles * 0.9)
@@ -163,7 +216,7 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
       ...conversationHistory,
       {
         role: 'user',
-        content: 'You are running out of turns. You MUST call create_chart RIGHT NOW with the data you already have. Do not call any other tool.',
+        content: REACT_URGENCY_PROMPTS.chartCreateNow,
       },
     ]
   }
@@ -181,15 +234,7 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
     abortSignal: state.signal,
   })
 
-  // Track token usage (immutably)
-  const turnInput = result.usage?.inputTokens ?? 0
-  const turnOutput = result.usage?.outputTokens ?? 0
-  const newTokenUsage = {
-    ...state.tokenUsage,
-    promptTokens: state.tokenUsage.promptTokens + turnInput,
-    completionTokens: state.tokenUsage.completionTokens + turnOutput,
-    totalTokens: state.tokenUsage.totalTokens + turnInput + turnOutput,
-  }
+  const newTokenUsage = accumulateTokenUsage(state.tokenUsage, result.usage)
 
   const thought = result.text?.trim() || ''
   const toolCalls = result.toolCalls || []
@@ -208,13 +253,12 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
     steps: newSteps,
     tokenUsage: newTokenUsage,
     reasoningCycles,
-    metadata: {
-      ...state.metadata,
+    metadata: setReActMeta(state.metadata, {
       lastThought: thought,
       lastToolCalls: toolCalls,
       lastNode: 'reason',
       currentCycle: reasoningCycles,
-    },
+    }),
   }
 }
 
@@ -225,63 +269,94 @@ async function reasoningNode(state: ChartReActState): Promise<Partial<ChartReAct
  */
 async function actingNode(state: ChartReActState): Promise<Partial<ChartReActState>> {
   // Get current cycle from metadata (set by reasoning node)
-  const currentCycle = (state.metadata.currentCycle as number) || state.reasoningCycles
-  
-  // Check abort signal
-  if (state.signal?.aborted) {
-    console.log(`ChartAgent(ReAct) [Cycle ${currentCycle}]: Client disconnected during action (aborted)`)
-    throw new Error('Operation aborted by client')
-  }
+  const meta = getReActMeta(state.metadata)
+  const currentCycle = meta.currentCycle || state.reasoningCycles
 
-  const toolCalls = (state.metadata.lastToolCalls as any[]) || []
+  assertNotAborted(state.signal, 'ChartAgent(ReAct)', currentCycle, 'act')
+
+  const toolCalls = (meta.lastToolCalls as ToolCallLike[]) || []
   
   if (toolCalls.length === 0) {
     throw new Error('Acting node called but no tool calls available')
   }
 
-  const thought = (state.metadata.lastThought as string) || ''
+  const thought = meta.lastThought || ''
   const toolCall = toolCalls[0]
   const newSteps = [...state.steps]
 
-  // Check if this is the terminal create_chart action
-  if (toolCall.toolName === 'create_chart') {
-    const input = toolCall.args as {
-      title: string
-      chart_type?: string
-      sql: string
-      description: string
-      summary: string
-      chart_spec: string
-      filters?: string
+  const recoverInvalidCreateChart = (reason: string): Partial<ChartReActState> => {
+    const msg = `create_chart call was invalid (${reason}). Asking model to retry with required fields.`
+    newSteps.push(msg)
+    state.onStep?.(msg)
+
+    const sanitizedHistory = sanitizeTrailingAssistantToolCalls(state.conversationHistory)
+
+    const correctionPrompt =
+      'Your previous create_chart tool call was invalid because required arguments were missing. ' +
+      'Call create_chart again now and include ALL required fields: title, sql, description, summary, chart_spec. ' +
+      'Do not call any other tool. Use this exact JSON shape for arguments: ' +
+      '{"title":"...","chart_type":"bar|line|area|pie|scatter|kpi|table|map","sql":"...","description":"...","summary":"...","chart_spec":"{...json string...}"}'
+
+    const step: IntermediateStep = {
+      stepNumber: state.intermediateSteps.length + 1,
+      thought,
+      action: 'create_chart',
+      actionInput: (toolCall.input as Record<string, unknown>) || {},
+      observation: `Invalid create_chart tool call: ${reason}`,
+      timestamp: new Date(),
     }
 
-    const msg = `Creating chart: "${input.title}"`
+    return {
+      intermediateSteps: [...state.intermediateSteps, step],
+      conversationHistory: [
+        ...sanitizedHistory,
+        {
+          role: 'user',
+          content: correctionPrompt,
+        },
+      ],
+      nextAction: 'create_chart',
+      steps: newSteps,
+      metadata: setReActMeta(state.metadata, {
+        lastNode: 'act',
+      }),
+    }
+  }
+
+  // Check if this is the terminal create_chart action
+  if (toolCall.toolName === 'create_chart') {
+    const input = getCreateChartInput(toolCall)
+
+    if (!input) {
+      return recoverInvalidCreateChart('missing arguments')
+    }
+
+    const missingFields = getMissingCreateChartFields(input)
+
+    if (missingFields.length > 0) {
+      return recoverInvalidCreateChart(`missing ${missingFields.join(', ')}`)
+    }
+
+    const title = input.title as string
+    const sql = input.sql as string
+    const description = input.description as string
+    const summary = input.summary as string
+    const chartSpecRaw = input.chart_spec as string
+
+    const msg = `Creating chart: "${title}"`
     newSteps.push(msg)
     state.onStep?.(msg)
 
     // Parse chart spec
     let chartSpec: object
     try {
-      chartSpec = JSON.parse(input.chart_spec)
+      chartSpec = JSON.parse(chartSpecRaw)
       coerceNumbersInSpec(chartSpec as Record<string, unknown>)
     } catch {
-      throw new Error(`Failed to parse chart spec JSON. Raw start: ${input.chart_spec?.substring(0, 200)}...`)
+      throw new Error(`Failed to parse chart spec JSON. Raw start: ${chartSpecRaw.substring(0, 200)}...`)
     }
 
-    // Parse filters
-    let filters: ChartFilter[] = []
-    if (input.filters) {
-      try {
-        filters = JSON.parse(input.filters) as ChartFilter[]
-        const msg = `Parsed ${filters.length} filter(s): ${filters.map((f) => f.placeholder).join(', ')}`
-        newSteps.push(msg)
-        state.onStep?.(msg)
-      } catch {
-        const msg = 'Warning: failed to parse filters JSON, ignoring'
-        newSteps.push(msg)
-        state.onStep?.(msg)
-      }
-    }
+    const filters = parseChartFilters(input.filters, newSteps, state.onStep)
 
     // Get data
     let data: Record<string, string>[] = []
@@ -295,11 +370,11 @@ async function actingNode(state: ChartReActState): Promise<Partial<ChartReActSta
     }
 
     const result: ChartAgentResult = {
-      title: input.title,
+      title,
       chartType: input.chart_type || 'auto',
-      sql: input.sql,
-      description: input.description,
-      summary: input.summary,
+      sql,
+      description,
+      summary,
       chartSpec,
       data,
       columns,
@@ -323,10 +398,9 @@ async function actingNode(state: ChartReActState): Promise<Partial<ChartReActSta
       steps: newSteps,
       isComplete: true,
       result,
-      metadata: {
-        ...state.metadata,
+      metadata: setReActMeta(state.metadata, {
         lastNode: 'act',
-      },
+      }),
     }
   }
 
@@ -337,7 +411,7 @@ async function actingNode(state: ChartReActState): Promise<Partial<ChartReActSta
     stepNumber: state.intermediateSteps.length + 1,
     thought,
     action: toolCall.toolName,
-    actionInput: toolCall.args,
+    actionInput: (toolCall.input as Record<string, unknown>) || {},
     observation: 'Tool executed by AI SDK (see conversation history)',
     timestamp: new Date(),
   }
@@ -345,10 +419,9 @@ async function actingNode(state: ChartReActState): Promise<Partial<ChartReActSta
   return {
     intermediateSteps: [...state.intermediateSteps, step],
     steps: newSteps,
-    metadata: {
-      ...state.metadata,
+    metadata: setReActMeta(state.metadata, {
       lastNode: 'act',
-    },
+    }),
   }
 }
 
@@ -356,16 +429,18 @@ async function actingNode(state: ChartReActState): Promise<Partial<ChartReActSta
  * Router - Decides which node to execute next
  */
 function chartRouter(state: ChartReActState): string | 'END' {
+  const meta = getReActMeta(state.metadata)
+
   if (state.isComplete) {
     return 'END'
   }
 
   if (state.nextAction === null) {
-    throw new Error(`Agent finished without creating a chart: ${state.metadata.lastThought || 'No response'}`)
+    throw new Error(`Agent finished without creating a chart: ${meta.lastThought || 'No response'}`)
   }
 
   // After reasoning, go to acting. After acting, go back to reasoning.
-  const lastNode = state.metadata.lastNode as string | undefined
+  const lastNode = meta.lastNode
   if (lastNode === 'reason') {
     return 'act'
   } else if (lastNode === 'act') {
