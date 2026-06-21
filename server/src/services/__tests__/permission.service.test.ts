@@ -64,6 +64,10 @@ function createMockDb(opts: {
         returning: vi.fn().mockImplementation(() => insertQueue.shift() ?? []),
       }),
     })),
+
+    // Run the callback with the same mock as the transaction handle (tx),
+    // so delete/insert inside the transaction draw from the same queues.
+    transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb(db)),
   }
 
   return db
