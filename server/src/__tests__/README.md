@@ -110,5 +110,17 @@ describe('GET /api/projects', () => {
 ## Current Coverage
 
 - ✅ ConversationService - Full coverage of CRUD operations and authorization
+- ✅ Schema providers - All engines (athena/postgres/mysql/bigquery/redshift/snowflake): table/view
+  detection, column/PK/FK mapping, sampling, and partition/cluster-key detection
 - ⏳ Other services - TODO
 - ⏳ API endpoints - TODO
+
+## Schema provider tests (no database required)
+
+`__tests__/services/schema-providers/` unit-tests each provider by mocking its database client
+(`vi.mock('pg' | 'mysql2/promise' | 'snowflake-sdk' | '@google-cloud/bigquery')`; Athena's client is
+passed in, so it's stubbed directly). They do **not** need the Postgres test DB and can run standalone:
+
+```bash
+npx vitest run src/__tests__/services/schema-providers/
+```

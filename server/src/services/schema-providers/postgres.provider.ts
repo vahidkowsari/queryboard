@@ -110,6 +110,26 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
         for (const r of fkResult.rows) fkMap.set(`${r.table_name}.${r.column_name}`, { table: r.ref_table, column: r.ref_column })
       } catch { console.log('Schema: FK detection not available') }
 
+      // Batch: declarative partition keys (PG 10+). partattrs is an int2vector of attnums
+      // (0 entries are expression keys and are naturally skipped since they match no column).
+      const partKeysByTable = new Map<string, string[]>()
+      try {
+        const partResult = await pool.query(`
+          SELECT c.relname AS table_name, a.attname AS column_name, k.col_order
+          FROM pg_partitioned_table pt
+          JOIN pg_class c ON c.oid = pt.partrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          CROSS JOIN LATERAL unnest(string_to_array(pt.partattrs::text, ' ')::int[]) WITH ORDINALITY AS k(attnum, col_order)
+          JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum
+          WHERE n.nspname = 'public' AND c.relname = ANY($1)
+          ORDER BY c.relname, k.col_order
+        `, [tableNames])
+        for (const r of partResult.rows) {
+          if (!partKeysByTable.has(r.table_name)) partKeysByTable.set(r.table_name, [])
+          partKeysByTable.get(r.table_name)!.push(r.column_name as string)
+        }
+      } catch { console.log('Schema: Partition detection not available') }
+
       const STRING_TYPES = new Set(['character varying', 'varchar', 'text', 'char', 'character', 'bpchar', 'name', 'citext'])
 
       const tables: Schema['tables'] = {}
@@ -118,12 +138,16 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
         const rawCols = colsByTable.get(tableName) || []
         const rowCount = rowCountMap.get(tableName)
 
+        const partitionKeys = partKeysByTable.get(tableName)
+        const partitionKeySet = new Set((partitionKeys || []).map((k) => k.toLowerCase()))
+
         const columns: Column[] = rawCols.map((r) => ({
           name: r.column_name,
           type: r.data_type,
           nullable: r.is_nullable === 'YES',
           isPrimaryKey: pkSet.has(`${tableName}.${r.column_name}`) || undefined,
           references: fkMap.get(`${tableName}.${r.column_name}`),
+          isPartitionKey: partitionKeySet.has(r.column_name.toLowerCase()) || undefined,
         }))
 
         // Sample values for string columns in reasonably-sized tables
@@ -140,8 +164,13 @@ export function createPostgresSchemaProvider(dbConfig: PostgresDbConfig): Schema
           await withConcurrency(sampleTasks, 5)
         }
 
-        tables[tableName] = { columns, rowCount, isView: viewSet.has(tableName) || undefined }
-        console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}`)
+        tables[tableName] = {
+          columns,
+          rowCount,
+          isView: viewSet.has(tableName) || undefined,
+          ...(partitionKeys && partitionKeys.length > 0 ? { partitionKeys } : {}),
+        }
+        console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}${partitionKeys && partitionKeys.length > 0 ? ` [partitioned by: ${partitionKeys.join(', ')}]` : ''}`)
       }
 
       return { database: dbConfig.database, engine: 'postgres', detectedAt: new Date().toISOString(), tables }

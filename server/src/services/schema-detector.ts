@@ -72,6 +72,7 @@ function formatColumnLine(c: Column, tableName: string): string {
   if (c.isPrimaryKey) line += ' PK'
   if (c.nullable === false) line += ' NOT NULL'
   if (c.isPartitionKey) line += ' [partition key — always filter on this column]'
+  if (c.isClusterKey) line += ' [sort/clustering key — prefer filtering on this column for pruning]'
   if (c.references) line += ` → ${c.references.table}.${c.references.column}`
   if (c.sampleValues && c.sampleValues.length > 0) line += ` — sample: ${c.sampleValues.join(', ')}`
   if (c.description) line += ` — ${c.description}`

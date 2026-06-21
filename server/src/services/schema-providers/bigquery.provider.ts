@@ -40,15 +40,56 @@ export function createBigQuerySchemaProvider(dbConfig: BigQueryDbConfig): Schema
           const fields: Array<{ name: string; type: string; mode?: string }> = metadata.schema?.fields || []
           const rowCount = metadata.numRows ? Number(metadata.numRows) : undefined
 
+          // Partition detection from the raw Table resource (no extra API call).
+          // - timePartitioning.field: column the table is time-partitioned on
+          // - timePartitioning without a field: ingestion-time partitioning, exposed via
+          //   the _PARTITIONTIME / _PARTITIONDATE pseudo-columns (not in schema.fields)
+          // - rangePartitioning.field: column the table is integer-range-partitioned on
+          const partitionKeys: string[] = []
+          const timePart = metadata.timePartitioning as { field?: string } | undefined
+          const rangePart = metadata.rangePartitioning as { field?: string } | undefined
+          if (timePart) {
+            partitionKeys.push(timePart.field || '_PARTITIONTIME')
+          }
+          if (rangePart?.field) {
+            partitionKeys.push(rangePart.field)
+          }
+          const partitionKeySet = new Set(partitionKeys.map((k) => k.toLowerCase()))
+
+          // Clustering keys (not partitions, but they drive block pruning when filtered on).
+          const clustering = metadata.clustering as { fields?: string[] } | undefined
+          const clusterKeys = (clustering?.fields || []).filter((k) => !partitionKeySet.has(k.toLowerCase()))
+          const clusterKeySet = new Set(clusterKeys.map((k) => k.toLowerCase()))
+
           const columns = fields.map((f) => ({
             name: f.name,
             type: f.type.toLowerCase(),
             nullable: f.mode !== 'REQUIRED',
             references: inferReference(f.name, tableNameSet),
+            ...(partitionKeySet.has(f.name.toLowerCase()) ? { isPartitionKey: true } : {}),
+            ...(clusterKeySet.has(f.name.toLowerCase()) ? { isClusterKey: true } : {}),
           }))
 
-          schemaTables[tableName] = { columns, rowCount, isView: isView || undefined }
-          console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${isView ? ' [view]' : ''}`)
+          // Ingestion-time partitioning exposes a pseudo-column not present in schema.fields.
+          // Surface it as a synthetic column so the agent knows to filter on it.
+          if (timePart && !timePart.field) {
+            columns.push({
+              name: '_PARTITIONTIME',
+              type: 'timestamp',
+              nullable: true,
+              references: undefined,
+              isPartitionKey: true,
+            })
+          }
+
+          schemaTables[tableName] = {
+            columns,
+            rowCount,
+            isView: isView || undefined,
+            ...(partitionKeys.length > 0 ? { partitionKeys } : {}),
+            ...(clusterKeys.length > 0 ? { clusterKeys } : {}),
+          }
+          console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${isView ? ' [view]' : ''}${partitionKeys.length > 0 ? ` [partitioned by: ${partitionKeys.join(', ')}]` : ''}${clusterKeys.length > 0 ? ` [clustered by: ${clusterKeys.join(', ')}]` : ''}`)
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err)
           console.warn(`Schema:   ${tableName}: FAILED - ${msg}`)

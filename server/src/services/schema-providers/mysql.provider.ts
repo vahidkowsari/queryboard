@@ -91,6 +91,33 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
         }
       } catch { console.log('Schema: FK detection not available') }
 
+      // Partition keys via INFORMATION_SCHEMA.PARTITIONS. The expression is like "`col`",
+      // "YEAR(`created_at`)" or "to_days(`d`)" — extract the backtick-quoted column names.
+      const partKeysByTable = new Map<string, string[]>()
+      try {
+        const [partRows] = await pool.query(
+          `SELECT DISTINCT table_name, partition_expression, subpartition_expression
+           FROM information_schema.partitions
+           WHERE table_schema = ? AND table_name IN (${placeholders}) AND partition_name IS NOT NULL`,
+          [dbConfig.database, ...tableNames],
+        )
+        for (const r of partRows as mysql.RowDataPacket[]) {
+          const tbl = (r.table_name || r.TABLE_NAME) as string
+          const expr = [
+            (r.partition_expression || r.PARTITION_EXPRESSION) as string | null,
+            (r.subpartition_expression || r.SUBPARTITION_EXPRESSION) as string | null,
+          ].filter(Boolean).join(',')
+          if (!expr) continue
+          const cols = [...expr.matchAll(/`([^`]+)`/g)].map((m) => m[1])
+          // Fall back to the raw expression if it has no backtick-quoted identifiers.
+          const keys = cols.length > 0 ? cols : [expr.trim()]
+          if (!partKeysByTable.has(tbl)) partKeysByTable.set(tbl, [])
+          for (const k of keys) {
+            if (!partKeysByTable.get(tbl)!.includes(k)) partKeysByTable.get(tbl)!.push(k)
+          }
+        }
+      } catch { console.log('Schema: Partition detection not available') }
+
       const STRING_TYPES = new Set(['varchar', 'char', 'text', 'tinytext', 'mediumtext', 'longtext', 'enum', 'set'])
 
       const tables: Schema['tables'] = {}
@@ -98,6 +125,9 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
         const tableName = tableNames[i]
         const rawCols = colsByTable.get(tableName) || []
         const rowCount = rowCountMap.get(tableName)
+
+        const partitionKeys = partKeysByTable.get(tableName)
+        const partitionKeySet = new Set((partitionKeys || []).map((k) => k.toLowerCase()))
 
         const columns: Column[] = rawCols.map((r) => {
           const colName = (r.column_name || r.COLUMN_NAME) as string
@@ -110,6 +140,7 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
             nullable,
             isPrimaryKey: isPK,
             references: fkMap.get(`${tableName}.${colName}`),
+            isPartitionKey: partitionKeySet.has(colName.toLowerCase()) || undefined,
           }
         })
 
@@ -126,8 +157,13 @@ export function createMySQLSchemaProvider(dbConfig: MySQLDbConfig): SchemaProvid
           await withConcurrency(sampleTasks, 5)
         }
 
-        tables[tableName] = { columns, rowCount, isView: viewSet.has(tableName) || undefined }
-        console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}`)
+        tables[tableName] = {
+          columns,
+          rowCount,
+          isView: viewSet.has(tableName) || undefined,
+          ...(partitionKeys && partitionKeys.length > 0 ? { partitionKeys } : {}),
+        }
+        console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}${partitionKeys && partitionKeys.length > 0 ? ` [partitioned by: ${partitionKeys.join(', ')}]` : ''}`)
       }
 
       return { database: dbConfig.database, engine: 'mysql', detectedAt: new Date().toISOString(), tables }

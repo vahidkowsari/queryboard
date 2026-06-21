@@ -83,21 +83,47 @@ export function createRedshiftSchemaProvider(dbConfig: RedshiftDbConfig): Schema
         for (const r of fkResult.rows) fkMap.set(`${r.table_name}.${r.column_name}`, { table: r.ref_table, column: r.ref_column })
       } catch { console.log('Schema: FK detection not available') }
 
+      // Sort keys (Redshift has no partitions; sort keys drive zone-map pruning).
+      // attsortkeyord > 0 = compound sort key order; < 0 = interleaved (order by abs value).
+      const sortKeysByTable = new Map<string, string[]>()
+      try {
+        const skResult = await pool.query(`
+          SELECT c.relname AS table_name, a.attname AS column_name
+          FROM pg_attribute a
+          JOIN pg_class c ON c.oid = a.attrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relname = ANY($1) AND a.attsortkeyord <> 0
+          ORDER BY c.relname, abs(a.attsortkeyord)
+        `, [tableNames])
+        for (const r of skResult.rows) {
+          if (!sortKeysByTable.has(r.table_name)) sortKeysByTable.set(r.table_name, [])
+          sortKeysByTable.get(r.table_name)!.push(r.column_name as string)
+        }
+      } catch { console.log('Schema: Sort key detection not available') }
+
       const tables: Schema['tables'] = {}
       for (let i = 0; i < tableNames.length; i++) {
         const tableName = tableNames[i]
         onProgress?.({ phase: 'sampling', message: `Processing table: ${tableName}`, current: i + 1, total: tableNames.length })
         const rawCols = colsByTable.get(tableName) || []
         const rowCount = rowCountMap.get(tableName)
+        const clusterKeys = sortKeysByTable.get(tableName)
+        const clusterKeySet = new Set((clusterKeys || []).map((k) => k.toLowerCase()))
         const columns = rawCols.map((r) => ({
           name: r.column_name,
           type: r.data_type,
           nullable: r.is_nullable === 'YES',
           isPrimaryKey: pkSet.has(`${tableName}.${r.column_name}`) || undefined,
           references: fkMap.get(`${tableName}.${r.column_name}`),
+          isClusterKey: clusterKeySet.has(r.column_name.toLowerCase()) || undefined,
         }))
-        tables[tableName] = { columns, rowCount, isView: viewSet.has(tableName) || undefined }
-        console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}`)
+        tables[tableName] = {
+          columns,
+          rowCount,
+          isView: viewSet.has(tableName) || undefined,
+          ...(clusterKeys && clusterKeys.length > 0 ? { clusterKeys } : {}),
+        }
+        console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}${clusterKeys && clusterKeys.length > 0 ? ` [sort key: ${clusterKeys.join(', ')}]` : ''}`)
       }
 
       return { database: dbConfig.database, engine: 'redshift', detectedAt: new Date().toISOString(), tables }
