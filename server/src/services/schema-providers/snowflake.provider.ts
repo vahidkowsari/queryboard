@@ -104,15 +104,18 @@ export function createSnowflakeSchemaProvider(dbConfig: SnowflakeDbConfig): Sche
               })
             }
 
-            // Row counts
+            // Row counts and clustering keys (Snowflake has no partitions; clustering keys
+            // drive micro-partition pruning). CLUSTERING_KEY is an expression like "LINEAR(C1, C2)".
             const rowCountMap = new Map<string, number>()
+            const clusteringExprMap = new Map<string, string>()
             try {
               const rcRows = await executeQuery(
                 connection,
-                `SELECT TABLE_NAME, ROW_COUNT FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '${dbConfig.schema.toUpperCase()}' AND TABLE_TYPE = 'BASE TABLE'`
+                `SELECT TABLE_NAME, ROW_COUNT, CLUSTERING_KEY FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '${dbConfig.schema.toUpperCase()}' AND TABLE_TYPE = 'BASE TABLE'`
               )
               for (const r of rcRows) {
                 rowCountMap.set(r.TABLE_NAME, Number(r.ROW_COUNT) || 0)
+                if (r.CLUSTERING_KEY) clusteringExprMap.set(r.TABLE_NAME, String(r.CLUSTERING_KEY))
               }
             } catch { console.log('Schema: Row count stats not available') }
 
@@ -162,12 +165,32 @@ export function createSnowflakeSchemaProvider(dbConfig: SnowflakeDbConfig): Sche
               const rawCols = colsByTable.get(tableName) || []
               const rowCount = rowCountMap.get(tableName)
 
+              // Resolve clustering-key columns by intersecting the identifiers in the
+              // CLUSTERING_KEY expression with this table's actual column names — this
+              // naturally drops wrapping functions like LINEAR(...) / TO_DATE(...).
+              const clusteringExpr = clusteringExprMap.get(tableName)
+              const clusterKeys: string[] = []
+              if (clusteringExpr) {
+                const colNamesByLower = new Map<string, string>(
+                  rawCols.map((r) => [String(r.COLUMN_NAME).toLowerCase(), r.COLUMN_NAME as string]),
+                )
+                const candidates = [...clusteringExpr.matchAll(/"([^"]+)"|([A-Za-z_][A-Za-z0-9_$]*)/g)].map(
+                  (m) => (m[1] ?? m[2]) as string,
+                )
+                for (const cand of candidates) {
+                  const match = colNamesByLower.get(cand.toLowerCase())
+                  if (match && !clusterKeys.includes(match)) clusterKeys.push(match)
+                }
+              }
+              const clusterKeySet = new Set(clusterKeys.map((k) => k.toLowerCase()))
+
               const columns: Column[] = rawCols.map((r: any) => ({
                 name: r.COLUMN_NAME,
                 type: r.DATA_TYPE,
                 nullable: r.IS_NULLABLE === 'YES',
                 isPrimaryKey: pkSet.has(`${tableName}.${r.COLUMN_NAME}`) || undefined,
                 references: fkMap.get(`${tableName}.${r.COLUMN_NAME}`),
+                isClusterKey: clusterKeySet.has(String(r.COLUMN_NAME).toLowerCase()) || undefined,
               }))
 
               // Sample values for string columns in reasonably-sized tables
@@ -187,8 +210,13 @@ export function createSnowflakeSchemaProvider(dbConfig: SnowflakeDbConfig): Sche
                 await withConcurrency(sampleTasks, 5)
               }
 
-              tables[tableName] = { columns, rowCount, isView: viewSet.has(tableName) || undefined }
-              console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}`)
+              tables[tableName] = {
+                columns,
+                rowCount,
+                isView: viewSet.has(tableName) || undefined,
+                ...(clusterKeys.length > 0 ? { clusterKeys } : {}),
+              }
+              console.log(`Schema:   ${tableName}: ${columns.length} columns${rowCount ? `, ~${rowCount} rows` : ''}${viewSet.has(tableName) ? ' [view]' : ''}${clusterKeys.length > 0 ? ` [clustered by: ${clusterKeys.join(', ')}]` : ''}`)
             }
 
             connection.destroy((destroyErr: any) => {

@@ -7,6 +7,11 @@ export interface Column {
   references?: { table: string; column: string }
   sampleValues?: string[]
   isPartitionKey?: boolean
+  /**
+   * Sort/clustering key (Redshift sort keys, Snowflake & BigQuery clustering keys).
+   * Not a true partition, but filtering on it enables block/micro-partition pruning.
+   */
+  isClusterKey?: boolean
 }
 
 export interface TableInfo {
@@ -15,6 +20,7 @@ export interface TableInfo {
   rowCount?: number
   isView?: boolean
   partitionKeys?: string[]
+  clusterKeys?: string[]
 }
 
 export interface Schema {
