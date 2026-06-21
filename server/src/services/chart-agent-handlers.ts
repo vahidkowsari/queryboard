@@ -44,7 +44,10 @@ export function handleGetColumns(schema: Schema, tableName: string): string {
   if (!table) return `Error: Table "${tableName}" not found. Use list_tables to see available tables.`
   const lines = table.columns.map((c) => {
     const desc = c.description ? ` — ${c.description}` : ''
-    return `  ${c.name} (${c.type})${desc}`
+    let tag = ''
+    if (c.isPartitionKey) tag = ' [partition key — always filter on this column]'
+    else if (c.isClusterKey) tag = ' [sort/clustering key — prefer filtering on this column for pruning]'
+    return `  ${c.name} (${c.type})${tag}${desc}`
   })
   const tableDesc = table.description ? ` — ${table.description}` : ''
   const rc = formatRowCount(table.rowCount)
@@ -380,7 +383,11 @@ export function getColumnHintFromSql(sql: string, schema: Schema): string | null
   if (matched.length === 0) return null
 
   const lines = matched.map((t) => {
-    const cols = schema.tables[t].columns.map((c) => c.name)
+    const cols = schema.tables[t].columns.map((c) => {
+      if (c.isPartitionKey) return `${c.name} [partition key — always filter on this]`
+      if (c.isClusterKey) return `${c.name} [sort/clustering key — prefer filtering for pruning]`
+      return c.name
+    })
     return `Table "${t}" columns: ${cols.join(', ')}`
   })
   return `⚠️ Use get_columns to verify column names before retrying. Here are the actual columns for the tables in your query:\n${lines.join('\n')}`
